@@ -43,9 +43,15 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+// Set the theme on <html> before first paint to avoid a flash of the wrong theme.
+const THEME_INIT = `(function(){try{var t=localStorage.getItem('quantia:theme');if(t!=='dark'&&t!=='light'){t='light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`} data-theme="light" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
       <body>
         <a href="#main-content" className="skip-link">Skip to content</a>
         {children}

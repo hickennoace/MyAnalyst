@@ -1,11 +1,10 @@
 import type { jsPDF as JsPdf } from "jspdf";
+import { chartBg } from "./chart-theme";
 
 // Client-side dashboard export. Snapshots the rendered dashboard DOM (ECharts canvases included)
 // to a PNG, and composes a paginated PDF from that image. No server, no upload — same privacy
 // posture as the rest of the app. The heavy libraries (html-to-image, jspdf) are dynamically
 // imported on first use so they stay out of the analyzer's initial bundle.
-
-const BG = "#0a0e16"; // matches --color-bg so transparent gaps don't render white
 
 function safeName(name: string): string {
   return (name.replace(/\.[^.]+$/, "") || "quantia-dashboard").replace(/[^a-z0-9-_]+/gi, "_");
@@ -13,8 +12,9 @@ function safeName(name: string): string {
 
 async function snapshot(node: HTMLElement): Promise<string> {
   const { toPng } = await import("html-to-image");
+  // backgroundColor matches the active theme so transparent gaps don't render wrong.
   // pixelRatio 2 → crisp output on retina / when zoomed into the PDF.
-  return toPng(node, { backgroundColor: BG, pixelRatio: 2, cacheBust: true });
+  return toPng(node, { backgroundColor: chartBg(), pixelRatio: 2, cacheBust: true });
 }
 
 function triggerDownload(dataUrl: string, filename: string) {
@@ -58,7 +58,8 @@ export async function exportPdf(node: HTMLElement, datasetName: string): Promise
 }
 
 function paintBg(pdf: JsPdf, w: number, h: number) {
-  pdf.setFillColor(11, 15, 26);
+  if (chartBg() === "#ffffff") pdf.setFillColor(255, 255, 255);
+  else pdf.setFillColor(10, 14, 22);
   pdf.rect(0, 0, w, h, "F");
 }
 

@@ -9,13 +9,27 @@ export const PALETTE = [
   "#9270CA", "#FF9D4D", "#269A99", "#FF99C3", "#7b8aa8",
 ];
 
-export const INK = {
-  text: "#e6ebf2",
-  sub: "#8b94a6",
-  faint: "#59617a",
-  grid: "#16202e",
-  axis: "#243144",
+// Charts read the active site theme (set on <html data-theme>) when their options
+// are built at analyze time, so a fresh analysis matches light or dark mode.
+function isLight(): boolean {
+  return typeof document !== "undefined" && document.documentElement.dataset.theme === "light";
+}
+const DARK_INK = { text: "#e6ebf2", sub: "#8b94a6", faint: "#59617a", grid: "#16202e", axis: "#243144" };
+const LIGHT_INK = { text: "#111318", sub: "#565b66", faint: "#8a8f9c", grid: "#e6e9ef", axis: "#cbd1db" };
+
+// `INK.*` resolves to the current theme each time it's read.
+export const INK: { text: string; sub: string; faint: string; grid: string; axis: string } = {
+  get text() { return (isLight() ? LIGHT_INK : DARK_INK).text; },
+  get sub() { return (isLight() ? LIGHT_INK : DARK_INK).sub; },
+  get faint() { return (isLight() ? LIGHT_INK : DARK_INK).faint; },
+  get grid() { return (isLight() ? LIGHT_INK : DARK_INK).grid; },
+  get axis() { return (isLight() ? LIGHT_INK : DARK_INK).axis; },
 };
+
+/** Background used when exporting charts/dashboards — matches the active theme. */
+export function chartBg(): string {
+  return isLight() ? "#ffffff" : "#0a0e16";
+}
 
 const FONT = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
@@ -50,8 +64,8 @@ export function grid(extra: Record<string, unknown> = {}) {
 export function tooltip(extra: Record<string, unknown> = {}) {
   return {
     trigger: "axis",
-    backgroundColor: "rgba(13, 18, 32, 0.93)",
-    borderColor: "rgba(139, 148, 166, 0.25)",
+    backgroundColor: isLight() ? "rgba(255, 255, 255, 0.96)" : "rgba(13, 18, 32, 0.93)",
+    borderColor: isLight() ? "rgba(17, 19, 40, 0.12)" : "rgba(139, 148, 166, 0.25)",
     borderWidth: 1,
     padding: [8, 12],
     textStyle: { color: INK.text, fontFamily: FONT, fontSize: 12 },
@@ -127,7 +141,7 @@ export function lineSeries(
     symbolSize: 7,
     sampling: "lttb",
     lineStyle: { width: 2.5, color: c, type: opts.dashed ? "dashed" : "solid", cap: "round" },
-    itemStyle: { color: c, borderColor: "#0a0e16", borderWidth: 2 },
+    itemStyle: { color: c, borderColor: chartBg(), borderWidth: 2 },
     emphasis: { focus: "series" },
     areaStyle: opts.area ? { color: vGradient(c, 0.28, 0.01) } : undefined,
   };

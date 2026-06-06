@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Reveal } from "@/components/Reveal";
 import { HeroChart } from "@/components/HeroChart";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 // Marketing landing page. Static (server component) for fast first paint + SEO.
 // Aesthetic: "Refined Light" — clean near-white SaaS canvas, a single indigo
@@ -80,9 +81,10 @@ export default function Landing() {
             <div className="lp-mark">Q</div>
             <span className="display text-xl text-[var(--ink)]">Quantia</span>
           </div>
-          <div className="flex items-center gap-7">
+          <div className="flex items-center gap-4 sm:gap-6">
             <a href="#features" className="lp-link hidden sm:inline">Features</a>
             <a href="#how" className="lp-link hidden sm:inline">How it works</a>
+            <ThemeToggle />
             <Link href="/analyze" className="lp-cta !px-4 !py-2 !text-[0.82rem]">Open the app</Link>
           </div>
         </nav>

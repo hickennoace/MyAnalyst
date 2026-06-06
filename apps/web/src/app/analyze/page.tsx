@@ -12,6 +12,7 @@ import { exportPdf, exportPng } from "@/lib/export";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
 import { Uploader } from "@/components/Uploader";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { DashboardView } from "@/components/DashboardView";
 import { HistoryList } from "@/components/HistoryList";
 import { PipelineProgress } from "@/components/PipelineProgress";
@@ -171,6 +172,8 @@ export default function AnalyzePage() {
               <p className="text-xs text-slate-400">Analyzer</p>
             </div>
           </Link>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+          <ThemeToggle />
           {spec ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button
@@ -215,6 +218,7 @@ export default function AnalyzePage() {
               ← Home
             </Link>
           )}
+          </div>
         </header>
 
         {!spec && (

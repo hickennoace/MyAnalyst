@@ -296,5 +296,86 @@ body {
 
 @media (prefers-reduced-motion: reduce) { .lp-dot, .lp-ticker-track { animation: none !important; } }
 
-/* Keep page chrome light on the landing route. */
+/* Keep the page chrome in sync with the landing surface (flips with theme). */
 body:has(.lp) { background: #ffffff; }
+:root[data-theme="dark"] body:has(.lp) { background: #0a0d13; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THEME SYSTEM — light / dark for the WHOLE site
+   The app is authored dark-first with Tailwind `slate-*` utilities (which in
+   Tailwind v4 resolve through `var(--color-slate-*)`). Light mode simply
+   inverts that ramp + flips the core surfaces, so every component follows
+   without per-component edits. The landing (.lp) gets its own dark palette.
+   `data-theme` is set on <html> before paint by an inline script in layout.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root[data-theme="light"] {
+  /* core tokens */
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef1f5;
+  --color-border: #e3e7ee;
+  --color-muted: #475569;
+
+  /* reversed slate ramp: dark-first utilities read correctly on light */
+  --color-slate-50: #020617;
+  --color-slate-100: #0f172a;
+  --color-slate-200: #1e293b;
+  --color-slate-300: #334155;
+  --color-slate-400: #475569;
+  --color-slate-500: #64748b;
+  --color-slate-600: #94a3b8;
+  --color-slate-700: #d4dae3;
+  --color-slate-800: #e7ebf1;
+  --color-slate-900: #f1f4f8;
+  --color-slate-950: #f8fafc;
+}
+
+/* Light overrides for the shared, hand-rolled dark surfaces. */
+:root[data-theme="light"] .card {
+  background: linear-gradient(180deg, #ffffff, #fbfcfe);
+  border-color: #e3e7ee;
+  box-shadow: 0 1px 2px rgba(17, 19, 40, 0.04), 0 6px 20px -12px rgba(17, 19, 40, 0.12);
+}
+:root[data-theme="light"] .glow { background: radial-gradient(1200px 500px at 50% -10%, rgba(79, 70, 229, 0.08), transparent 70%); }
+:root[data-theme="light"] .app-bg::before {
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(79, 70, 229, 0.06), transparent 60%),
+    radial-gradient(760px 420px at 100% 0%, rgba(6, 182, 212, 0.05), transparent 60%);
+}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb { background: #cbd2dd; }
+
+/* Landing (.lp) dark palette — applied only in dark mode. */
+:root[data-theme="dark"] .lp {
+  --bg: #0a0d13;
+  --bg-soft: #11151e;
+  --card: #141926;
+  --ink: #eef1f7;
+  --muted: #a3abbb;
+  --faint: #717a8a;
+  --line: rgba(230, 235, 245, 0.09);
+  --line-strong: rgba(230, 235, 245, 0.17);
+
+  --accent: #7c83ff;
+  --accent-hover: #9aa0ff;
+  --accent-soft: rgba(124, 131, 255, 0.15);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 10px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 30px -12px rgba(0, 0, 0, 0.55);
+}
+:root[data-theme="dark"] .lp-cta { color: #0a0d13; }
+:root[data-theme="dark"] .lp-aurora {
+  background:
+    radial-gradient(720px 380px at 88% -12%, rgba(124, 131, 255, 0.16), transparent 62%),
+    radial-gradient(640px 360px at 6% -6%, rgba(124, 131, 255, 0.10), transparent 60%);
+}
+
+/* ── Theme toggle button ── */
+.theme-toggle {
+  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px;
+  border: 1px solid var(--color-border); color: inherit;
+  background: transparent; cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.theme-toggle:hover { border-color: #7c83ff; color: #7c83ff; }
+.lp .theme-toggle { border-color: var(--line-strong); color: var(--muted); }
+.lp .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }

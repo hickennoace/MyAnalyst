@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -10,10 +11,13 @@ export default function Privacy() {
   return (
     <main className="glow min-h-screen">
       <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
-        <Link href="/" className="text-sm text-slate-400 transition hover:text-slate-200">
-          ← Quantia
-        </Link>
-        <h1 className="mt-6 text-3xl font-bold text-white">Privacy</h1>
+        <div className="flex items-center justify-between">
+          <Link href="/" className="text-sm text-slate-400 transition hover:text-slate-200">
+            ← Quantia
+          </Link>
+          <ThemeToggle />
+        </div>
+        <h1 className="mt-6 text-3xl font-bold text-slate-50">Privacy</h1>
         <p className="mt-2 text-sm text-slate-400">Short version: your data stays on your device.</p>
 
         <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-300">
@@ -60,7 +64,7 @@ export default function Privacy() {
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-base font-semibold text-white">{title}</h2>
+      <h2 className="text-base font-semibold text-slate-50">{title}</h2>
       <p className="mt-1.5">{children}</p>
     </section>
   );

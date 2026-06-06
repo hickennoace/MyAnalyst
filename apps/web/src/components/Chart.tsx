@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import dynamic from "next/dynamic";
 import type { ChartSpec } from "@/lib/types";
+import { chartBg } from "@/lib/chart-theme";
 
 // ECharts is client-only and heavy; load it lazily so it never runs during SSR.
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
@@ -32,7 +33,9 @@ export function Chart({ spec }: { spec: ChartSpec }) {
     const inst = instance.current;
     if (!inst) return;
     const ratio = 2;
-    const chartUrl = inst.getDataURL({ type: "png", pixelRatio: ratio, backgroundColor: "#0a0e16" });
+    const bg = chartBg();
+    const light = bg === "#ffffff";
+    const chartUrl = inst.getDataURL({ type: "png", pixelRatio: ratio, backgroundColor: bg });
     const img = await loadImage(chartUrl);
 
     const headerH = (spec.subtitle ? 52 : 34) * ratio;
@@ -43,14 +46,14 @@ export function Chart({ spec }: { spec: ChartSpec }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = "#0a0e16";
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.textBaseline = "top";
-    ctx.fillStyle = "#f1f5f9";
+    ctx.fillStyle = light ? "#111318" : "#f1f5f9";
     ctx.font = `600 ${15 * ratio}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
     ctx.fillText(spec.title, padX, 12 * ratio);
     if (spec.subtitle) {
-      ctx.fillStyle = "#94a3b8";
+      ctx.fillStyle = light ? "#565b66" : "#94a3b8";
       ctx.font = `${12 * ratio}px ui-sans-serif, system-ui, sans-serif`;
       ctx.fillText(spec.subtitle, padX, 32 * ratio);
     }
