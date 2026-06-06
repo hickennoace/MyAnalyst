@@ -32,7 +32,7 @@ export function Chart({ spec }: { spec: ChartSpec }) {
     const inst = instance.current;
     if (!inst) return;
     const ratio = 2;
-    const chartUrl = inst.getDataURL({ type: "png", pixelRatio: ratio, backgroundColor: "#0b0f1a" });
+    const chartUrl = inst.getDataURL({ type: "png", pixelRatio: ratio, backgroundColor: "#0a0e16" });
     const img = await loadImage(chartUrl);
 
     const headerH = (spec.subtitle ? 52 : 34) * ratio;
@@ -43,7 +43,7 @@ export function Chart({ spec }: { spec: ChartSpec }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = "#0b0f1a";
+    ctx.fillStyle = "#0a0e16";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.textBaseline = "top";
     ctx.fillStyle = "#f1f5f9";

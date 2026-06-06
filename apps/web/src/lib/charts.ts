@@ -245,7 +245,7 @@ function correlationHeatmap(table: Table, metrics: ColumnProfile[]): ChartSpec {
       series: [{
         type: "heatmap", data,
         label: { show: true, color: "#e2e8f0", fontSize: 11 },
-        itemStyle: { borderColor: "#0b0f1a", borderWidth: 3, borderRadius: 4 },
+        itemStyle: { borderColor: "#0a0e16", borderWidth: 3, borderRadius: 4 },
         emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.4)" } },
       }],
     },
@@ -292,7 +292,7 @@ function pieOption(pairs: [string, number][]) {
     legend: legend({ top: undefined, bottom: 4, type: "scroll" }),
     series: [{
       type: "pie", radius: ["45%", "72%"], center: ["50%", "46%"], avoidLabelOverlap: true,
-      itemStyle: { borderColor: "#0b0f1a", borderWidth: 3, borderRadius: 6 },
+      itemStyle: { borderColor: "#0a0e16", borderWidth: 3, borderRadius: 6 },
       label: { color: INK.sub, fontSize: 11, formatter: "{b}\n{d}%" },
       labelLine: { lineStyle: { color: INK.axis } },
       emphasis: { scale: true, scaleSize: 6, label: { color: INK.text, fontWeight: "bold" } },

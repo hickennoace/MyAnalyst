@@ -33,11 +33,11 @@ export function QueryBox({ table, profiles }: { table: Table; profiles: ColumnPr
           onKeyDown={(e) => e.key === "Enter" && ask(q)}
           placeholder={suggestions[0] ?? "e.g. total revenue by region"}
           aria-label="Ask a question about your data"
-          className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none"
+          className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
         />
         <button
           onClick={() => ask(q)}
-          className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+          className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
         >
           Ask
         </button>
@@ -49,7 +49,7 @@ export function QueryBox({ table, profiles }: { table: Table; profiles: ColumnPr
             <button
               key={s}
               onClick={() => ask(s)}
-              className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-indigo-500/50 hover:text-indigo-300"
+              className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-blue-500/50 hover:text-blue-300"
             >
               {s}
             </button>
@@ -61,7 +61,7 @@ export function QueryBox({ table, profiles }: { table: Table; profiles: ColumnPr
         <div className="mt-4" aria-live="polite">
           <div
             className={`rounded-xl border px-4 py-3 text-sm ${
-              result.ok ? "border-indigo-500/30 bg-indigo-500/10 text-slate-100" : "border-slate-700 bg-slate-800/40 text-slate-300"
+              result.ok ? "border-blue-500/30 bg-blue-500/10 text-slate-100" : "border-slate-700 bg-slate-800/40 text-slate-300"
             }`}
           >
             {result.ok ? "💡 " : "🤔 "}

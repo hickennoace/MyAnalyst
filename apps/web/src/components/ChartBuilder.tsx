@@ -66,11 +66,11 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAsk()}
             placeholder={`e.g. "${metrics[0]?.name ?? "value"} by ${dimsAndTime.find((d) => d.role !== "metric")?.name ?? "category"}"`}
-            className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none"
+            className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
           />
           <button
             onClick={handleAsk}
-            className="rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+            className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
           >
             ✨ Generate
           </button>
@@ -110,7 +110,7 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
           </div>
         </div>
 
-        {note && <p className="mt-3 text-xs text-indigo-300">{note}</p>}
+        {note && <p className="mt-3 text-xs text-blue-300">{note}</p>}
       </div>
 
       {custom.length > 0 && (
@@ -125,7 +125,7 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
 }
 
 const selectCls =
-  "w-full rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none";
+  "w-full rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2.5 text-sm text-slate-100 focus:border-blue-400 focus:outline-none";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

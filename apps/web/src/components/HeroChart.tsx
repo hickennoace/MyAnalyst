@@ -13,33 +13,32 @@ export function HeroChart({ className = "" }: { className?: string }) {
     <svg viewBox="0 0 490 200" className={className} role="img" aria-label="Animated trend chart" fill="none">
       <defs>
         <linearGradient id="heroArea" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#818cf8" stopOpacity="0.45" />
-          <stop offset="1" stopColor="#818cf8" stopOpacity="0" />
+          <stop offset="0" stopColor="#3d8bff" stopOpacity="0.34" />
+          <stop offset="1" stopColor="#3d8bff" stopOpacity="0" />
         </linearGradient>
         <linearGradient id="heroStroke" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#8b5cf6" />
-          <stop offset="0.5" stopColor="#818cf8" />
-          <stop offset="1" stopColor="#22d3ee" />
+          <stop offset="0" stopColor="#3d8bff" />
+          <stop offset="1" stopColor="#5fd2e0" />
         </linearGradient>
       </defs>
 
       {/* soft gridlines */}
       {[40, 80, 120, 160].map((y) => (
-        <line key={y} x1="20" y1={y} x2="470" y2={y} stroke="#1e293b" strokeWidth="1" strokeDasharray="4 6" />
+        <line key={y} x1="20" y1={y} x2="470" y2={y} stroke="rgba(230,235,242,0.07)" strokeWidth="1" strokeDasharray="3 7" />
       ))}
 
       <path d={area} fill="url(#heroArea)" opacity="0.9" />
-      <path d={line} stroke="url(#heroStroke)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="hero-line" />
+      <path d={line} stroke="url(#heroStroke)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="hero-line" />
 
       {/* pulsing nodes */}
       {PTS.filter((_, i) => i % 3 === 0 || i === PTS.length - 1).map((p, i) => (
-        <circle key={i} cx={p[0]} cy={p[1]} r="4.5" fill="#0b0f1a" stroke="#a78bfa" strokeWidth="2.5" className="hero-node" style={{ animationDelay: `${i * 0.4}s` }} />
+        <circle key={i} cx={p[0]} cy={p[1]} r="4" fill="#0a0e16" stroke="#3d8bff" strokeWidth="2" className="hero-node" style={{ animationDelay: `${i * 0.4}s` }} />
       ))}
 
       {/* floating accent dots */}
-      <circle cx="60" cy="40" r="3" fill="#22d3ee" className="hero-dot" />
-      <circle cx="430" cy="150" r="2.5" fill="#a78bfa" className="hero-dot" style={{ animationDelay: "1.5s" }} />
-      <circle cx="250" cy="30" r="2" fill="#818cf8" className="hero-dot" style={{ animationDelay: "2.5s" }} />
+      <circle cx="60" cy="40" r="2.5" fill="#5fd2e0" className="hero-dot" opacity="0.7" />
+      <circle cx="430" cy="150" r="2" fill="#3d8bff" className="hero-dot" style={{ animationDelay: "1.5s" }} opacity="0.7" />
+      <circle cx="250" cy="30" r="2" fill="#5fd2e0" className="hero-dot" style={{ animationDelay: "2.5s" }} opacity="0.5" />
     </svg>
   );
 }

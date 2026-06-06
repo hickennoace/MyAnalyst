@@ -198,7 +198,7 @@ export default function AnalyzePage() {
               </button>
               <button
                 onClick={reset}
-                className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400"
+                className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400"
               >
                 New analysis
               </button>
@@ -229,7 +229,7 @@ export default function AnalyzePage() {
                 onChange={(e) => updateContext(e.target.value)}
                 rows={2}
                 placeholder="e.g. I run a used-car dealership and want to understand why customers don't buy."
-                className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none"
+                className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
               />
             </details>
 
@@ -238,7 +238,7 @@ export default function AnalyzePage() {
         )}
 
         {shareMsg && (
-          <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm text-indigo-200">
+          <div className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm text-blue-200">
             {shareMsg}
           </div>
         )}

@@ -74,7 +74,7 @@ export default function ViewPage() {
             )}
             <Link
               href="/analyze"
-              className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400"
+              className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400"
             >
               Analyze your own →
             </Link>
@@ -84,7 +84,7 @@ export default function ViewPage() {
         {error && (
           <div className="card p-8 text-center">
             <p className="text-sm text-rose-300">{error}</p>
-            <Link href="/analyze" className="mt-4 inline-block text-sm text-indigo-300 hover:text-indigo-200">
+            <Link href="/analyze" className="mt-4 inline-block text-sm text-blue-300 hover:text-blue-200">
               → Create your own dashboard
             </Link>
           </div>
@@ -92,7 +92,7 @@ export default function ViewPage() {
 
         {!spec && !error && (
           <div className="card flex items-center gap-3 p-4">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
             <span className="text-sm text-slate-300">Loading shared dashboard…</span>
           </div>
         )}

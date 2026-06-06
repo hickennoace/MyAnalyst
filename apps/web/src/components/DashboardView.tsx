@@ -32,7 +32,7 @@ export function DashboardView({
           </p>
         </div>
         <div className="text-right">
-          <span className="rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-300">
+          <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-semibold text-blue-300">
             {spec.domain.domain} · {(spec.domain.confidence * 100).toFixed(0)}% confidence
           </span>
           <p className="mt-1 max-w-md text-[11px] text-slate-500">{spec.domain.reason}</p>
@@ -57,7 +57,7 @@ export function DashboardView({
           subtitle="Plain-language conclusions, grounded in the computed numbers."
           badge={
             spec.narrator === "llm" ? (
-              <span className="rounded-full bg-gradient-to-r from-indigo-500/20 to-violet-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
+              <span className="rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
                 ✨ AI-narrated
               </span>
             ) : undefined
@@ -76,7 +76,7 @@ export function DashboardView({
           title="Conclusions &amp; recommendations"
           subtitle="What your data means for you — in plain English, no statistics degree required."
           badge={
-            <span className="rounded-full bg-gradient-to-r from-indigo-500/20 to-violet-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
+            <span className="rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
               ✨ AI-generated
             </span>
           }

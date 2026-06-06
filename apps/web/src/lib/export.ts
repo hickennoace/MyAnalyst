@@ -5,7 +5,7 @@ import type { jsPDF as JsPdf } from "jspdf";
 // posture as the rest of the app. The heavy libraries (html-to-image, jspdf) are dynamically
 // imported on first use so they stay out of the analyzer's initial bundle.
 
-const BG = "#0b0f1a"; // matches --color-bg so transparent gaps don't render white
+const BG = "#0a0e16"; // matches --color-bg so transparent gaps don't render white
 
 function safeName(name: string): string {
   return (name.replace(/\.[^.]+$/, "") || "quantia-dashboard").replace(/[^a-z0-9-_]+/gi, "_");

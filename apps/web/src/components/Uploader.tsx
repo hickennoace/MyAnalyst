@@ -33,10 +33,14 @@ export function Uploader({
       onDragLeave={() => setDrag(false)}
       onDrop={handleDrop}
       className={`card flex flex-col items-center justify-center px-8 py-16 text-center transition ${
-        drag ? "border-indigo-400 bg-indigo-500/5" : ""
+        drag ? "border-blue-400 bg-blue-500/5" : ""
       }`}
     >
-      <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-indigo-500/15 text-2xl">📊</div>
+      <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-blue-500/15 text-blue-300">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+          <path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
+        </svg>
+      </div>
       <h2 className="text-lg font-semibold text-slate-100">Drop a spreadsheet to analyze</h2>
       <p className="mt-1 max-w-md text-sm text-slate-400">
         CSV, TSV, Excel, or JSON. Everything runs in your browser — your data never leaves this page.
@@ -46,7 +50,7 @@ export function Uploader({
         <button
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-400 disabled:opacity-50"
+          className="rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400 disabled:opacity-50"
         >
           {busy ? "Analyzing…" : "Choose file"}
         </button>

@@ -1,5 +1,26 @@
 import type { Metadata } from "next";
+import { Fraunces, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+// Type system: a characterful optical serif for display, a clean grotesque for
+// body/UI, and a mono for numerals & data labels (the "terminal" voice).
+const display = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+  display: "swap",
+});
+const sans = Hanken_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://quantia.vercel.app";
 const DESCRIPTION =
@@ -31,7 +52,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body>
         <a href="#main-content" className="skip-link">Skip to content</a>
         {children}

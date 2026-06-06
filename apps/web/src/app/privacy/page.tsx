@@ -24,13 +24,13 @@ export default function Privacy() {
           </Block>
 
           <Block title="Local history">
-            Recent analyses are stored only in your browser's <code className="text-indigo-300">localStorage</code>,
+            Recent analyses are stored only in your browser's <code className="text-blue-300">localStorage</code>,
             on this device. Clearing your browser data removes them. They are never synced anywhere.
           </Block>
 
           <Block title="Shareable links">
             A share link encodes the whole dashboard into the URL's hash fragment (the part after
-            <code className="text-indigo-300"> # </code>). Browsers never send the hash to a server, so a
+            <code className="text-blue-300"> # </code>). Browsers never send the hash to a server, so a
             shared dashboard is reconstructed entirely in the recipient's browser. Anyone with the link
             can view it — treat links like the data they contain.
           </Block>
@@ -48,7 +48,7 @@ export default function Privacy() {
         </div>
 
         <div className="mt-10 border-t border-slate-800 pt-6">
-          <Link href="/analyze" className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400">
+          <Link href="/analyze" className="rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400">
             Try the analyzer →
           </Link>
         </div>

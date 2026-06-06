@@ -2,18 +2,19 @@
 // (gradient fills, rounded bars, soft gridlines, refined tooltips, smooth animation).
 // All chart builders compose their options from these helpers so styling stays uniform.
 
-/** Curated categorical palette (vivid but harmonious on the dark canvas). */
+/** Curated categorical palette — leads with the brand azure/cyan, then a
+ *  harmonious spread that stays legible on the midnight-navy canvas. */
 export const PALETTE = [
-  "#5B8FF9", "#5AD8A6", "#F6BD16", "#E8684A", "#6DC8EC",
-  "#9270CA", "#FF9D4D", "#269A99", "#FF99C3", "#5D7092",
+  "#3d8bff", "#5fd2e0", "#5AD8A6", "#F6BD16", "#E8684A",
+  "#9270CA", "#FF9D4D", "#269A99", "#FF99C3", "#7b8aa8",
 ];
 
 export const INK = {
-  text: "#e2e8f0",
-  sub: "#94a3b8",
-  faint: "#64748b",
-  grid: "#1e293b",
-  axis: "#334155",
+  text: "#e6ebf2",
+  sub: "#8b94a6",
+  faint: "#59617a",
+  grid: "#16202e",
+  axis: "#243144",
 };
 
 const FONT = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
@@ -49,8 +50,8 @@ export function grid(extra: Record<string, unknown> = {}) {
 export function tooltip(extra: Record<string, unknown> = {}) {
   return {
     trigger: "axis",
-    backgroundColor: "rgba(15, 23, 42, 0.92)",
-    borderColor: "rgba(148, 163, 184, 0.25)",
+    backgroundColor: "rgba(13, 18, 32, 0.93)",
+    borderColor: "rgba(139, 148, 166, 0.25)",
     borderWidth: 1,
     padding: [8, 12],
     textStyle: { color: INK.text, fontFamily: FONT, fontSize: 12 },
@@ -126,7 +127,7 @@ export function lineSeries(
     symbolSize: 7,
     sampling: "lttb",
     lineStyle: { width: 2.5, color: c, type: opts.dashed ? "dashed" : "solid", cap: "round" },
-    itemStyle: { color: c, borderColor: "#0b0f1a", borderWidth: 2 },
+    itemStyle: { color: c, borderColor: "#0a0e16", borderWidth: 2 },
     emphasis: { focus: "series" },
     areaStyle: opts.area ? { color: vGradient(c, 0.28, 0.01) } : undefined,
   };
