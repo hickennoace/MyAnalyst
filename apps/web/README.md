@@ -63,12 +63,21 @@ and the natural-language chart generator — is **deterministic algorithms**, no
 Insight narration goes through the `InsightProvider` interface; the default `TemplatedInsightProvider`
 fills sentence templates with numbers the engine actually computed (so it can't hallucinate).
 
-## Plugging in a real LLM later (no rewrite)
-1. Add an `LlmInsightProvider implements InsightProvider` that POSTs the **metadata-only**
-   `InsightContext` to a Next.js route handler (`app/api/insights/route.ts`) holding the key server-side.
-2. Select it in `lib/insights/index.ts` behind an env flag.
+## Real LLM insights (built in, off by default)
+The insight narrator is pluggable and **provider-agnostic**:
+
+- `app/api/insights/route.ts` — server-side endpoint holding the API key (never sent to the browser).
+  Supports **Anthropic** and any **OpenAI-compatible** API (Groq, Gemini, OpenAI, OpenRouter).
+  Accepts only the metadata-only `InsightContext`; applies a grounding guard (drops invented citations).
+- `lib/insights/llm.ts` — `LlmInsightProvider` calls the route and **falls back to the templated
+  narrator** on any failure (no key, network error, bad response), so enabling it can never break the UI.
+- `lib/insights/index.ts` — selects the provider from `NEXT_PUBLIC_LLM_ENABLED`.
+
+**To turn it on:** copy `.env.example` → `.env.local`, set `NEXT_PUBLIC_LLM_ENABLED=1`, pick
+`LLM_PROVIDER`, and add `LLM_API_KEY` + `LLM_MODEL`. Free options: Groq or Gemini. No rewrite, no key = templated.
+
 The privacy boundary (only `InsightContext` — never raw rows — crosses the wire) is enforced by the
-interface, exactly as the blueprint intends.
+interface and the route, exactly as the blueprint intends.
 
 ## Stack
 Next.js 15 · React 19 · TypeScript · Tailwind v4 · ECharts · PapaParse · SheetJS (xlsx).

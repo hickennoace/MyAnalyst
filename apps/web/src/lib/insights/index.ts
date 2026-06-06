@@ -1,12 +1,19 @@
 import type { InsightProvider } from "../types";
 import { TemplatedInsightProvider } from "./templated";
+import { LlmInsightProvider } from "./llm";
 
-// Factory for the active insight provider. Today it returns the local templated narrator.
-// To go LLM-backed later: add an `LlmInsightProvider` that POSTs the (metadata-only) InsightContext
-// to a Next.js route handler holding the API key server-side, and select it here behind an env flag.
-// The privacy boundary — only InsightContext ever crosses — is enforced by the interface itself.
+// Factory for the active insight provider.
+//
+// Set NEXT_PUBLIC_LLM_ENABLED=1 to route insights through the server-side /api/insights LLM endpoint
+// (configure the provider + key there via LLM_PROVIDER / LLM_API_KEY / LLM_MODEL). The LLM provider
+// gracefully falls back to the templated narrator on any failure, so enabling it can never break the
+// dashboard. Left unset, the local templated narrator runs with zero network calls and zero cost.
+//
+// The privacy boundary — only the metadata-only InsightContext crosses the wire — is enforced by the
+// InsightProvider interface and the /api/insights route, regardless of which provider is active.
 
 export function getInsightProvider(): InsightProvider {
-  // e.g. if (process.env.NEXT_PUBLIC_INSIGHT_PROVIDER === "llm") return new LlmInsightProvider();
-  return new TemplatedInsightProvider();
+  const enabled =
+    typeof process !== "undefined" && process.env.NEXT_PUBLIC_LLM_ENABLED === "1";
+  return enabled ? new LlmInsightProvider() : new TemplatedInsightProvider();
 }

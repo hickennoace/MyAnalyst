@@ -1,0 +1,29 @@
+import type { Insight, InsightContext, InsightProvider } from "../types";
+import { TemplatedInsightProvider } from "./templated";
+
+// LLM-backed narrator. It POSTs the metadata-only InsightContext to the server route (which holds the
+// API key) and returns the model's grounded insights. On ANY failure — no key, network error, bad
+// response, or running outside the browser (e.g. the smoke test) — it falls back to the templated
+// narrator so the dashboard always renders.
+
+export class LlmInsightProvider implements InsightProvider {
+  readonly name = "llm";
+  private fallback = new TemplatedInsightProvider();
+
+  async generate(ctx: InsightContext): Promise<Insight[]> {
+    try {
+      const res = await fetch("/api/insights", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(ctx),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { insights?: Insight[] };
+        if (Array.isArray(data.insights) && data.insights.length > 0) return data.insights;
+      }
+    } catch {
+      // swallow — fall through to templated
+    }
+    return this.fallback.generate(ctx);
+  }
+}
