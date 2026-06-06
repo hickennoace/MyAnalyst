@@ -58,6 +58,26 @@ export async function POST(req: Request) {
     }
   }
 
+  // Task: story — sharpen the "what is this data" description from dataset metadata.
+  if (body && typeof body === "object" && (body as { task?: string }).task === "story") {
+    const { draft, meta } = body as {
+      draft?: { industry?: string; summary?: string };
+      meta?: { datasetName?: string; domain?: string; rowCount?: number; columns?: { name: string; role: string; type: string }[] };
+    };
+    try {
+      const { system, user } = buildStoryPrompt(draft ?? {}, meta ?? {});
+      const raw = await callLLM(system, user);
+      const parsed = extractJson(raw) as { story?: { industry?: unknown; summary?: unknown } };
+      const industry = String(parsed.story?.industry ?? draft?.industry ?? "").trim().slice(0, 60);
+      const summary = String(parsed.story?.summary ?? "").trim();
+      if (!summary) return NextResponse.json({ story: null, provider: "error" });
+      return NextResponse.json({ story: { industry: industry || (draft?.industry ?? ""), summary }, provider });
+    } catch (err) {
+      console.error("[insights] story failed:", err instanceof Error ? err.message : err);
+      return NextResponse.json({ story: null, provider: "error" });
+    }
+  }
+
   // Default task: generate grounded insights from an InsightContext.
   const ctx = body as InsightContext;
   if (!ctx || typeof ctx !== "object" || !Array.isArray(ctx.kpis)) {
@@ -101,6 +121,23 @@ function normalizeHumanized(raw: string, original: { id: string }[]): { id: stri
     if (valid.has(id) && text) out.push({ id, text });
   }
   return out;
+}
+
+// ── Story prompt ───────────────────────────────────────────────────────────────
+
+function buildStoryPrompt(
+  draft: { industry?: string; summary?: string },
+  meta: { datasetName?: string; domain?: string; rowCount?: number; columns?: { name: string; role: string; type: string }[] }
+) {
+  const system = [
+    "You are a sharp data analyst. From dataset METADATA ONLY (column names + roles, detected domain, row count) and a rough draft, write a crisp, specific description of what the dataset is.",
+    "Cover, in 2–3 natural sentences: the likely industry/subject; what a single row represents; what it mainly measures (and the breakdown dimensions); and what people use data like this for.",
+    "Be concrete and confident, but NEVER invent specific facts, numbers, names, or claims not implied by the column names and roles. You are given no raw data rows — do not pretend to know specific values.",
+    "Also return a short industry/subject label of at most 4 words.",
+    'Respond with ONLY JSON: {"story":{"industry":string,"summary":string}}',
+  ].join("\n");
+  const user = JSON.stringify({ draft, meta });
+  return { system, user };
 }
 
 // ── Prompt ───────────────────────────────────────────────────────────────────

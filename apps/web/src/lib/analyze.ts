@@ -23,7 +23,7 @@ import { defaultHorizon, holtForecast } from "./forecast";
 import { deriveConclusions } from "./conclusions";
 import { buildDataStory } from "./story";
 import { getInsightProvider } from "./insights";
-import { humanizeConclusions, llmEnabled } from "./insights/humanize";
+import { humanizeConclusions, llmEnabled, sharpenStory } from "./insights/humanize";
 
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
 // but runs locally in the browser for the Vercel-first MVP.
@@ -50,7 +50,16 @@ export async function analyze(rawTable: Table, opts: { userContext?: string } = 
   if (llmEnabled()) conclusions = await humanizeConclusions(conclusions, ctx.userContext);
 
   // Read the data's own subject/story so findings stay connected to what it's about.
-  const story = buildDataStory(rawTable.name, table.rowCount, profiles, domain);
+  // Heuristic first; if the LLM is enabled, sharpen it (metadata-only — never raw rows).
+  let story = buildDataStory(rawTable.name, table.rowCount, profiles, domain);
+  if (llmEnabled()) {
+    story = await sharpenStory(story, {
+      datasetName: rawTable.name,
+      domain: domain.domain,
+      rowCount: table.rowCount,
+      columns: profiles.map((p) => ({ name: p.name, role: p.role, type: p.type })),
+    });
+  }
 
   return {
     version: "1.0",
