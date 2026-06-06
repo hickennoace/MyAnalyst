@@ -30,6 +30,8 @@ describe("answerQuestion", () => {
     const r = answerQuestion("which region has the highest revenue", table, profiles);
     expect(r.ok).toBe(true);
     expect(r.answer).toContain("North"); // 100+300+200 = 600 > 200+150+100 = 450
+    // Must be a revenue ranking (sum), NOT a count of regions.
+    expect(r.answer).toMatch(/Revenue|600/);
     expect(r.chart?.type).toBe("bar");
   });
 

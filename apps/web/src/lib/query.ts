@@ -83,9 +83,10 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
   }
 
   // 1b. Most-common / distribution of a CATEGORICAL column — e.g. "the most common reason for not buying".
-  const wantsFreq =
-    /\b(most common|commonest|most frequent|most popular|main reason|top reason|biggest reason|usual|distribution|breakdown|how often|frequency)\b/.test(lower) ||
-    (/\bwhich\b/.test(lower) && CATEGORY_HINT.test(lower));
+  // Explicit frequency phrasing always counts; the "which <category>" shortcut only counts when no
+  // metric is involved (otherwise "which region has the highest revenue" is a ranking, handled below).
+  const explicitFreq = /\b(most common|commonest|most frequent|most popular|main reason|top reason|biggest reason|usual|distribution|breakdown|how often|frequency)\b/.test(lower);
+  const wantsFreq = explicitFreq || (/\bwhich\b/.test(lower) && CATEGORY_HINT.test(lower) && mMetrics.length === 0);
   if (wantsFreq) {
     // Pick the category column: one named in the question, else a hinted dimension, else the first dimension.
     const col =
