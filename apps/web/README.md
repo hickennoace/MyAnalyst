@@ -13,6 +13,8 @@ npm install
 npm run dev        # http://localhost:3000
 npm run build      # production build (what Vercel runs)
 npm run typecheck  # tsc --noEmit
+npm test           # vitest — unit tests for the analysis engine
+npx tsx scripts/smoke.mts  # manual end-to-end run on the sample dataset
 ```
 
 ## Deploy to Vercel
