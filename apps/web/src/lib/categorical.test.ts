@@ -51,6 +51,7 @@ describe("deriveConclusions", () => {
     outliers: [],
     groupComparisons: [],
     associations: [],
+    smallSample: false,
     categories: [
       {
         column: "Reason",

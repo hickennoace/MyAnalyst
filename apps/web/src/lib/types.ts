@@ -130,6 +130,10 @@ export interface InsightContext {
   categories: CategoryFact[];
   groupComparisons: GroupComparison[];
   associations: Association[];
+  /** multiple-regression driver analysis (when ≥2 numeric predictors exist) */
+  drivers?: DriverAnalysis;
+  /** true when the dataset is small enough that estimates are unstable (n < 30) */
+  smallSample: boolean;
 }
 
 export interface CorrelationPair {
@@ -192,6 +196,16 @@ export interface Association {
   p: number;
   cramersV: number; // effect size
   significant: boolean;
+}
+
+/** Multiple-regression driver analysis: each predictor's independent effect on a target metric. */
+export interface DriverAnalysis {
+  target: string;
+  r2: number;
+  adjR2: number;
+  fP: number;
+  n: number;
+  drivers: { name: string; coef: number; beta: number; p: number; significant: boolean }[];
 }
 
 export interface OutlierFact {

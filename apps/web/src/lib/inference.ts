@@ -360,6 +360,162 @@ export function describe(values: number[]): Description | null {
   };
 }
 
+// ── Spearman rank correlation (robust to outliers / monotonic non-linearity) ─
+
+/** Spearman's rho with a significance test (correlation of ranks). */
+export function spearmanTest(xs: number[], ys: number[]): CorrelationTest | null {
+  const pairs: [number, number][] = [];
+  for (let i = 0; i < Math.min(xs.length, ys.length); i++)
+    if (Number.isFinite(xs[i]) && Number.isFinite(ys[i])) pairs.push([xs[i], ys[i]]);
+  if (pairs.length < 4) return null;
+  return pearsonTest(ranks(pairs.map((p) => p[0])), ranks(pairs.map((p) => p[1])));
+}
+
+/** Fractional ranks with ties averaged. */
+function ranks(xs: number[]): number[] {
+  const idx = xs.map((v, i) => [v, i] as [number, number]).sort((a, b) => a[0] - b[0]);
+  const r = new Array(xs.length).fill(0);
+  let i = 0;
+  while (i < idx.length) {
+    let j = i;
+    while (j + 1 < idx.length && idx[j + 1][0] === idx[i][0]) j++;
+    const avg = (i + j) / 2 + 1;
+    for (let k = i; k <= j; k++) r[idx[k][1]] = avg;
+    i = j + 1;
+  }
+  return r;
+}
+
+// ── Benjamini-Hochberg false discovery rate correction ───────────────────────
+
+/** Given p-values, return a boolean per input marking which stay significant at FDR = q. */
+export function benjaminiHochberg(pvalues: number[], q = 0.05): boolean[] {
+  const m = pvalues.length;
+  if (m === 0) return [];
+  const order = pvalues.map((p, i) => [p, i] as [number, number]).sort((a, b) => a[0] - b[0]);
+  const keep = new Array(m).fill(false);
+  let maxK = -1;
+  for (let k = 0; k < m; k++) if (order[k][0] <= ((k + 1) / m) * q) maxK = k;
+  for (let k = 0; k <= maxK; k++) keep[order[k][1]] = true;
+  return keep;
+}
+
+// ── Multiple linear regression (driver analysis) ─────────────────────────────
+
+export interface MultiCoefficient {
+  name: string;
+  coef: number;
+  se: number;
+  t: number;
+  p: number;
+  /** standardized coefficient (β) — comparable effect size across predictors */
+  beta: number;
+  significant: boolean;
+}
+
+export interface MultiRegressionResult {
+  coefficients: MultiCoefficient[]; // excludes the intercept
+  intercept: number;
+  r2: number;
+  adjR2: number;
+  fP: number;
+  n: number;
+  k: number;
+}
+
+/** OLS of y on multiple predictors X (columns), with per-coefficient inference + standardized betas. */
+export function multipleRegression(X: number[][], y: number[], names: string[]): MultiRegressionResult | null {
+  const k = names.length;
+  if (k < 2) return null;
+  // Keep complete cases only.
+  const rows: { x: number[]; y: number }[] = [];
+  for (let i = 0; i < y.length; i++) {
+    const xr = X.map((col) => col[i]);
+    if (Number.isFinite(y[i]) && xr.every(Number.isFinite)) rows.push({ x: xr, y: y[i] });
+  }
+  const n = rows.length;
+  if (n < k + 3) return null;
+
+  // Design matrix with intercept column.
+  const D = rows.map((r) => [1, ...r.x]); // n × (k+1)
+  const Y = rows.map((r) => r.y);
+  const p = k + 1;
+  const XtX = matMulT(D); // (k+1)×(k+1)
+  const Xty = matVecT(D, Y); // (k+1)
+  const inv = invert(XtX);
+  if (!inv) return null; // singular → multicollinear
+  const beta = matVec(inv, Xty); // (k+1)
+
+  const yMean = mean(Y);
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < n; i++) {
+    let pred = 0;
+    for (let j = 0; j < p; j++) pred += beta[j] * D[i][j];
+    ssRes += (Y[i] - pred) ** 2;
+    ssTot += (Y[i] - yMean) ** 2;
+  }
+  const dfRes = n - p;
+  const sigma2 = ssRes / dfRes;
+  const r2 = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
+  const adjR2 = 1 - (1 - r2) * ((n - 1) / dfRes);
+  const fStat = (r2 / k) / ((1 - r2) / dfRes);
+  const fP = fDistP(fStat, k, dfRes);
+  const sdY = Math.sqrt(ssTot / (n - 1));
+
+  const coefficients: MultiCoefficient[] = names.map((name, j) => {
+    const idx = j + 1; // skip intercept
+    const se = Math.sqrt(Math.max(0, sigma2 * inv[idx][idx]));
+    const t = se === 0 ? 0 : beta[idx] / se;
+    const pv = studentTTwoSidedP(t, dfRes);
+    const col = rows.map((r) => r.x[j]);
+    const sdX = Math.sqrt(variance(col));
+    return { name, coef: beta[idx], se, t, p: pv, beta: sdY === 0 ? 0 : (beta[idx] * sdX) / sdY, significant: Number.isFinite(pv) && pv < 0.05 };
+  });
+
+  return { coefficients, intercept: beta[0], r2, adjR2, fP, n, k };
+}
+
+// Small matrix helpers (dimensions are tiny: #predictors ≤ ~6).
+function matMulT(D: number[][]): number[][] {
+  const p = D[0].length;
+  const out = Array.from({ length: p }, () => new Array(p).fill(0));
+  for (const row of D)
+    for (let a = 0; a < p; a++) for (let b = 0; b < p; b++) out[a][b] += row[a] * row[b];
+  return out;
+}
+function matVecT(D: number[][], y: number[]): number[] {
+  const p = D[0].length;
+  const out = new Array(p).fill(0);
+  for (let i = 0; i < D.length; i++) for (let a = 0; a < p; a++) out[a] += D[i][a] * y[i];
+  return out;
+}
+function matVec(A: number[][], v: number[]): number[] {
+  return A.map((row) => row.reduce((s, x, j) => s + x * v[j], 0));
+}
+/** Gauss-Jordan inverse; returns null if singular. */
+function invert(M: number[][]): number[][] | null {
+  const n = M.length;
+  const A = M.map((row, i) => [...row, ...row.map((_, j) => (i === j ? 1 : 0))]);
+  for (let col = 0; col < n; col++) {
+    let piv = col;
+    for (let r = col + 1; r < n; r++) if (Math.abs(A[r][col]) > Math.abs(A[piv][col])) piv = r;
+    if (Math.abs(A[piv][col]) < 1e-12) return null;
+    [A[col], A[piv]] = [A[piv], A[col]];
+    const d = A[col][col];
+    for (let j = 0; j < 2 * n; j++) A[col][j] /= d;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = A[r][col];
+      for (let j = 0; j < 2 * n; j++) A[r][j] -= f * A[col][j];
+    }
+  }
+  return A.map((row) => row.slice(n));
+}
+function variance(xs: number[]): number {
+  const m = mean(xs);
+  return xs.reduce((s, x) => s + (x - m) ** 2, 0) / (xs.length - 1);
+}
+
 function quantile(sorted: number[], q: number): number {
   const pos = (sorted.length - 1) * q;
   const base = Math.floor(pos);

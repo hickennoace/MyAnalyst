@@ -81,8 +81,31 @@ export function deriveConclusions(ctx: InsightContext): Conclusion[] {
     }
   }
 
-  // 4. Regression — the lever with the most leverage, with its effect size and CI.
-  if (ctx.regression && ctx.regression.significant) {
+  // 4a. Multiple-regression driver analysis — disentangles which factor truly matters, controlling
+  // for the others (catches confounding that a simple correlation/regression would miss).
+  if (ctx.drivers && ctx.drivers.fP < 0.05) {
+    const d = ctx.drivers;
+    const sig = d.drivers.filter((x) => x.significant).sort((a, b) => Math.abs(b.beta) - Math.abs(a.beta));
+    const insig = d.drivers.filter((x) => !x.significant);
+    if (sig.length) {
+      const lead = sig[0];
+      let text =
+        `Controlling for the other factors, ${lead.name} has the strongest independent effect on ${d.target} ` +
+        `(standardized β = ${lead.beta.toFixed(2)}, ${pTxt(lead.p)}); the model explains ${pctTxt(d.adjR2)} of ${d.target} (adjusted R²).`;
+      if (insig.length)
+        text += ` Notably, ${insig.map((i) => i.name).join(" & ")} add${insig.length === 1 ? "s" : ""} no independent signal once ${sig.map((s) => s.name).join(" & ")} ${sig.length === 1 ? "is" : "are"} accounted for — likely a confounded, not causal, link.`;
+      out.push({ confidence: confFromP(lead.p), basis: `multiple regression on ${d.target}`, text });
+    } else {
+      out.push({
+        confidence: "low",
+        basis: `multiple regression on ${d.target}`,
+        text: `No single factor stands out as an independent driver of ${d.target} once the others are controlled for (model adjusted R² ${pctTxt(d.adjR2)}). The candidate metrics overlap too much to separate their effects.`,
+      });
+    }
+  }
+
+  // 4b. Simple regression — only when there's no multi-factor driver analysis to supersede it.
+  if (ctx.regression && ctx.regression.significant && !ctx.drivers) {
     const r = ctx.regression;
     out.push({
       confidence: confFromP(r.slopeP),
@@ -150,6 +173,15 @@ export function deriveConclusions(ctx: InsightContext): Conclusion[] {
       confidence: "low",
       basis: "overview",
       text: "No statistically significant patterns stood out in this dataset. More rows, or a column capturing the outcome you care about, would let clearer conclusions emerge.",
+    });
+  }
+
+  // Small-sample caveat goes first — it qualifies everything else.
+  if (ctx.smallSample) {
+    out.unshift({
+      confidence: "low",
+      basis: `sample size n = ${ctx.rowCount}`,
+      text: `Heads up: only ${ctx.rowCount} rows. That's a small sample, so every estimate below is uncertain and could shift with more data — treat them as directional, not definitive.`,
     });
   }
 

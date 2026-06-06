@@ -3,6 +3,7 @@ import type {
   CategoryFact,
   CorrelationPair,
   DashboardSpec,
+  DriverAnalysis,
   ForecastFact,
   GroupComparison,
   InsightContext,
@@ -17,7 +18,7 @@ import { detectDomain } from "./domain";
 import { computeKpis, primaryMetric, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
 import { zOutliers } from "./stats";
-import { chiSquareIndependence, oneWayAnova, olsSimple, pearsonTest } from "./inference";
+import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAnova, olsSimple, pearsonTest } from "./inference";
 import { defaultHorizon, holtForecast } from "./forecast";
 import { deriveConclusions } from "./conclusions";
 import { getInsightProvider } from "./insights";
@@ -85,6 +86,12 @@ function buildInsightContext(
         n: test.n,
       });
     }
+  }
+  // Benjamini-Hochberg FDR correction across all pairwise correlation tests — guards against
+  // false positives when many pairs are tested (a key accuracy fix vs. naive per-test p < 0.05).
+  if (correlations.length > 1) {
+    const keep = benjaminiHochberg(correlations.map((c) => c.p));
+    correlations.forEach((c, i) => (c.significant = keep[i]));
   }
   // Rank by significance first, then strength.
   correlations.sort((a, b) => Number(b.significant) - Number(a.significant) || Math.abs(b.r) - Math.abs(a.r));
@@ -165,7 +172,32 @@ function buildInsightContext(
       }
     }
   }
+  if (groupComparisons.length > 1) {
+    const keep = benjaminiHochberg(groupComparisons.map((g) => g.p));
+    groupComparisons.forEach((g, i) => (g.significant = keep[i]));
+  }
   groupComparisons.sort((a, b) => Number(b.significant) - Number(a.significant) || b.etaSq - a.etaSq);
+
+  // Multiple-regression driver analysis: which numeric factors independently move the primary metric?
+  let drivers: DriverAnalysis | undefined;
+  const target = primaryMetric(profiles);
+  if (target && metrics.length >= 3) {
+    const predictors = metrics.filter((m) => m.name !== target.name).slice(0, 5);
+    if (predictors.length >= 2) {
+      const X = predictors.map((p) => numericColumn(table, p.name));
+      const mr = multipleRegression(X, numericColumn(table, target.name), predictors.map((p) => p.name));
+      if (mr) {
+        drivers = {
+          target: target.name,
+          r2: mr.r2,
+          adjR2: mr.adjR2,
+          fP: mr.fP,
+          n: mr.n,
+          drivers: mr.coefficients.map((c) => ({ name: c.name, coef: c.coef, beta: c.beta, p: c.p, significant: c.significant })),
+        };
+      }
+    }
+  }
 
   // Associations between categorical columns (chi-square test of independence).
   const associations: Association[] = [];
@@ -236,6 +268,8 @@ function buildInsightContext(
     categories,
     groupComparisons: groupComparisons.slice(0, 4),
     associations: associations.slice(0, 4),
+    drivers,
+    smallSample: table.rowCount < 30,
   };
 }
 

@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  benjaminiHochberg,
   chiSquareIndependence,
   chiSquareP,
   describe as describeStats,
   fDistP,
+  multipleRegression,
   normalCdf,
   oneWayAnova,
   olsSimple,
   pearsonTest,
+  spearmanTest,
   studentTTwoSidedP,
   tCritical,
 } from "./inference";
@@ -85,5 +88,35 @@ describe("describe", () => {
     const d = describeStats([1, 2, 3, 4, 5, 6, 7, 8, 9])!;
     expect(d.median).toBe(5);
     expect(Math.abs(d.skew)).toBeLessThan(0.1);
+  });
+});
+
+describe("spearmanTest", () => {
+  it("is 1 for a monotonic (non-linear) relationship", () => {
+    const t = spearmanTest([1, 2, 3, 4, 5, 6], [1, 4, 9, 16, 25, 36])!; // y = x^2, monotonic
+    expect(t.r).toBeCloseTo(1, 5);
+    expect(t.significant).toBe(true);
+  });
+});
+
+describe("benjaminiHochberg", () => {
+  it("controls the false discovery rate", () => {
+    // One tiny p (real), rest large (noise) → only the tiny one survives.
+    const keep = benjaminiHochberg([0.001, 0.4, 0.6, 0.8, 0.9], 0.05);
+    expect(keep[0]).toBe(true);
+    expect(keep.slice(1).some(Boolean)).toBe(false);
+  });
+});
+
+describe("multipleRegression", () => {
+  it("recovers coefficients of y = 1 + 2*x1 + 3*x2", () => {
+    const x1 = [1, 2, 3, 4, 5, 6, 7, 8];
+    const x2 = [2, 1, 4, 3, 6, 5, 8, 7];
+    const y = x1.map((v, i) => 1 + 2 * v + 3 * x2[i]);
+    const r = multipleRegression([x1, x2], y, ["x1", "x2"])!;
+    expect(r.intercept).toBeCloseTo(1, 4);
+    expect(r.coefficients[0].coef).toBeCloseTo(2, 4);
+    expect(r.coefficients[1].coef).toBeCloseTo(3, 4);
+    expect(r.r2).toBeCloseTo(1, 6);
   });
 });

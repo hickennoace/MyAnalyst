@@ -71,6 +71,7 @@ function collectValidCites(ctx: InsightContext): Set<string> {
   for (const c of ctx.categories ?? []) ids.add(`category:${c.column}`);
   for (const g of ctx.groupComparisons ?? []) ids.add(`anova:${g.metric}~${g.dimension}`);
   for (const a of ctx.associations ?? []) ids.add(`assoc:${a.a}~${a.b}`);
+  if (ctx.drivers) ids.add("drivers");
   return ids;
 }
 
