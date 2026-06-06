@@ -1,8 +1,10 @@
 import type { ChartSpec, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
 import { pearson } from "./stats";
-import { buildChart } from "./charts";
+import { aggregateCount, buildChart } from "./charts";
 import { sortByTime } from "./kpi";
+
+const CATEGORY_HINT = /(reason|category|type|status|segment|group|class|gender|channel|source|outcome|result|stage|priority|label|tag|product|region|country|state|city|department)/i;
 
 // "Ask your data" — a heuristic natural-language Q&A engine. No LLM, no key. It maps plain-English
 // questions to exact computations over the local data (aggregates, group-bys, rankings, correlation,
@@ -78,6 +80,34 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
   // 1. Row count.
   if (/\b(how many|number of|count of|count)\b/.test(lower) && /\b(row|record|entr|data point|observation)/.test(lower)) {
     return { ok: true, answer: `There are ${table.rowCount.toLocaleString()} records in the dataset.` };
+  }
+
+  // 1b. Most-common / distribution of a CATEGORICAL column — e.g. "the most common reason for not buying".
+  const wantsFreq =
+    /\b(most common|commonest|most frequent|most popular|main reason|top reason|biggest reason|usual|distribution|breakdown|how often|frequency)\b/.test(lower) ||
+    (/\bwhich\b/.test(lower) && CATEGORY_HINT.test(lower));
+  if (wantsFreq) {
+    // Pick the category column: one named in the question, else a hinted dimension, else the first dimension.
+    const col =
+      mDims[0] ??
+      dims.find((d) => CATEGORY_HINT.test(d.name) && CATEGORY_HINT.test(lower) && lower.includes(d.name.toLowerCase().split(/\s+/)[0])) ??
+      dims.find((d) => CATEGORY_HINT.test(d.name)) ??
+      dims[0];
+    if (col) {
+      const counts = aggregateCount(table, col.name);
+      const total = counts.reduce((s, [, c]) => s + c, 0);
+      if (total > 0) {
+        const top = counts[0];
+        const second = counts[1];
+        return {
+          ok: true,
+          answer:
+            `The most common ${col.name} is "${top[0]}" — ${top[1]} of ${total} (${Math.round((top[1] / total) * 100)}%)` +
+            (second ? `, then "${second[0]}" (${Math.round((second[1] / total) * 100)}%).` : "."),
+          chart: buildChart(table, profiles, { type: "bar", x: col.name, y: [], count: true }),
+        };
+      }
+    }
   }
 
   // 2. Correlation / relationship.

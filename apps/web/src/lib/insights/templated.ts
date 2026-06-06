@@ -95,6 +95,22 @@ export class TemplatedInsightProvider implements InsightProvider {
       });
     }
 
+    // 4c. Most common category value (e.g. top reason).
+    const cat = ctx.categories[0];
+    if (cat && cat.top[0]) {
+      const top = cat.top[0];
+      insights.push({
+        id: `ins-cat-${cat.column}`,
+        kind: "composition",
+        confidence: top.pct >= 0.4 ? "high" : "medium",
+        cites: [`category:${cat.column}`],
+        text:
+          `The most common ${cat.column} is "${top.value}", appearing in ${pct(top.pct)} of records ` +
+          `(${top.count} of ${cat.total})` +
+          (cat.top[1] ? `, followed by "${cat.top[1].value}" (${pct(cat.top[1].pct)}).` : "."),
+      });
+    }
+
     // 5. Outliers.
     for (const o of ctx.outliers.slice(0, 1)) {
       if (o.count > 0) {

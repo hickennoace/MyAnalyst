@@ -44,4 +44,9 @@ for (const i of spec.insights) {
   console.log(`  • (${i.confidence}) ${i.text}`);
 }
 
+console.log("\n=== CONCLUSIONS (AI) ===");
+for (const c of spec.conclusions) {
+  console.log(`  ▸ (${c.confidence}/${c.basis}) ${c.text}`);
+}
+
 console.log("\nOK — pipeline produced a complete DashboardSpec.");

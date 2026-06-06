@@ -38,6 +38,15 @@ export interface ColumnProfile {
   samples: string[];
   /** Heuristic role used by the KPI/chart engines. */
   role: "metric" | "dimension" | "time" | "identifier" | "other";
+  /** Most frequent values (for categorical/dimension columns) — powers frequency charts & "most common" answers. */
+  topValues?: ValueCount[];
+}
+
+export interface ValueCount {
+  value: string;
+  count: number;
+  /** share of non-null rows, 0..1 */
+  pct: number;
 }
 
 export interface NumericSummary {
@@ -118,6 +127,7 @@ export interface InsightContext {
   trends: TrendFact[];
   outliers: OutlierFact[];
   forecast?: ForecastFact;
+  categories: CategoryFact[];
 }
 
 export interface CorrelationPair {
@@ -155,6 +165,23 @@ export interface ForecastFact {
   lastValue: number;
   projected: number;
   changePct: number; // fraction, projected vs last observed
+}
+
+/** Frequency breakdown of a categorical column. */
+export interface CategoryFact {
+  column: string;
+  total: number; // non-null count
+  distinct: number;
+  top: ValueCount[];
+}
+
+/** An AI-derived, action-oriented interpretation of the data. Not professional advice. */
+export interface Conclusion {
+  id: string;
+  text: string;
+  /** what the conclusion is grounded in (e.g. "Reason frequency", "correlation X~Y"). */
+  basis: string;
+  confidence: "high" | "medium" | "low";
 }
 
 // ── Cleaning stage ──────────────────────────────────────────────────────────
@@ -208,6 +235,8 @@ export interface DashboardSpec {
   kpis: Kpi[];
   charts: ChartSpec[];
   insights: Insight[];
+  /** AI-derived, action-oriented conclusions (with a "not professional advice" disclaimer in the UI). */
+  conclusions: Conclusion[];
   /** which narrator wrote the insights — drives the "AI-narrated" badge. */
   narrator: "llm" | "templated";
 }

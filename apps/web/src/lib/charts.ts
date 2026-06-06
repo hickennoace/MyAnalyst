@@ -97,6 +97,14 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
     if (fc) charts.push(fc);
   }
 
+  // 2c. Frequency (count) charts for key categorical columns — the core of categorical-only datasets
+  // (e.g. "reason for not buying"). Prioritize columns whose name hints at a reason/category/status.
+  const RANKY = /(reason|category|type|status|segment|group|class|gender|channel|source|outcome|result|stage|priority|label|tag)/i;
+  const freqDims = profiles
+    .filter((p) => p.role === "dimension" && p.distinctCount >= 2 && p.distinctCount <= 25)
+    .sort((a, b) => (RANKY.test(b.name) ? 1 : 0) - (RANKY.test(a.name) ? 1 : 0));
+  for (const d of freqDims.slice(0, 2)) charts.push(frequencyChart(table, d.name));
+
   // 3. Correlation heatmap when there are several metrics.
   if (metrics.length >= 3) {
     charts.push(correlationHeatmap(table, metrics));
@@ -182,6 +190,26 @@ function forecastChart(table: Table, profiles: ColumnProfile[], time: ColumnProf
   };
 }
 
+function frequencyChart(table: Table, col: string): ChartSpec {
+  const pairs = aggregateCount(table, col);
+  const total = pairs.reduce((s, [, c]) => s + c, 0);
+  const topShare = total ? ((pairs[0]?.[1] ?? 0) / total) * 100 : 0;
+  return {
+    id: `chart-freq-${col}`,
+    type: "bar",
+    title: `Most common ${col}`,
+    subtitle: pairs.length ? `“${pairs[0][0]}” leads (${topShare.toFixed(0)}%)` : undefined,
+    rationale: "Counts how often each value occurs — works for any text/category column.",
+    option: {
+      tooltip: { trigger: "axis" },
+      grid: { ...baseGrid, left: 60 },
+      xAxis: { type: "category", data: pairs.map((p) => p[0]), axisLabel: { color: "#94a3b8", rotate: pairs.length > 5 ? 30 : 0, interval: 0 } },
+      yAxis: { type: "value", name: "count", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e293b" } } },
+      series: [{ type: "bar", data: pairs.map((p) => p[1]), itemStyle: { color: PALETTE[5], borderRadius: [4, 4, 0, 0] } }],
+    },
+  };
+}
+
 function correlationHeatmap(table: Table, metrics: ColumnProfile[]): ChartSpec {
   const cols = metrics.slice(0, 8).map((m) => m.name);
   const data: [number, number, number][] = [];
@@ -226,12 +254,26 @@ function mostCorrelatedPair(table: Table, metrics: ColumnProfile[]): { a: string
 
 export interface ChartRequest {
   type: ChartType;
-  /** x axis / dimension / time column */
+  /** x axis / dimension / time / category column */
   x: string;
-  /** y axis / metric column(s) */
+  /** y axis / metric column(s). Empty when `count` is set. */
   y: string[];
   /** for bar/pie: aggregate y by x (sum). Ignored for scatter/line-over-time. */
   aggregate?: boolean;
+  /** count rows per x value instead of summing a metric — works for ANY column type (strings included). */
+  count?: boolean;
+}
+
+/** Count rows per distinct value of a column (works for string/category columns). */
+export function aggregateCount(table: Table, col: string, topN = 15): [string, number][] {
+  const acc = new Map<string, number>();
+  for (const r of table.rows) {
+    const v = r[col];
+    if (v === null || v === undefined || v === "") continue;
+    const key = String(v);
+    acc.set(key, (acc.get(key) ?? 0) + 1);
+  }
+  return [...acc.entries()].sort((a, b) => b[1] - a[1]).slice(0, topN);
 }
 
 /** Build a single chart from an explicit request. Used by the UI chart builder and the NL parser. */
@@ -239,6 +281,39 @@ export function buildChart(table: Table, profiles: ColumnProfile[], req: ChartRe
   const id = `chart-custom-${Date.now()}`;
   const xProfile = profiles.find((p) => p.name === req.x);
   const ys = req.y.filter((y) => profiles.some((p) => p.name === y));
+
+  // Count mode: no metric needed — tally rows per value of x. Works for ANY column type (strings included).
+  // Auto-engaged when the request asks for it OR when no valid metric column was provided.
+  if (req.count === true || ys.length === 0) {
+    const pairs = aggregateCount(table, req.x);
+    const total = pairs.reduce((s, [, c]) => s + c, 0) || 1;
+    const top = pairs[0];
+    const sub = top ? `“${top[0]}” most common (${((top[1] / total) * 100).toFixed(0)}%)` : undefined;
+    if (req.type === "pie") {
+      return {
+        id, type: "pie", title: `Share of ${req.x}`, subtitle: sub,
+        rationale: "Share of rows per value — works for any column type.",
+        option: {
+          color: PALETTE,
+          tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+          legend: { bottom: 0, textStyle: { color: "#94a3b8" } },
+          series: [{ type: "pie", radius: ["40%", "70%"], center: ["50%", "45%"], data: pairs.map(([name, value]) => ({ name, value })), label: { color: "#cbd5e1" } }],
+        },
+      };
+    }
+    const isLine = req.type === "line" || req.type === "area";
+    return {
+      id, type: isLine ? req.type : "bar", title: `Count by ${req.x}`, subtitle: sub,
+      rationale: "Counts how often each value occurs — works for strings/categories, not just numbers.",
+      option: {
+        tooltip: { trigger: "axis" },
+        grid: { ...baseGrid, left: 60 },
+        xAxis: { type: "category", data: pairs.map((p) => p[0]), axisLabel: { color: "#94a3b8", rotate: pairs.length > 5 ? 30 : 0, interval: 0 } },
+        yAxis: { type: "value", name: "count", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e293b" } } },
+        series: [{ type: isLine ? "line" : "bar", data: pairs.map((p) => p[1]), smooth: isLine, areaStyle: req.type === "area" ? { opacity: 0.12 } : undefined, itemStyle: { color: PALETTE[5], borderRadius: isLine ? 0 : [4, 4, 0, 0] } }],
+      },
+    };
+  }
 
   if (req.type === "pie") {
     const pairs = aggregateBy(table, req.x, ys[0]);

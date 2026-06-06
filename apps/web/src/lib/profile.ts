@@ -65,15 +65,15 @@ export function inferType(name: string, values: unknown[]): SemanticType {
   if (frac((s) => NUMERIC_RE.test(s)) > 0.8) {
     const allInt = sample.every((s) => /^\s*-?[\d,]+\s*$/.test(s));
     const distinct = new Set(sample).size;
-    // High-cardinality integer that looks like a key → id
-    if (allInt && /(\bid\b|_id|code|number|no\.)/.test(lname) && distinct / sample.length > 0.8)
+    // High-cardinality integer that looks like a key → id (covers "id", "_id", "...Id", codes, numbers).
+    if (allInt && /(\bid\b|_id|id$|code|number|no\.|key|uuid|guid)/.test(lname) && distinct / sample.length > 0.8)
       return "id";
     return allInt ? "integer" : "number";
   }
 
   const distinct = new Set(sample.map((s) => s.toLowerCase())).size;
   if (distinct / sample.length < 0.5 && distinct <= 50) return "category";
-  if (/(\bid\b|_id|uuid|guid|email|url|key)/.test(lname)) return "id";
+  if (/(\bid\b|_id|id$|uuid|guid|email|url|key)/.test(lname)) return "id";
   return "text";
 }
 
@@ -117,6 +117,20 @@ export function profileTable(table: Table, typeHints?: Record<string, SemanticTy
     const role = pickRole(type, cardinalityRatio);
     const samples = [...distinctSet].slice(0, 5);
 
+    // Frequency breakdown for categorical-ish columns (dimensions, booleans, low-card text).
+    let topValues: ColumnProfile["topValues"];
+    if ((role === "dimension" || type === "boolean") && nonNull.length > 0) {
+      const counts = new Map<string, number>();
+      for (const v of nonNull) {
+        const key = String(v);
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+      topValues = [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12)
+        .map(([value, count]) => ({ value, count, pct: count / nonNull.length }));
+    }
+
     return {
       name: col,
       type,
@@ -127,6 +141,7 @@ export function profileTable(table: Table, typeHints?: Record<string, SemanticTy
       dateRange,
       samples,
       role,
+      topValues,
     };
   });
 }

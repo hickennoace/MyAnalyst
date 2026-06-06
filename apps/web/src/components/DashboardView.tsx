@@ -1,5 +1,6 @@
 import type { Ref } from "react";
-import type { DashboardSpec, Table } from "@/lib/types";
+import type { Conclusion, DashboardSpec, Table } from "@/lib/types";
+import { DISCLAIMER } from "@/lib/conclusions";
 import { KpiCard } from "./KpiCard";
 import { Chart } from "./Chart";
 import { InsightCard } from "./InsightCard";
@@ -70,6 +71,28 @@ export function DashboardView({
         </Section>
       )}
 
+      {spec.conclusions.length > 0 && (
+        <Section
+          title="Conclusions &amp; recommendations"
+          subtitle="What the numbers may mean for you — interpreted, not just described."
+          badge={
+            <span className="rounded-full bg-gradient-to-r from-indigo-500/20 to-violet-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
+              ✨ AI-generated
+            </span>
+          }
+        >
+          <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
+            <span className="mt-0.5">⚠️</span>
+            <span>{DISCLAIMER}</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {spec.conclusions.map((c) => (
+              <ConclusionCard key={c.id} conclusion={c} />
+            ))}
+          </div>
+        </Section>
+      )}
+
       {spec.charts.length > 0 && (
         <Section title="Automatic charts" subtitle="The engine picked these from your data shape.">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -97,6 +120,29 @@ export function DashboardView({
           <DataTable table={table} profiles={spec.profiles} />
         </Section>
       )}
+    </div>
+  );
+}
+
+const CONF_STYLE: Record<Conclusion["confidence"], string> = {
+  high: "bg-emerald-500/15 text-emerald-300",
+  medium: "bg-amber-500/15 text-amber-300",
+  low: "bg-slate-500/15 text-slate-300",
+};
+
+function ConclusionCard({ conclusion }: { conclusion: Conclusion }) {
+  return (
+    <div className="card flex gap-3 p-4">
+      <div className="text-lg leading-none">💡</div>
+      <div className="flex-1">
+        <p className="text-sm leading-relaxed text-slate-200">{conclusion.text}</p>
+        <div className="mt-2 flex items-center gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${CONF_STYLE[conclusion.confidence]}`}>
+            {conclusion.confidence} confidence
+          </span>
+          <span className="text-[10px] uppercase tracking-wide text-slate-500">based on {conclusion.basis}</span>
+        </div>
+      </div>
     </div>
   );
 }

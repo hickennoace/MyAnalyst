@@ -4,6 +4,8 @@ import type { ChartRequest } from "./charts";
 // Heuristic natural-language → ChartRequest parser. The "smart" chart generation, no API key.
 // It resolves column names fuzzily and infers a sensible chart type from the words + data shape.
 
+const CATEGORY_HINT = /(reason|category|type|status|segment|group|class|gender|channel|source|outcome|result|stage|priority|label|tag|product|region|country|state|city|department)/i;
+
 const TYPE_WORDS: { type: ChartType; words: RegExp }[] = [
   { type: "line", words: /\b(line|trend|over time|timeline|time series)\b/i },
   { type: "bar", words: /\b(bar|compare|comparison|by | per |breakdown|ranking|top)\b/i },
@@ -66,6 +68,25 @@ export function parseChartRequest(prompt: string, profiles: ColumnProfile[]): Nl
     // Assign mentioned columns by role.
     yProfiles = mentioned.filter((m) => m.role === "metric");
     xProfile = mentioned.find((m) => m.role === "time" || m.role === "dimension");
+  }
+
+  // 2b. Count mode — for categorical/string columns where there's no metric to plot
+  // (e.g. "most common reason for not buying"). Tally rows per value.
+  const countIntent = /\b(count|most common|number of|distribution|frequency|how often|breakdown|how many|tally)\b/i.test(p);
+  const mentionsMetric = mentioned.some((m) => m.role === "metric") || yProfiles.some((y) => y.role === "metric");
+  if (countIntent || (mentioned.length > 0 && !mentionsMetric && mentioned.some((m) => m.role === "dimension"))) {
+    const catCol =
+      (xProfile && xProfile.role !== "metric" ? xProfile : undefined) ??
+      mentioned.find((m) => m.role === "dimension") ??
+      dims.find((d) => CATEGORY_HINT.test(d.name)) ??
+      dims[0];
+    if (catCol) {
+      const chartType: ChartType = type === "pie" ? "pie" : "bar";
+      return {
+        request: { type: chartType, x: catCol.name, y: [], count: true },
+        message: `Counting how often each ${catCol.name} occurs.`,
+      };
+    }
   }
 
   // 3. Fill gaps with sensible defaults from data shape.

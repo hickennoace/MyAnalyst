@@ -1,4 +1,5 @@
 import type {
+  CategoryFact,
   CorrelationPair,
   DashboardSpec,
   ForecastFact,
@@ -15,6 +16,7 @@ import { computeKpis, primaryMetric, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
 import { linearRegression, pearson, zOutliers } from "./stats";
 import { defaultHorizon, holtForecast } from "./forecast";
+import { deriveConclusions } from "./conclusions";
 import { getInsightProvider } from "./insights";
 
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
@@ -30,6 +32,7 @@ export async function analyze(rawTable: Table): Promise<DashboardSpec> {
   const charts = recommendCharts(table, profiles);
 
   const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
+  const conclusions = deriveConclusions(ctx);
   const provider = getInsightProvider();
   const insights = await provider.generate(ctx);
 
@@ -44,6 +47,7 @@ export async function analyze(rawTable: Table): Promise<DashboardSpec> {
     kpis,
     charts,
     insights,
+    conclusions,
     narrator: provider.lastSource ?? "templated",
   };
 }
@@ -131,6 +135,19 @@ function buildInsightContext(
     }
   }
 
+  // Category frequency facts (drive "most common" conclusions/answers).
+  const categories: CategoryFact[] = profiles
+    .filter((p) => p.role === "dimension" && p.topValues && p.topValues.length > 0)
+    .map((p) => ({
+      column: p.name,
+      total: Math.round((p.fillRate || 0) * table.rowCount),
+      distinct: p.distinctCount,
+      top: p.topValues!.slice(0, 6),
+    }))
+    // Most "informative" first: a clear leader (high top share) but more than one option.
+    .sort((a, b) => (b.top[0]?.pct ?? 0) - (a.top[0]?.pct ?? 0))
+    .slice(0, 4);
+
   return {
     domain,
     rowCount: table.rowCount,
@@ -141,5 +158,6 @@ function buildInsightContext(
     trends,
     outliers: outliers.slice(0, 3),
     forecast,
+    categories,
   };
 }

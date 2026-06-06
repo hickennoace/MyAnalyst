@@ -22,10 +22,11 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
   const [note, setNote] = useState<string | null>(null);
   const [custom, setCustom] = useState<ChartSpec[]>([]);
 
-  // Manual controls
+  // Manual controls. "__count__" is a synthetic measure = count rows per x (works for any column type).
+  const COUNT = "__count__";
   const [type, setType] = useState<ChartType>("bar");
   const [x, setX] = useState<string>(dimsAndTime[0]?.name ?? profiles[0]?.name ?? "");
-  const [y, setY] = useState<string>(metrics[0]?.name ?? profiles[0]?.name ?? "");
+  const [y, setY] = useState<string>(metrics[0]?.name ?? COUNT);
 
   function addSpec(spec: ChartSpec) {
     setCustom((c) => [spec, ...c]);
@@ -38,7 +39,10 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
   }
 
   function handleManual() {
-    const req: ChartRequest = { type, x, y: [y], aggregate: true };
+    const req: ChartRequest =
+      y === COUNT
+        ? { type, x, y: [], count: true }
+        : { type, x, y: [y], aggregate: true };
     addSpec(buildChart(table, profiles, req));
     setNote(null);
   }
@@ -84,8 +88,9 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
               ))}
             </select>
           </Field>
-          <Field label={type === "histogram" ? "Metric" : "Y axis (metric)"}>
+          <Field label={type === "histogram" ? "Metric" : "Measure (Y)"}>
             <select value={y} onChange={(e) => setY(e.target.value)} className={selectCls}>
+              <option value={COUNT}>Count of rows</option>
               {metrics.map((p) => (
                 <option key={p.name} value={p.name}>{p.name}</option>
               ))}
