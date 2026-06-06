@@ -1,4 +1,5 @@
 import type { Kpi } from "@/lib/types";
+import { AnimatedValue } from "./AnimatedValue";
 
 export function KpiCard({ kpi, index = 0 }: { kpi: Kpi; index?: number }) {
   const trend = kpi.trend;
@@ -18,7 +19,7 @@ export function KpiCard({ kpi, index = 0 }: { kpi: Kpi; index?: number }) {
       </div>
       <div className="mt-2 flex items-end justify-between gap-2">
         <p className="text-2xl font-bold tracking-tight text-slate-50">
-          {kpi.value}
+          <AnimatedValue value={kpi.value} />
           {kpi.unit && <span className="ml-1 text-sm font-medium text-slate-400">{kpi.unit}</span>}
         </p>
         {kpi.spark && kpi.spark.length > 1 && (

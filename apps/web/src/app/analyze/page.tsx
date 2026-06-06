@@ -5,6 +5,8 @@ import Link from "next/link";
 import type { DashboardSpec, Table } from "@/lib/types";
 import { parseFile } from "@/lib/parse";
 import { analyze } from "@/lib/analyze";
+import { cleanTable } from "@/lib/clean";
+import { downloadCsv } from "@/lib/csv";
 import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
@@ -86,10 +88,12 @@ export default function AnalyzePage() {
         await new Promise((r) => setTimeout(r, 110));
       }
       const result = await analyze(tbl);
-      setTable(tbl);
+      // Show & operate on the CLEANED data downstream (normalized values, deduped, total rows removed).
+      const cleaned = cleanTable(tbl).table;
+      setTable(cleaned);
       setSpec(result);
       try {
-        await saveAnalysis(result, tbl);
+        await saveAnalysis(result, cleaned);
         setHistory(listHistory());
       } catch {
         /* history is best-effort; never block the dashboard on it */
@@ -147,6 +151,13 @@ export default function AnalyzePage() {
           </Link>
           {spec ? (
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => table && downloadCsv(table, spec.datasetName)}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
+                title="Download the cleaned, normalized data as CSV"
+              >
+                ⬇ Data
+              </button>
               <button
                 onClick={handleShare}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
