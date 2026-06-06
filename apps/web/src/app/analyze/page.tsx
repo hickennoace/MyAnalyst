@@ -8,8 +8,10 @@ import { analyze } from "@/lib/analyze";
 import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
+import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
 import { Uploader } from "@/components/Uploader";
 import { DashboardView } from "@/components/DashboardView";
+import { HistoryList } from "@/components/HistoryList";
 
 const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
 
@@ -21,7 +23,27 @@ export default function AnalyzePage() {
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const dashboardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setHistory(listHistory());
+  }, []);
+
+  async function handleOpenHistory(id: string) {
+    const loaded = await getAnalysis(id);
+    if (!loaded) return;
+    setError(null);
+    setShareMsg(null);
+    setTable(loaded.table);
+    setSpec(loaded.spec);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  }
+
+  function handleDeleteHistory(id: string) {
+    deleteAnalysis(id);
+    setHistory(listHistory());
+  }
 
   async function handleShare() {
     if (!spec) return;
@@ -66,6 +88,12 @@ export default function AnalyzePage() {
       const result = await analyze(tbl);
       setTable(tbl);
       setSpec(result);
+      try {
+        await saveAnalysis(result, tbl);
+        setHistory(listHistory());
+      } catch {
+        /* history is best-effort; never block the dashboard on it */
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong analyzing that file.");
     } finally {
@@ -166,6 +194,7 @@ export default function AnalyzePage() {
               </div>
             )}
             {error && <div className="card border-rose-500/40 bg-rose-500/5 p-4 text-sm text-rose-300">{error}</div>}
+            <HistoryList entries={history} onOpen={handleOpenHistory} onDelete={handleDeleteHistory} />
           </div>
         )}
 

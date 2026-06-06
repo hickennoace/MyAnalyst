@@ -13,7 +13,7 @@ function fmtNum(n: number): string {
 }
 
 /** Pick the most "important" metric column: prefer the highest-total currency, then highest-variance numeric. */
-function primaryMetric(profiles: ColumnProfile[]): ColumnProfile | undefined {
+export function primaryMetric(profiles: ColumnProfile[]): ColumnProfile | undefined {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   if (metrics.length === 0) return undefined;
   const currency = metrics.filter((m) => m.type === "currency");

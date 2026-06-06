@@ -49,7 +49,17 @@ export function DashboardView({
       </Section>
 
       {spec.insights.length > 0 && (
-        <Section title="What the data is telling you" subtitle="Plain-language conclusions, grounded in the computed numbers.">
+        <Section
+          title="What the data is telling you"
+          subtitle="Plain-language conclusions, grounded in the computed numbers."
+          badge={
+            spec.narrator === "llm" ? (
+              <span className="rounded-full bg-gradient-to-r from-indigo-500/20 to-violet-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
+                ✨ AI-narrated
+              </span>
+            ) : undefined
+          }
+        >
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {spec.insights.map((ins) => (
               <InsightCard key={ins.id} insight={ins} />
@@ -77,11 +87,24 @@ export function DashboardView({
   );
 }
 
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Section({
+  title,
+  subtitle,
+  badge,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <section>
       <div className="mb-3">
-        <h2 className="text-base font-semibold text-slate-100">{title}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-slate-100">{title}</h2>
+          {badge}
+        </div>
         {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
       </div>
       {children}

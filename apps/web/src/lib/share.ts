@@ -8,17 +8,20 @@ import type { DashboardSpec } from "./types";
 /** Links beyond this many characters get unwieldy / may break in some apps — refuse and suggest PNG/PDF. */
 export const MAX_LINK_CHARS = 200_000;
 
-export async function encodeSpec(spec: DashboardSpec): Promise<string> {
-  const json = JSON.stringify(spec);
-  const bytes = await gzip(json);
+/** Compress any JSON-serializable value to a base64url string (gzip + base64url). */
+export async function compress(value: unknown): Promise<string> {
+  const bytes = await gzip(JSON.stringify(value));
   return bytesToB64url(bytes);
 }
 
-export async function decodeSpec(payload: string): Promise<DashboardSpec> {
-  const bytes = b64urlToBytes(payload);
-  const json = await gunzip(bytes);
-  return JSON.parse(json) as DashboardSpec;
+/** Inverse of compress(). */
+export async function decompress<T>(payload: string): Promise<T> {
+  const json = await gunzip(b64urlToBytes(payload));
+  return JSON.parse(json) as T;
 }
+
+export const encodeSpec = (spec: DashboardSpec): Promise<string> => compress(spec);
+export const decodeSpec = (payload: string): Promise<DashboardSpec> => decompress<DashboardSpec>(payload);
 
 // ── gzip via CompressionStream, with a no-compression fallback for older browsers ────────────────
 

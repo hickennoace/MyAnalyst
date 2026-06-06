@@ -1,6 +1,7 @@
 import type {
   CorrelationPair,
   DashboardSpec,
+  ForecastFact,
   InsightContext,
   OutlierFact,
   RegressionResult,
@@ -10,9 +11,10 @@ import type {
 import { numericColumn, profileTable } from "./profile";
 import { cleanTable } from "./clean";
 import { detectDomain } from "./domain";
-import { computeKpis, sortByTime } from "./kpi";
+import { computeKpis, primaryMetric, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
 import { linearRegression, pearson, zOutliers } from "./stats";
+import { defaultHorizon, holtForecast } from "./forecast";
 import { getInsightProvider } from "./insights";
 
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
@@ -28,7 +30,8 @@ export async function analyze(rawTable: Table): Promise<DashboardSpec> {
   const charts = recommendCharts(table, profiles);
 
   const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
-  const insights = await getInsightProvider().generate(ctx);
+  const provider = getInsightProvider();
+  const insights = await provider.generate(ctx);
 
   return {
     version: "1.0",
@@ -41,6 +44,7 @@ export async function analyze(rawTable: Table): Promise<DashboardSpec> {
     kpis,
     charts,
     insights,
+    narrator: provider.lastSource ?? "templated",
   };
 }
 
@@ -113,6 +117,20 @@ function buildInsightContext(
   }
   outliers.sort((a, b) => b.count - a.count);
 
+  // Forecast of the primary metric along the time axis.
+  let forecast: ForecastFact | undefined;
+  const pm = primaryMetric(profiles);
+  if (time && pm) {
+    const order = sortByTime(table, time.name);
+    const ser = order.map((i) => numericColumn(table, pm.name)[i]).filter(Number.isFinite);
+    const horizon = defaultHorizon(ser.length);
+    const fc = holtForecast(ser, horizon);
+    if (fc) {
+      const changePct = fc.lastValue !== 0 ? (fc.projected - fc.lastValue) / Math.abs(fc.lastValue) : 0;
+      forecast = { metric: pm.name, horizon, lastValue: fc.lastValue, projected: fc.projected, changePct };
+    }
+  }
+
   return {
     domain,
     rowCount: table.rowCount,
@@ -122,5 +140,6 @@ function buildInsightContext(
     regression,
     trends,
     outliers: outliers.slice(0, 3),
+    forecast,
   };
 }

@@ -1,7 +1,8 @@
 import type { ChartSpec, ChartType, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
 import { pearson } from "./stats";
-import { sortByTime } from "./kpi";
+import { primaryMetric, sortByTime } from "./kpi";
+import { defaultHorizon, holtForecast } from "./forecast";
 
 // Chart engine. Two entry points:
 //   - recommendCharts(): the engine auto-picks charts from data shape (no user input).
@@ -90,6 +91,12 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
     }
   }
 
+  // 2b. Forecast of the primary metric when there's a long-enough time series.
+  if (time) {
+    const fc = forecastChart(table, profiles, time);
+    if (fc) charts.push(fc);
+  }
+
   // 3. Correlation heatmap when there are several metrics.
   if (metrics.length >= 3) {
     charts.push(correlationHeatmap(table, metrics));
@@ -120,6 +127,59 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
   }
 
   return charts;
+}
+
+function forecastChart(table: Table, profiles: ColumnProfile[], time: ColumnProfile): ChartSpec | null {
+  const pm = primaryMetric(profiles);
+  if (!pm) return null;
+  const order = sortByTime(table, time.name);
+  const values = numericColumn(table, pm.name);
+  const series = order.map((i) => values[i]).filter(Number.isFinite);
+  if (series.length < 6) return null;
+
+  const horizon = defaultHorizon(series.length);
+  const fc = holtForecast(series, horizon);
+  if (!fc) return null;
+
+  const histLabels = order.map((i) => String(table.rows[i][time.name] ?? ""));
+  const forecastLabels = Array.from({ length: horizon }, (_, h) => `+${h + 1}`);
+  const x = [...histLabels, ...forecastLabels];
+
+  const actual: (number | null)[] = [...series, ...Array(horizon).fill(null)];
+  // Forecast line starts at the last actual point so the dashed segment connects.
+  const projected: (number | null)[] = [
+    ...Array(series.length - 1).fill(null),
+    series[series.length - 1],
+    ...fc.forecast,
+  ];
+
+  return {
+    id: "chart-forecast",
+    type: "line",
+    title: `${pm.name} forecast (+${horizon} periods)`,
+    subtitle: `Holt's linear trend · α=${fc.alpha}, β=${fc.beta}`,
+    rationale: "A long-enough time series → a short forward projection of the primary metric.",
+    option: {
+      color: [PALETTE[0], PALETTE[2]],
+      tooltip: { trigger: "axis" },
+      legend: { top: 8, textStyle: { color: "#94a3b8" }, data: ["actual", "forecast"] },
+      grid: baseGrid,
+      xAxis: { type: "category", data: x, axisLabel: { color: "#94a3b8" } },
+      yAxis: { type: "value", axisLabel: { color: "#94a3b8" }, splitLine: { lineStyle: { color: "#1e293b" } } },
+      series: [
+        { name: "actual", type: "line", smooth: true, showSymbol: false, data: actual, lineStyle: { width: 2 } },
+        {
+          name: "forecast",
+          type: "line",
+          smooth: true,
+          showSymbol: false,
+          data: projected,
+          lineStyle: { width: 2, type: "dashed" },
+          areaStyle: { opacity: 0.06 },
+        },
+      ],
+    },
+  };
 }
 
 function correlationHeatmap(table: Table, metrics: ColumnProfile[]): ChartSpec {

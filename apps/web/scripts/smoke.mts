@@ -34,8 +34,10 @@ for (const k of spec.kpis.slice(0, 8)) {
 
 console.log("\n=== CHARTS ===");
 for (const c of spec.charts) {
-  console.log(`  [${c.type}] ${c.title}`);
+  console.log(`  [${c.type}] ${c.title}${c.subtitle ? ` — ${c.subtitle}` : ""}`);
 }
+
+console.log(`\n=== NARRATOR === ${spec.narrator}`);
 
 console.log("\n=== INSIGHTS ===");
 for (const i of spec.insights) {

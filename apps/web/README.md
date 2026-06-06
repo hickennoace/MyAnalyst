@@ -45,12 +45,14 @@ src/
     ├── profile.ts        # type inference + per-column profiling
     ├── domain.ts         # rule-based domain detection
     ├── stats.ts          # mean/std/pearson/regression/outliers/cagr
+    ├── forecast.ts       # Holt's linear-trend time-series forecast (grid-fit α/β)
     ├── kpi.ts            # domain-aware KPI engine
     ├── charts.ts         # auto chart recommendation + on-demand builder
     ├── nl-chart.ts       # plain-English → chart request (no LLM)
     ├── analyze.ts        # orchestrator: Table → DashboardSpec
     ├── export.ts         # dashboard → PNG / paginated PDF (lazy-loaded libs)
-    ├── share.ts          # DashboardSpec ↔ gzip+base64url URL hash (read-only links)
+    ├── share.ts          # compress/decompress + DashboardSpec ↔ URL hash (read-only links)
+    ├── history.ts        # local (localStorage) history of past analyses, compressed
     ├── sample.ts         # demo dataset
     └── insights/
         ├── templated.ts  # grounded, templated narrator (default)

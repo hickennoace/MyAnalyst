@@ -65,6 +65,7 @@ function collectValidCites(ctx: InsightContext): Set<string> {
   for (const k of ctx.kpis) ids.add(k.id);
   for (const c of ctx.correlations) ids.add(`corr:${c.a}~${c.b}`);
   if (ctx.regression) ids.add("regression");
+  if (ctx.forecast) ids.add("forecast");
   for (const o of ctx.outliers) ids.add(`outlier:${o.column}`);
   for (const t of ctx.trends) ids.add(`trend:${t.metric}`);
   return ids;

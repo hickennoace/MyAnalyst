@@ -10,8 +10,10 @@ function pct(x: number): string {
 
 export class TemplatedInsightProvider implements InsightProvider {
   readonly name = "templated";
+  lastSource: "llm" | "templated" = "templated";
 
   async generate(ctx: InsightContext): Promise<Insight[]> {
+    this.lastSource = "templated";
     const insights: Insight[] = [];
 
     // 1. Headline summary.
@@ -74,6 +76,22 @@ export class TemplatedInsightProvider implements InsightProvider {
           `A simple model of ${r.target} against ${r.driver} explains ${pct(r.r2)} of its variation ` +
           `(R² = ${r.r2.toFixed(2)}). Each unit increase in ${r.driver} is associated with a ` +
           `${r.slope >= 0 ? "+" : ""}${fmt(r.slope)} change in ${r.target}.`,
+      });
+    }
+
+    // 4b. Forecast.
+    if (ctx.forecast) {
+      const f = ctx.forecast;
+      const dir = f.changePct > 0.02 ? "rise" : f.changePct < -0.02 ? "fall" : "hold roughly steady";
+      insights.push({
+        id: "ins-forecast",
+        kind: "trend",
+        confidence: "medium",
+        cites: ["forecast"],
+        text:
+          `Projecting ${f.metric} ${f.horizon} period${f.horizon === 1 ? "" : "s"} ahead (Holt's linear trend), ` +
+          `it is expected to ${dir} from ${fmt(f.lastValue)} to about ${fmt(f.projected)} ` +
+          `(${f.changePct >= 0 ? "+" : ""}${pct(f.changePct)}). Forecasts assume the recent trend continues.`,
       });
     }
 

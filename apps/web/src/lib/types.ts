@@ -115,6 +115,7 @@ export interface InsightContext {
   regression?: RegressionResult;
   trends: TrendFact[];
   outliers: OutlierFact[];
+  forecast?: ForecastFact;
 }
 
 export interface CorrelationPair {
@@ -144,6 +145,14 @@ export interface OutlierFact {
   column: string;
   count: number;
   examples: { index: number; value: number; z: number }[];
+}
+
+export interface ForecastFact {
+  metric: string;
+  horizon: number;
+  lastValue: number;
+  projected: number;
+  changePct: number; // fraction, projected vs last observed
 }
 
 // ── Cleaning stage ──────────────────────────────────────────────────────────
@@ -197,10 +206,14 @@ export interface DashboardSpec {
   kpis: Kpi[];
   charts: ChartSpec[];
   insights: Insight[];
+  /** which narrator wrote the insights — drives the "AI-narrated" badge. */
+  narrator: "llm" | "templated";
 }
 
 /** Pluggable insight generator. Templated impl now; an LLM-backed impl can replace it later. */
 export interface InsightProvider {
   readonly name: string;
+  /** set after generate(): which narrator actually produced the insights (LLM may fall back). */
+  lastSource?: "llm" | "templated";
   generate(ctx: InsightContext): Promise<Insight[]>;
 }

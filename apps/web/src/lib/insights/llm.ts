@@ -8,6 +8,7 @@ import { TemplatedInsightProvider } from "./templated";
 
 export class LlmInsightProvider implements InsightProvider {
   readonly name = "llm";
+  lastSource: "llm" | "templated" = "templated";
   private fallback = new TemplatedInsightProvider();
 
   async generate(ctx: InsightContext): Promise<Insight[]> {
@@ -19,11 +20,15 @@ export class LlmInsightProvider implements InsightProvider {
       });
       if (res.ok) {
         const data = (await res.json()) as { insights?: Insight[] };
-        if (Array.isArray(data.insights) && data.insights.length > 0) return data.insights;
+        if (Array.isArray(data.insights) && data.insights.length > 0) {
+          this.lastSource = "llm";
+          return data.insights;
+        }
       }
     } catch {
       // swallow — fall through to templated
     }
+    this.lastSource = "templated";
     return this.fallback.generate(ctx);
   }
 }
