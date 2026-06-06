@@ -2,9 +2,22 @@ import type { Table } from "./types";
 
 // Serialize a (cleaned) Table back to CSV and trigger a download — all client-side.
 
+// RTL scripts (Hebrew, Arabic, …). When a cell starts with one of these, spreadsheet
+// apps flip the whole field/column to right-to-left. We strip stray directional
+// control marks and prefix a LEFT-TO-RIGHT MARK (U+200E) so the exported text always
+// reads left-to-right, regardless of the data's language or the user's locale.
+const RTL = /[֐-ࣿ‏יִ-﷿ﹰ-﻿]/;
+const DIR_MARKS = /[‎‏‪-‮⁦-⁩]/g;
+
+function forceLtr(s: string): string {
+  const clean = s.replace(DIR_MARKS, "");
+  return RTL.test(clean) ? "‎" + clean : clean;
+}
+
 function escapeCell(v: unknown): string {
   if (v === null || v === undefined) return "";
-  const s = typeof v === "boolean" ? (v ? "true" : "false") : String(v);
+  const raw = typeof v === "boolean" ? (v ? "true" : "false") : String(v);
+  const s = forceLtr(raw);
   // Quote if the value contains a comma, quote, or newline.
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }

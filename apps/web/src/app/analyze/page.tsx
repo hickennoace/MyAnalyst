@@ -98,11 +98,16 @@ export default function AnalyzePage() {
     setBusy(true);
     setSpec(null);
     try {
+      // Kick off the real work immediately, then let the staged progress animation
+      // play *concurrently* with it (instead of blocking before it). On large files
+      // the compute dominates and the animation is free; on small files it still
+      // reads as a quick, intentional pipeline.
+      const work = analyze(tbl, { userContext: jobDesc });
       for (const s of STAGES) {
         setStage(s);
-        await new Promise((r) => setTimeout(r, 110));
+        await new Promise((r) => setTimeout(r, 60));
       }
-      const result = await analyze(tbl, { userContext: jobDesc });
+      const result = await work;
       // Show & operate on the CLEANED data downstream (normalized values, deduped, total rows removed).
       const cleaned = cleanTable(tbl).table;
       setTable(cleaned);
