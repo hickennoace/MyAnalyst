@@ -256,7 +256,7 @@ body {
   display: inline-flex; align-items: center; gap: 0.5rem;
   border-radius: 10px; padding: 0.78rem 1.35rem;
   font-weight: 600; font-size: 0.9rem; color: var(--ink);
-  background: #fff; border: 1px solid var(--line-strong);
+  background: var(--card); border: 1px solid var(--line-strong);
   transition: border-color 0.16s ease, background 0.16s ease;
 }
 .lp-ghost:hover { border-color: var(--accent); background: var(--bg-soft); }
