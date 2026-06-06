@@ -12,12 +12,13 @@ function fmtNum(n: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }
 
-/** Pick the most "important" metric column: prefer currency, then highest-variance numeric. */
+/** Pick the most "important" metric column: prefer the highest-total currency, then highest-variance numeric. */
 function primaryMetric(profiles: ColumnProfile[]): ColumnProfile | undefined {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   if (metrics.length === 0) return undefined;
-  const currency = metrics.find((m) => m.type === "currency");
-  if (currency) return currency;
+  const currency = metrics.filter((m) => m.type === "currency");
+  if (currency.length)
+    return [...currency].sort((a, b) => (b.numeric!.sum || 0) - (a.numeric!.sum || 0))[0];
   return [...metrics].sort((a, b) => (b.numeric!.std || 0) - (a.numeric!.std || 0))[0];
 }
 
