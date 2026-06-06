@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { DashboardSpec, Table } from "@/lib/types";
 import { parseFile } from "@/lib/parse";
 import { analyze } from "@/lib/analyze";
 import { sampleTable } from "@/lib/sample";
+import { exportPdf, exportPng } from "@/lib/export";
 import { Uploader } from "@/components/Uploader";
 import { KpiCard } from "@/components/KpiCard";
 import { Chart } from "@/components/Chart";
@@ -21,6 +22,22 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string | null>(null);
   const [table, setTable] = useState<Table | null>(null);
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
+  const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
+  const dashboardRef = useRef<HTMLDivElement>(null);
+
+  async function handleExport(kind: "png" | "pdf") {
+    if (!dashboardRef.current || !spec || exporting) return;
+    setExporting(kind);
+    setError(null);
+    try {
+      if (kind === "png") await exportPng(dashboardRef.current, spec.datasetName);
+      else await exportPdf(dashboardRef.current, spec.datasetName);
+    } catch {
+      setError("Export failed — the dashboard may be too large. Try again or use PNG.");
+    } finally {
+      setExporting(null);
+    }
+  }
 
   async function run(tbl: Table) {
     setError(null);
@@ -86,12 +103,30 @@ export default function AnalyzePage() {
             </div>
           </Link>
           {spec ? (
-            <button
-              onClick={reset}
-              className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
-            >
-              New analysis
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleExport("png")}
+                disabled={!!exporting}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
+                title="Download the dashboard as a PNG image"
+              >
+                {exporting === "png" ? "Exporting…" : "⬇ PNG"}
+              </button>
+              <button
+                onClick={() => handleExport("pdf")}
+                disabled={!!exporting}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
+                title="Download the dashboard as a PDF"
+              >
+                {exporting === "pdf" ? "Exporting…" : "⬇ PDF"}
+              </button>
+              <button
+                onClick={reset}
+                className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400"
+              >
+                New analysis
+              </button>
+            </div>
           ) : (
             <Link href="/" className="text-sm text-slate-400 transition hover:text-slate-200">
               ← Home
@@ -113,7 +148,7 @@ export default function AnalyzePage() {
         )}
 
         {spec && table && (
-          <div className="space-y-8">
+          <div className="space-y-8" ref={dashboardRef}>
             <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
               <div>
                 <p className="text-sm font-semibold text-slate-100">{spec.datasetName}</p>

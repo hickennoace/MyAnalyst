@@ -45,6 +45,7 @@ src/
     ├── charts.ts         # auto chart recommendation + on-demand builder
     ├── nl-chart.ts       # plain-English → chart request (no LLM)
     ├── analyze.ts        # orchestrator: Table → DashboardSpec
+    ├── export.ts         # dashboard → PNG / paginated PDF (lazy-loaded libs)
     ├── sample.ts         # demo dataset
     └── insights/
         ├── templated.ts  # grounded, templated narrator (default)
