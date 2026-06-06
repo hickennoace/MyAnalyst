@@ -11,12 +11,11 @@ import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
-import { useAuth } from "@/lib/auth";
-import { getJobDescription, saveAnalysisToAccount } from "@/lib/account";
 import { Uploader } from "@/components/Uploader";
 import { DashboardView } from "@/components/DashboardView";
 import { HistoryList } from "@/components/HistoryList";
-import { UserMenu } from "@/components/auth/UserMenu";
+
+const CONTEXT_KEY = "quantia:context";
 
 const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
 
@@ -30,25 +29,21 @@ export default function AnalyzePage() {
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [jobDesc, setJobDesc] = useState("");
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
 
   useEffect(() => {
     setHistory(listHistory());
+    // Work-context lives only in this browser (localStorage) — never sent anywhere.
+    setJobDesc(localStorage.getItem(CONTEXT_KEY) ?? "");
   }, []);
 
-  // Load the signed-in user's saved job description (sharpens the AI). Empty for guests.
-  useEffect(() => {
-    if (user) getJobDescription().then(setJobDesc).catch(() => {});
-    else setJobDesc("");
-  }, [user]);
-
-  async function handleSaveAccount() {
-    if (!spec || !table) return;
-    setSaveMsg("Saving…");
-    const res = await saveAnalysisToAccount(spec, table);
-    setSaveMsg(res.error ? `Couldn't save: ${res.error}` : "✓ Saved to your account.");
+  function updateContext(v: string) {
+    setJobDesc(v);
+    try {
+      localStorage.setItem(CONTEXT_KEY, v);
+    } catch {
+      /* ignore quota */
+    }
   }
 
   async function handleOpenHistory(id: string) {
@@ -168,18 +163,8 @@ export default function AnalyzePage() {
               <p className="text-xs text-slate-400">Analyzer</p>
             </div>
           </Link>
-          <div className="flex items-center gap-3">
           {spec ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {user && (
-                <button
-                  onClick={handleSaveAccount}
-                  className="rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-sm font-medium text-indigo-200 transition hover:bg-indigo-500/20"
-                  title="Save this analysis to your account"
-                >
-                  💾 Save
-                </button>
-              )}
               <button
                 onClick={() => table && downloadCsv(table, spec.datasetName)}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
@@ -222,15 +207,7 @@ export default function AnalyzePage() {
               ← Home
             </Link>
           )}
-          <UserMenu />
-          </div>
         </header>
-
-        {saveMsg && (
-          <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm text-indigo-200">
-            {saveMsg}
-          </div>
-        )}
 
         {!spec && (
           <div className="space-y-4">
@@ -242,6 +219,24 @@ export default function AnalyzePage() {
               </div>
             )}
             {error && <div className="card border-rose-500/40 bg-rose-500/5 p-4 text-sm text-rose-300">{error}</div>}
+
+            <details className="card p-4 text-sm">
+              <summary className="cursor-pointer font-medium text-slate-200">
+                ✨ Improve the AI <span className="font-normal text-slate-500">(optional) — describe your data or goal</span>
+              </summary>
+              <p className="mt-2 text-xs text-slate-400">
+                Tell the engine what you're working on so its conclusions are more relevant. Stored only in this
+                browser — never uploaded anywhere.
+              </p>
+              <textarea
+                value={jobDesc}
+                onChange={(e) => updateContext(e.target.value)}
+                rows={2}
+                placeholder="e.g. I run a used-car dealership and want to understand why customers don't buy."
+                className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none"
+              />
+            </details>
+
             <HistoryList entries={history} onOpen={handleOpenHistory} onDelete={handleDeleteHistory} />
           </div>
         )}

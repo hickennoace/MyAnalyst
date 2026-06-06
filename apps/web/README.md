@@ -94,22 +94,15 @@ The insight narrator is pluggable and **provider-agnostic**:
 The privacy boundary (only `InsightContext` — never raw rows — crosses the wire) is enforced by the
 interface and the route, exactly as the blueprint intends.
 
-## Accounts (optional — email + Google + GitHub login)
-Login, saved analyses, and the AI-sharpening "work context" are powered by **Supabase** and are fully
-optional: with no Supabase env vars set, the app runs in **guest mode** (no login UI; local history
-still works). To enable:
-
-1. Create a free project at [supabase.com](https://supabase.com).
-2. In the SQL editor, run [`supabase/schema.sql`](../../supabase/schema.sql) (creates the `profiles`
-   and `analyses` tables with **Row-Level Security** — each user can only ever access their own rows).
-3. In **Authentication → Providers**, enable **Email**, **Google**, and **GitHub** (paste their OAuth
-   client IDs/secrets per Supabase's instructions; add your site URL to the redirect allowlist).
-4. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project Settings → API) in
-   `.env.local` / Vercel env. The anon key is public by design — security is enforced by RLS, and the
-   service-role key is never used in the browser.
-
-Signed-in users get an **account panel** (`/account`): a private job/role description that makes the
-AI's conclusions more relevant, plus their **saved dashboards** (open, download CSV, delete).
+## Security & privacy — leak-proof by design
+There is **no backend and no database for your data**. All parsing, cleaning, statistics, charts,
+conclusions, and history run **entirely in your browser**; nothing you upload is ever transmitted or
+stored on a server, so there is nothing to breach or leak. Saved analyses live only in this browser's
+`localStorage` (private to your device), and an optional "work context" note (to sharpen the AI) is
+stored the same way. The site ships a strict **Content-Security-Policy** (no third-party scripts,
+frames, or network connections), plus HSTS, `X-Frame-Options: DENY`, `nosniff`, and a tight
+`Permissions-Policy` (see `next.config.mjs`). The only optional outbound path is the LLM narrator,
+which is off by default and — when on — sends only aggregate statistics (never your rows).
 
 ## Stack
-Next.js 15 · React 19 · TypeScript · Tailwind v4 · ECharts · PapaParse · SheetJS (xlsx) · Supabase (optional auth).
+Next.js 15 · React 19 · TypeScript · Tailwind v4 · ECharts · PapaParse · SheetJS (xlsx).

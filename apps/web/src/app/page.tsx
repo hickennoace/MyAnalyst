@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Reveal } from "@/components/Reveal";
 import { HeroChart } from "@/components/HeroChart";
-import { UserMenu } from "@/components/auth/UserMenu";
 
 // Marketing landing page. Static (server component) for fast first paint + SEO.
 // Motion is CSS/SVG-driven; the interactive product lives at /analyze.
@@ -44,7 +43,6 @@ export default function Landing() {
             <Link href="/analyze" className="btn-shine rounded-lg bg-indigo-500 px-4 py-2 font-semibold text-white transition hover:bg-indigo-400">
               Open the app
             </Link>
-            <UserMenu />
           </div>
         </nav>
 

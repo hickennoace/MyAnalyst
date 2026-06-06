@@ -13,7 +13,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.107.0",
     "clsx": "^2.1.1",
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
