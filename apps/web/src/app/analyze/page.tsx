@@ -7,12 +7,9 @@ import { parseFile } from "@/lib/parse";
 import { analyze } from "@/lib/analyze";
 import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
+import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { Uploader } from "@/components/Uploader";
-import { KpiCard } from "@/components/KpiCard";
-import { Chart } from "@/components/Chart";
-import { InsightCard } from "@/components/InsightCard";
-import { ChartBuilder } from "@/components/ChartBuilder";
-import { CleaningReport } from "@/components/CleaningReport";
+import { DashboardView } from "@/components/DashboardView";
 
 const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
 
@@ -23,7 +20,25 @@ export default function AnalyzePage() {
   const [table, setTable] = useState<Table | null>(null);
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
+
+  async function handleShare() {
+    if (!spec) return;
+    setShareMsg("Building link…");
+    try {
+      const payload = await encodeSpec(spec);
+      const url = `${window.location.origin}/view#${payload}`;
+      if (url.length > MAX_LINK_CHARS) {
+        setShareMsg("Dataset too large for a link — use PNG/PDF export instead.");
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShareMsg(`🔗 Read-only link copied (${(url.length / 1024).toFixed(0)} KB) — paste it anywhere.`);
+    } catch {
+      setShareMsg("Couldn't create the link in this browser.");
+    }
+  }
 
   async function handleExport(kind: "png" | "pdf") {
     if (!dashboardRef.current || !spec || exporting) return;
@@ -105,6 +120,13 @@ export default function AnalyzePage() {
           {spec ? (
             <div className="flex items-center gap-2">
               <button
+                onClick={handleShare}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
+                title="Copy a read-only link to this dashboard"
+              >
+                🔗 Share
+              </button>
+              <button
                 onClick={() => handleExport("png")}
                 disabled={!!exporting}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
@@ -147,77 +169,18 @@ export default function AnalyzePage() {
           </div>
         )}
 
-        {spec && table && (
-          <div className="space-y-8" ref={dashboardRef}>
-            <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-100">{spec.datasetName}</p>
-                <p className="text-xs text-slate-400">
-                  {spec.rowCount.toLocaleString()} rows · {spec.profiles.length} columns
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-300">
-                  {spec.domain.domain} · {(spec.domain.confidence * 100).toFixed(0)}% confidence
-                </span>
-                <p className="mt-1 max-w-md text-[11px] text-slate-500">{spec.domain.reason}</p>
-              </div>
-            </div>
-
-            <Section title="Cleaning &amp; normalization" subtitle="The unglamorous core that makes everything below trustworthy.">
-              <CleaningReport report={spec.cleaning} />
-            </Section>
-
-            <Section title="Key metrics" subtitle="Auto-selected for this dataset's shape and domain.">
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                {spec.kpis.slice(0, 8).map((kpi) => (
-                  <KpiCard key={kpi.id} kpi={kpi} />
-                ))}
-              </div>
-            </Section>
-
-            {spec.insights.length > 0 && (
-              <Section title="What the data is telling you" subtitle="Plain-language conclusions, grounded in the computed numbers.">
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {spec.insights.map((ins) => (
-                    <InsightCard key={ins.id} insight={ins} />
-                  ))}
-                </div>
-              </Section>
-            )}
-
-            {spec.charts.length > 0 && (
-              <Section title="Automatic charts" subtitle="The engine picked these from your data shape.">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  {spec.charts.map((c) => (
-                    <Chart key={c.id} spec={c} />
-                  ))}
-                </div>
-              </Section>
-            )}
-
-            <Section title="Build your own" subtitle="Ask for any chart you want — in plain English or by picking columns.">
-              <ChartBuilder table={table} profiles={spec.profiles} />
-            </Section>
+        {shareMsg && (
+          <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm text-indigo-200">
+            {shareMsg}
           </div>
         )}
+
+        {spec && table && <DashboardView spec={spec} table={table} innerRef={dashboardRef} />}
 
         <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
           Quantia · Analysis runs locally in your browser. Insight narration is pluggable.
         </footer>
       </div>
     </main>
-  );
-}
-
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <div className="mb-3">
-        <h2 className="text-base font-semibold text-slate-100">{title}</h2>
-        {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
-      </div>
-      {children}
-    </section>
   );
 }

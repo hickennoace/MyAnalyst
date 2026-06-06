@@ -24,11 +24,15 @@ No environment variables required for the current (no-API-key) build.
 ```
 src/
 ├── app/
-│   ├── page.tsx          # the whole app: upload → pipeline → dashboard
+│   ├── page.tsx          # marketing landing page
+│   ├── analyze/page.tsx  # the app: upload → pipeline → dashboard
+│   ├── view/page.tsx     # read-only shared dashboard (decoded from URL hash)
+│   ├── api/insights/route.ts # server-side LLM narrator (key never hits browser)
 │   ├── layout.tsx
 │   └── globals.css       # Tailwind v4 + dark theme
 ├── components/
 │   ├── Uploader.tsx      # drag-drop + sample dataset
+│   ├── DashboardView.tsx # shared dashboard body (used by /analyze and /view)
 │   ├── CleaningReport.tsx # what was fixed + before/after preview
 │   ├── KpiCard.tsx
 │   ├── Chart.tsx         # ECharts wrapper (lazy, client-only)
@@ -46,6 +50,7 @@ src/
     ├── nl-chart.ts       # plain-English → chart request (no LLM)
     ├── analyze.ts        # orchestrator: Table → DashboardSpec
     ├── export.ts         # dashboard → PNG / paginated PDF (lazy-loaded libs)
+    ├── share.ts          # DashboardSpec ↔ gzip+base64url URL hash (read-only links)
     ├── sample.ts         # demo dataset
     └── insights/
         ├── templated.ts  # grounded, templated narrator (default)
