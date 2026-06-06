@@ -39,6 +39,25 @@ export function DashboardView({
         </div>
       </div>
 
+      {spec.story && (
+        <div className="card flex gap-3 p-5">
+          <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+              <circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" />
+            </svg>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-100">About this data</h3>
+              <span className="rounded-full bg-slate-800/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-300">
+                {spec.story.industry}
+              </span>
+            </div>
+            <p className="mt-1.5 text-sm leading-relaxed text-slate-300">{spec.story.summary}</p>
+          </div>
+        </div>
+      )}
+
       <Section title="Cleaning &amp; normalization" subtitle="The unglamorous core that makes everything below trustworthy.">
         <CleaningReport report={spec.cleaning} />
       </Section>

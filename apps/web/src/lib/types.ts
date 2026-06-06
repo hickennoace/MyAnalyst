@@ -302,6 +302,16 @@ export interface DashboardSpec {
   conclusions: Conclusion[];
   /** which narrator wrote the insights — drives the "AI-narrated" badge. */
   narrator: "llm" | "templated";
+  /** A short plain-language "what is this data" narrative: inferred industry,
+   *  subject, and likely purpose — so findings stay connected to the subject. */
+  story?: DataStory;
+}
+
+export interface DataStory {
+  /** e.g. "Sales / retail", "SaaS", "Marketing" — the inferred industry/subject. */
+  industry: string;
+  /** 2–3 sentence plain-language description of what the dataset is and is used for. */
+  summary: string;
 }
 
 /** Pluggable insight generator. Templated impl now; an LLM-backed impl can replace it later. */

@@ -97,7 +97,6 @@ export function Chart({ spec }: { spec: ChartSpec }) {
         }}
         notMerge
       />
-      <p className="mt-2 text-xs text-slate-500">{spec.rationale}</p>
     </div>
   );
 }

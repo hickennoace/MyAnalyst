@@ -379,3 +379,11 @@ body:has(.lp) { background: #ffffff; }
 .theme-toggle:hover { border-color: #7c83ff; color: #7c83ff; }
 .lp .theme-toggle { border-color: var(--line-strong); color: var(--muted); }
 .lp .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Page transition — replays on every route change via app/template.tsx. */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.page-transition { animation: pageEnter 0.42s cubic-bezier(0.21, 0.6, 0.35, 1) both; }
+@media (prefers-reduced-motion: reduce) { .page-transition { animation: none !important; } }

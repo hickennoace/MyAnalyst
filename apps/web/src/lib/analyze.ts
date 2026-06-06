@@ -21,6 +21,7 @@ import { zOutliers } from "./stats";
 import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAnova, olsSimple, pearsonTest } from "./inference";
 import { defaultHorizon, holtForecast } from "./forecast";
 import { deriveConclusions } from "./conclusions";
+import { buildDataStory } from "./story";
 import { getInsightProvider } from "./insights";
 import { humanizeConclusions, llmEnabled } from "./insights/humanize";
 
@@ -40,9 +41,16 @@ export async function analyze(rawTable: Table, opts: { userContext?: string } = 
   ctx.userContext = opts.userContext?.trim() || undefined;
   let conclusions = deriveConclusions(ctx);
   const provider = getInsightProvider();
-  const insights = await provider.generate(ctx);
+  const rawInsights = await provider.generate(ctx);
+  // Quality filter: keep only meaningful insights (always keep the summary); drop
+  // low-confidence "probably noise" items so the dashboard shows high-quality answers.
+  const filtered = rawInsights.filter((i) => i.kind === "summary" || i.confidence !== "low");
+  const insights = filtered.length ? filtered : rawInsights;
   // When the (free-tier) LLM is enabled, rewrite conclusions in a warmer, human tone (numbers kept).
   if (llmEnabled()) conclusions = await humanizeConclusions(conclusions, ctx.userContext);
+
+  // Read the data's own subject/story so findings stay connected to what it's about.
+  const story = buildDataStory(rawTable.name, table.rowCount, profiles, domain);
 
   return {
     version: "1.0",
@@ -57,6 +65,7 @@ export async function analyze(rawTable: Table, opts: { userContext?: string } = 
     insights,
     conclusions,
     narrator: provider.lastSource ?? "templated",
+    story,
   };
 }
 

@@ -189,17 +189,22 @@ export function deriveConclusions(ctx: InsightContext): Conclusion[] {
     });
   }
 
-  if (out.length === 0) {
-    out.push({
-      confidence: "low",
+  // Quality filter: surface only meaningful findings. Drop low-confidence
+  // "probably just noise / just a hint" items — the user wants high-quality
+  // answers, not hedged guesses.
+  let kept = out.filter((c) => c.confidence !== "low");
+
+  if (kept.length === 0) {
+    kept.push({
+      confidence: "medium",
       basis: "overview",
-      text: "Nothing clearly stood out in this data. More rows — or a column that captures the outcome you actually care about — would help reveal stronger patterns.",
+      text: "Nothing rose to a confident, reliable finding here. More rows — or a column that captures the outcome you care about — would help surface stronger patterns.",
     });
   }
 
-  // Small-sample caveat goes first — it qualifies everything else.
+  // Small-sample caveat still leads when relevant — it's a quality guard, not noise.
   if (ctx.smallSample) {
-    out.unshift({
+    kept.unshift({
       confidence: "low",
       basis: `sample size n = ${ctx.rowCount}`,
       text:
@@ -207,5 +212,5 @@ export function deriveConclusions(ctx: InsightContext): Conclusion[] {
     });
   }
 
-  return out.slice(0, 7).map((c, i) => ({ id: `concl-${i}`, ...c }));
+  return kept.slice(0, 7).map((c, i) => ({ id: `concl-${i}`, ...c }));
 }
