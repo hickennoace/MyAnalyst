@@ -2,11 +2,8 @@
 
 import { useState } from "react";
 import type { CleaningReport as Report } from "@/lib/types";
-import { useT } from "@/lib/i18n";
 
 export function CleaningReport({ report }: { report: Report }) {
-  const t = useT();
-  const c = t.cleaning;
   const [showPreview, setShowPreview] = useState(true);
   const removed = report.rowsBefore - report.rowsAfter;
 
@@ -14,24 +11,24 @@ export function CleaningReport({ report }: { report: Report }) {
     <div className="card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">{c.title}</h3>
-          <p className="text-xs text-slate-400">{c.sub}</p>
+          <h3 className="text-sm font-semibold text-slate-100">Cleaning report</h3>
+          <p className="text-xs text-slate-400">What we fixed before analyzing — so you can trust the numbers.</p>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <Stat label={c.rowsIn} value={report.rowsBefore.toLocaleString()} />
+          <Stat label="rows in" value={report.rowsBefore.toLocaleString()} />
           <span className="text-slate-600">→</span>
-          <Stat label={c.rowsOut} value={report.rowsAfter.toLocaleString()} tone="good" />
+          <Stat label="rows out" value={report.rowsAfter.toLocaleString()} tone="good" />
         </div>
       </div>
 
       {/* Summary chips */}
       <div className="mt-4 flex flex-wrap gap-2">
-        <Chip n={removed} label={c.rowsRemoved} tone={removed ? "warn" : "muted"} />
-        <Chip n={report.duplicatesRemoved} label={c.duplicates} tone="warn" />
-        <Chip n={report.totalRowsRemoved} label={c.totalRows} tone="warn" />
-        <Chip n={report.emptyRowsRemoved} label={c.emptyRows} tone="warn" />
-        <Chip n={report.cellsNormalized} label={c.cellsNormalized} tone="brand" />
-        <Chip n={report.cellsTrimmed} label={c.cellsTrimmed} tone="brand" />
+        <Chip n={removed} label={`row${removed === 1 ? "" : "s"} removed`} tone={removed ? "warn" : "muted"} />
+        <Chip n={report.duplicatesRemoved} label="duplicates" tone="warn" />
+        <Chip n={report.totalRowsRemoved} label="total rows" tone="warn" />
+        <Chip n={report.emptyRowsRemoved} label="empty rows" tone="warn" />
+        <Chip n={report.cellsNormalized} label="cells normalized" tone="brand" />
+        <Chip n={report.cellsTrimmed} label="cells trimmed" tone="brand" />
       </div>
 
       {/* Steps */}
@@ -50,16 +47,16 @@ export function CleaningReport({ report }: { report: Report }) {
 
       {/* Per-column detection */}
       <details className="mt-4 text-xs">
-        <summary className="cursor-pointer text-slate-300 hover:text-slate-100">{c.colDetails}</summary>
+        <summary className="cursor-pointer text-slate-300 hover:text-slate-100">Column types &amp; per-column changes</summary>
         <div className="mt-2 overflow-x-auto">
           <table className="w-full text-left">
             <thead className="text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="py-1 pr-4">{c.colName}</th>
-                <th className="py-1 pr-4">{c.detectedType}</th>
-                <th className="py-1 pr-4">{c.normalized}</th>
-                <th className="py-1 pr-4">{c.trimmed}</th>
-                <th className="py-1">{c.missing}</th>
+                <th className="py-1 pr-4">Column</th>
+                <th className="py-1 pr-4">Detected type</th>
+                <th className="py-1 pr-4">Normalized</th>
+                <th className="py-1 pr-4">Trimmed</th>
+                <th className="py-1">Missing</th>
               </tr>
             </thead>
             <tbody className="text-slate-300">
@@ -83,19 +80,19 @@ export function CleaningReport({ report }: { report: Report }) {
       {report.preview.rows.length > 0 && (
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-slate-200">{c.beforeAfter}</h4>
+            <h4 className="text-xs font-semibold text-slate-200">Before / after preview</h4>
             <button
               onClick={() => setShowPreview((v) => !v)}
               className="text-[11px] text-blue-300 hover:text-blue-200"
             >
-              {showPreview ? c.hide : c.show}
+              {showPreview ? "Hide" : "Show"}
             </button>
           </div>
           {showPreview && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <PreviewTable title={c.raw} columns={report.preview.columns} rows={report.preview.rows.map((r) => r.before)} />
+              <PreviewTable title="Raw" columns={report.preview.columns} rows={report.preview.rows.map((r) => r.before)} />
               <PreviewTable
-                title={c.cleaned}
+                title="Cleaned"
                 columns={report.preview.columns}
                 rows={report.preview.rows.map((r) => r.after)}
                 changed={report.preview.rows.map((r) => r.changed)}

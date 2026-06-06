@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useT } from "@/lib/i18n";
 
 export function Uploader({
   onFile,
@@ -12,7 +11,6 @@ export function Uploader({
   onSample: () => void;
   busy: boolean;
 }) {
-  const t = useT();
   const [drag, setDrag] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,8 +41,10 @@ export function Uploader({
           <path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
         </svg>
       </div>
-      <h2 className="text-lg font-semibold text-slate-100">{t.uploader.title}</h2>
-      <p className="mt-1 max-w-md text-sm text-slate-400">{t.uploader.desc}</p>
+      <h2 className="text-lg font-semibold text-slate-100">Drop a spreadsheet to analyze</h2>
+      <p className="mt-1 max-w-md text-sm text-slate-400">
+        CSV, TSV, Excel, or JSON. Everything runs in your browser — your data never leaves this page.
+      </p>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <button
@@ -52,14 +52,14 @@ export function Uploader({
           disabled={busy}
           className="rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400 disabled:opacity-50"
         >
-          {busy ? t.uploader.analyzing : t.uploader.choose}
+          {busy ? "Analyzing…" : "Choose file"}
         </button>
         <button
           onClick={onSample}
           disabled={busy}
           className="rounded-xl border border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
         >
-          {t.uploader.sample}
+          Try a sample dataset
         </button>
       </div>
 

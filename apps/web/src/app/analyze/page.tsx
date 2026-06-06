@@ -13,18 +13,15 @@ import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
 import { Uploader } from "@/components/Uploader";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { LangToggle } from "@/components/LangToggle";
 import { DashboardView } from "@/components/DashboardView";
 import { HistoryList } from "@/components/HistoryList";
 import { PipelineProgress } from "@/components/PipelineProgress";
-import { useLang, useT } from "@/lib/i18n";
 
 const CONTEXT_KEY = "quantia:context";
 
+const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
+
 export default function AnalyzePage() {
-  const t = useT();
-  const [lang] = useLang();
-  const STAGES = t.stages;
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,18 +65,18 @@ export default function AnalyzePage() {
 
   async function handleShare() {
     if (!spec) return;
-    setShareMsg(t.share.building);
+    setShareMsg("Building link…");
     try {
       const payload = await encodeSpec(spec);
       const url = `${window.location.origin}/view#${payload}`;
       if (url.length > MAX_LINK_CHARS) {
-        setShareMsg(t.share.tooLarge);
+        setShareMsg("Dataset too large for a link — use PNG/PDF export instead.");
         return;
       }
       await navigator.clipboard.writeText(url);
-      setShareMsg(`🔗 ${t.share.copied}`);
+      setShareMsg(`🔗 Read-only link copied (${(url.length / 1024).toFixed(0)} KB) — paste it anywhere.`);
     } catch {
-      setShareMsg(t.share.fail);
+      setShareMsg("Couldn't create the link in this browser.");
     }
   }
 
@@ -91,7 +88,7 @@ export default function AnalyzePage() {
       if (kind === "png") await exportPng(dashboardRef.current, spec.datasetName);
       else await exportPdf(dashboardRef.current, spec.datasetName);
     } catch {
-      setError(t.errors.export);
+      setError("Export failed — the dashboard may be too large. Try again or use PNG.");
     } finally {
       setExporting(null);
     }
@@ -106,7 +103,7 @@ export default function AnalyzePage() {
       // play *concurrently* with it (instead of blocking before it). On large files
       // the compute dominates and the animation is free; on small files it still
       // reads as a quick, intentional pipeline.
-      const work = analyze(tbl, { userContext: jobDesc, lang });
+      const work = analyze(tbl, { userContext: jobDesc });
       for (const s of STAGES) {
         setStage(s);
         await new Promise((r) => setTimeout(r, 60));
@@ -125,7 +122,7 @@ export default function AnalyzePage() {
         /* history is best-effort; never block the dashboard on it */
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.errors.generic);
+      setError(e instanceof Error ? e.message : "Something went wrong analyzing that file.");
     } finally {
       setBusy(false);
       setStage(null);
@@ -135,14 +132,14 @@ export default function AnalyzePage() {
   async function handleFile(file: File) {
     try {
       setBusy(true);
-      setStage(STAGES[0]);
+      setStage("Reading file");
       const tbl = await parseFile(file);
       if (!tbl.columns.length || !tbl.rowCount) {
-        throw new Error(t.errors.noData);
+        throw new Error("No tabular data found. Make sure the first row contains column headers.");
       }
       await run(tbl);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.errors.read);
+      setError(e instanceof Error ? e.message : "Could not read that file.");
       setBusy(false);
       setStage(null);
     }
@@ -172,54 +169,53 @@ export default function AnalyzePage() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-slate-50">Quantia</h1>
-              <p className="text-xs text-slate-400">{t.header.analyzer}</p>
+              <p className="text-xs text-slate-400">Analyzer</p>
             </div>
           </Link>
           <div className="flex flex-wrap items-center justify-end gap-2">
-          <LangToggle />
           <ThemeToggle />
           {spec ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 onClick={() => table && downloadCsv(table, spec.datasetName)}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
-                title={t.header.data}
+                title="Download the cleaned, normalized data as CSV"
               >
-                ⬇ {t.header.data}
+                ⬇ Data
               </button>
               <button
                 onClick={handleShare}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
-                title={t.header.share}
+                title="Copy a read-only link to this dashboard"
               >
-                🔗 {t.header.share}
+                🔗 Share
               </button>
               <button
                 onClick={() => handleExport("png")}
                 disabled={!!exporting}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
-                title={t.header.png}
+                title="Download the dashboard as a PNG image"
               >
-                {exporting === "png" ? t.header.exporting : `⬇ ${t.header.png}`}
+                {exporting === "png" ? "Exporting…" : "⬇ PNG"}
               </button>
               <button
                 onClick={() => handleExport("pdf")}
                 disabled={!!exporting}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
-                title={t.header.pdf}
+                title="Download the dashboard as a PDF"
               >
-                {exporting === "pdf" ? t.header.exporting : `⬇ ${t.header.pdf}`}
+                {exporting === "pdf" ? "Exporting…" : "⬇ PDF"}
               </button>
               <button
                 onClick={reset}
                 className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400"
               >
-                {t.header.newAnalysis}
+                New analysis
               </button>
             </div>
           ) : (
             <Link href="/" className="text-sm text-slate-400 transition hover:text-slate-200">
-              ← {t.header.home}
+              ← Home
             </Link>
           )}
           </div>
@@ -233,14 +229,17 @@ export default function AnalyzePage() {
 
             <details className="card p-4 text-sm">
               <summary className="cursor-pointer font-medium text-slate-200">
-                ✨ {t.improve.summary} <span className="font-normal text-slate-500">{t.improve.optional}</span>
+                ✨ Improve the AI <span className="font-normal text-slate-500">(optional) — describe your data or goal</span>
               </summary>
-              <p className="mt-2 text-xs text-slate-400">{t.improve.help}</p>
+              <p className="mt-2 text-xs text-slate-400">
+                Tell the engine what you're working on so its conclusions are more relevant. Stored only in this
+                browser — never uploaded anywhere.
+              </p>
               <textarea
                 value={jobDesc}
                 onChange={(e) => updateContext(e.target.value)}
                 rows={2}
-                placeholder={t.improve.placeholder}
+                placeholder="e.g. I run a used-car dealership and want to understand why customers don't buy."
                 className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
               />
             </details>
@@ -257,15 +256,17 @@ export default function AnalyzePage() {
 
         {spec && table?.sampledFrom && (
           <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
-            {t.banners.sampledA} <strong>{table.rowCount.toLocaleString()}</strong> {t.banners.sampledB}{" "}
-            <strong>{table.sampledFrom.toLocaleString()}</strong>{t.banners.sampledC}
+            Large file detected — analyzed a representative random sample of{" "}
+            <strong>{table.rowCount.toLocaleString()}</strong> rows out of{" "}
+            <strong>{table.sampledFrom.toLocaleString()}</strong>. The statistics are valid for the full
+            dataset; exact totals would need the complete file.
           </div>
         )}
 
         {spec && table && <DashboardView spec={spec} table={table} innerRef={dashboardRef} />}
 
         <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-          {t.footerNote}
+          Quantia · Analysis runs locally in your browser. Insight narration is pluggable.
         </footer>
       </div>
     </main>

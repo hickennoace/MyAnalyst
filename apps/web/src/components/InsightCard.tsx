@@ -1,7 +1,4 @@
-"use client";
-
 import type { Insight } from "@/lib/types";
-import { useT } from "@/lib/i18n";
 
 // Crafted stroke icons (24-grid, 1.5px) keyed by insight kind — matches the
 // landing's icon language; no emoji.
@@ -29,7 +26,6 @@ const CONF: Record<Insight["confidence"], string> = {
 };
 
 export function InsightCard({ insight }: { insight: Insight }) {
-  const t = useT();
   return (
     <div className="card card-hover flex gap-3 p-4">
       <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-500/15 text-blue-300">
@@ -38,10 +34,10 @@ export function InsightCard({ insight }: { insight: Insight }) {
       <div className="flex-1">
         <p className="text-sm leading-relaxed text-slate-200">{insight.text}</p>
         <div className="mt-2 flex items-center gap-2">
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${CONF[insight.confidence]}`}>
-            {t.confWord[insight.confidence]}
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${CONF[insight.confidence]}`}>
+            {insight.confidence} confidence
           </span>
-          <span className="text-[10px] tracking-wide text-slate-500">{t.kind[insight.kind]}</span>
+          <span className="text-[10px] uppercase tracking-wide text-slate-500">{insight.kind}</span>
         </div>
       </div>
     </div>

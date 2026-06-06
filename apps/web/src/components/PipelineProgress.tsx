@@ -1,19 +1,14 @@
-"use client";
-
 // Animated, accessible pipeline progress — shows each analysis stage with done / active / pending
 // states (a checkmark, a pulsing dot, or a dim dot) and a gradient progress bar.
 
-import { useT } from "@/lib/i18n";
-
 export function PipelineProgress({ stages, current }: { stages: string[]; current: string | null }) {
-  const t = useT();
   const idx = current ? stages.indexOf(current) : -1;
   const pct = idx < 0 ? 0 : ((idx + 1) / stages.length) * 100;
 
   return (
     <div className="card p-5" role="status" aria-live="polite">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-100">{t.pipeline.title}</p>
+        <p className="text-sm font-semibold text-slate-100">Analyzing your data…</p>
         <span className="text-xs text-slate-400">{Math.round(pct)}%</span>
       </div>
 
