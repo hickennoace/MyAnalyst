@@ -49,6 +49,7 @@ src/
     ├── kpi.ts            # domain-aware KPI engine
     ├── charts.ts         # auto chart recommendation + on-demand builder
     ├── nl-chart.ts       # plain-English → chart request (no LLM)
+    ├── query.ts          # "ask your data" heuristic Q&A → answer + optional chart (no LLM)
     ├── analyze.ts        # orchestrator: Table → DashboardSpec
     ├── export.ts         # dashboard → PNG / paginated PDF (lazy-loaded libs)
     ├── share.ts          # compress/decompress + DashboardSpec ↔ URL hash (read-only links)
