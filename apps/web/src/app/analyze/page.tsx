@@ -229,11 +229,12 @@ export default function AnalyzePage() {
 
             <details className="card p-4 text-sm">
               <summary className="cursor-pointer font-medium text-slate-200">
-                ✨ Improve the AI <span className="font-normal text-slate-500">(optional) — describe your data or goal</span>
+                ✨ Add context <span className="font-normal text-slate-500">(optional) — tell us what this data is about</span>
               </summary>
               <p className="mt-2 text-xs text-slate-400">
-                Tell the engine what you're working on so its conclusions are more relevant. Stored only in this
-                browser — never uploaded anywhere.
+                A line about your data or goal sharpens the analysis: it steers domain detection and the metrics
+                we pick, and frames the “About this data” summary and insights around what you care about. Stored
+                only in this browser — never uploaded anywhere.
               </p>
               <textarea
                 value={jobDesc}

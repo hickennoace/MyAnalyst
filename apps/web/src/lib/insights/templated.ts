@@ -1,11 +1,21 @@
 import type { Insight, InsightContext, InsightProvider } from "../types";
 
-// Templated insight provider: turns the metadata-only InsightContext into grounded, plain-language
-// conclusions. Every sentence is filled with numbers the local engine actually computed — so it can't
-// hallucinate. This is the default "smart" narrator; an LLM provider can replace it behind the same interface.
+// Templated insight provider: turns the metadata-only InsightContext into grounded,
+// genuinely useful, plain-language findings. Every sentence is filled with numbers the
+// engine actually computed — it can't hallucinate. This is the default narrator; an LLM
+// can replace it behind the same interface. Ordered most-actionable first.
 
 function pct(x: number): string {
   return `${(x * 100).toFixed(1)}%`;
+}
+function conf(p: number): Insight["confidence"] {
+  return p < 0.01 ? "high" : p < 0.05 ? "medium" : "low";
+}
+function fmt(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  const abs = Math.abs(n);
+  if (abs >= 1000) return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }
 
 export class TemplatedInsightProvider implements InsightProvider {
@@ -14,30 +24,62 @@ export class TemplatedInsightProvider implements InsightProvider {
 
   async generate(ctx: InsightContext): Promise<Insight[]> {
     this.lastSource = "templated";
-    const insights: Insight[] = [];
+    const out: Insight[] = [];
 
-    // 1. Headline summary — set the scene in one friendly sentence.
-    const headlineKpi = ctx.kpis[0];
-    insights.push({
+    // 1. Headline summary — the shape of the data in one line.
+    const k = ctx.kpis[0];
+    out.push({
       id: "ins-summary",
       kind: "summary",
       confidence: "high",
-      cites: headlineKpi ? [headlineKpi.id] : [],
+      cites: k ? [k.id] : [],
       text:
-        `Here's what your ${labelDomain(ctx.domain)} data looks like: ${ctx.rowCount.toLocaleString()} rows ` +
-        `and ${ctx.columns.length} columns` +
-        (headlineKpi ? `. The number that jumps out most is ${headlineKpi.name} — ${headlineKpi.value}${headlineKpi.unit ? " " + headlineKpi.unit : ""}.` : "."),
+        `This ${labelDomain(ctx.domain)} dataset has ${ctx.rowCount.toLocaleString()} rows across ${ctx.columns.length} columns` +
+        (k ? `. The headline figure is ${k.name}: ${k.value}${k.unit ? " " + k.unit : ""}.` : "."),
     });
 
-    // 2. Trends — is it really going somewhere, in plain words.
+    // 2. Group differences (ANOVA) — usually the single most actionable finding.
+    for (const g of ctx.groupComparisons.filter((g) => g.significant).slice(0, 2)) {
+      out.push({
+        id: `ins-anova-${g.metric}-${g.dimension}`,
+        kind: "composition",
+        confidence: conf(g.p),
+        cites: [`anova:${g.metric}~${g.dimension}`],
+        text:
+          `${g.metric} depends a lot on ${g.dimension}: "${g.top.name}" leads at ${fmt(g.top.mean)} on average, while "${g.bottom.name}" trails at ${fmt(g.bottom.mean)} — ` +
+          `that's a ${g.top.mean !== 0 || g.bottom.mean !== 0 ? pct(Math.abs((g.top.mean - g.bottom.mean) / (Math.abs(g.bottom.mean) || Math.abs(g.top.mean) || 1))) : "large"} gap and it's real, not luck. ` +
+          `Figure out what "${g.top.name}" does differently and copy it across the rest.`,
+      });
+    }
+
+    // 3. Driver analysis (multiple regression) — which factor truly moves the needle.
+    if (ctx.drivers && ctx.drivers.fP < 0.05) {
+      const sig = ctx.drivers.drivers.filter((d) => d.significant).sort((a, b) => Math.abs(b.beta) - Math.abs(a.beta));
+      if (sig.length) {
+        const lead = sig[0];
+        const dead = ctx.drivers.drivers.filter((d) => !d.significant).map((d) => d.name);
+        out.push({
+          id: "ins-driver",
+          kind: "regression",
+          confidence: conf(lead.p),
+          cites: ["drivers"],
+          text:
+            `Of all the factors, ${lead.name} is the real driver of ${ctx.drivers.target} — it moves the outcome more than the rest, even after accounting for them` +
+            (dead.length ? `, while ${dead.slice(0, 2).join(" and ")} add little once ${lead.name} is considered.` : ".") +
+            ` Put your effort into ${lead.name} for the most leverage.`,
+        });
+      }
+    }
+
+    // 4. Trends — real direction vs. noise.
     for (const t of ctx.trends.slice(0, 2)) {
-      const kpi = ctx.kpis.find((k) => k.id.includes(t.metric));
+      const kpi = ctx.kpis.find((kp) => kp.id.includes(t.metric));
       const amt = pct(Math.abs(t.changePct));
       let text: string;
-      if (t.direction === "up") text = `Good news — ${t.metric} has been climbing, up about ${amt} from start to finish (${fmt(t.from)} → ${fmt(t.to)}). It's worth figuring out what's working so you can keep it going.`;
-      else if (t.direction === "down") text = `Heads up — ${t.metric} has been slipping, down about ${amt} over the period (${fmt(t.from)} → ${fmt(t.to)}). It's a good idea to look into why before it drops further.`;
-      else text = `${t.metric} stayed pretty steady over the period (${fmt(t.from)} → ${fmt(t.to)}) — no real ups or downs to worry about.`;
-      insights.push({
+      if (t.direction === "up") text = `${t.metric} is on a real climb — up about ${amt} from ${fmt(t.from)} to ${fmt(t.to)} across the period. Worth doubling down on whatever's driving it.`;
+      else if (t.direction === "down") text = `${t.metric} is genuinely sliding — down about ${amt} (${fmt(t.from)} → ${fmt(t.to)}). Worth finding the cause before it drops further.`;
+      else text = `${t.metric} held steady over the period (${fmt(t.from)} → ${fmt(t.to)}) — no real trend up or down.`;
+      out.push({
         id: `ins-trend-${t.metric}`,
         kind: "trend",
         confidence: Math.abs(t.changePct) > 0.05 ? "high" : "medium",
@@ -46,91 +88,78 @@ export class TemplatedInsightProvider implements InsightProvider {
       });
     }
 
-    // 3. Correlations — "these two move together", with an honest caveat.
-    const strong = ctx.correlations.filter((c) => c.strength !== "weak").slice(0, 2);
-    for (const c of strong) {
-      const together = c.r > 0 ? `when ${c.a} goes up, ${c.b} usually goes up too` : `when ${c.a} goes up, ${c.b} usually goes down`;
-      const sig = c.significant
-        ? `This looks like a real connection, not just chance.`
-        : `But it's weak enough that it might just be coincidence — don't lean on it yet.`;
-      insights.push({
+    // 5. Correlations — two numbers that move together (significant only stay after filtering).
+    for (const c of ctx.correlations.filter((c) => c.strength !== "weak").slice(0, 2)) {
+      out.push({
         id: `ins-corr-${c.a}-${c.b}`,
         kind: "correlation",
         confidence: c.significant ? (c.strength === "strong" ? "high" : "medium") : "low",
         cites: [`corr:${c.a}~${c.b}`],
         text:
-          `${c.a} and ${c.b} tend to move together — ${together} (a ${c.strength} link, r = ${c.r.toFixed(2)}). ${sig} ` +
-          `Just remember: moving together doesn't prove one causes the other.`,
+          `${c.a} and ${c.b} move together: ${c.r > 0 ? `higher ${c.a} usually means higher ${c.b}` : `higher ${c.a} usually means lower ${c.b}`} (a ${c.strength} link, r = ${c.r.toFixed(2)}). ` +
+          (c.significant ? `It's a real relationship — though moving together doesn't prove one causes the other.` : `It may be coincidence, so don't lean on it yet.`),
       });
     }
 
-    // 4. Regression — "if you nudge X, Y tends to follow".
-    if (ctx.regression && ctx.regression.r2 > 0.1) {
-      const r = ctx.regression;
-      insights.push({
-        id: "ins-regression",
-        kind: "regression",
-        confidence: r.significant ? (r.adjR2 > 0.5 ? "high" : "medium") : "low",
-        cites: ["regression"],
-        text:
-          `${r.driver} seems to be a real lever for ${r.target}: as a rough rule, every extra 1 of ${r.driver} ` +
-          `comes with about ${r.slope >= 0 ? "+" : ""}${fmt(r.slope)} ${r.target}. ` +
-          `On its own, ${r.driver} explains roughly ${pct(r.adjR2)} of why ${r.target} moves` +
-          (r.significant ? `, and the pattern is reliable enough to take seriously.` : `, but the pattern isn't reliable yet — treat it as a hint.`),
-      });
-    }
-
-    // 4b. Forecast — where things are heading if nothing changes.
-    if (ctx.forecast) {
-      const f = ctx.forecast;
-      const dir = f.changePct > 0.02 ? "keep rising" : f.changePct < -0.02 ? "keep falling" : "hold about steady";
-      insights.push({
-        id: "ins-forecast",
-        kind: "trend",
-        confidence: "medium",
-        cites: ["forecast"],
-        text:
-          `If the recent pattern holds, ${f.metric} should ${dir} over the next ${f.horizon} period${f.horizon === 1 ? "" : "s"} — ` +
-          `from about ${fmt(f.lastValue)} now to roughly ${fmt(f.projected)} (${f.changePct >= 0 ? "up" : "down"} about ${pct(Math.abs(f.changePct))}). ` +
-          `It's a best guess based on the trend, so revisit it as new numbers come in.`,
-      });
-    }
-
-    // 4c. Most common category value (e.g. top reason).
+    // 6. Most common category value (e.g. the top reason / segment).
     const cat = ctx.categories[0];
     if (cat && cat.top[0]) {
       const top = cat.top[0];
-      insights.push({
+      out.push({
         id: `ins-cat-${cat.column}`,
         kind: "composition",
         confidence: top.pct >= 0.4 ? "high" : "medium",
         cites: [`category:${cat.column}`],
         text:
-          `By far the most common ${cat.column} is "${top.value}" — it shows up in ${pct(top.pct)} of the rows ` +
-          `(${top.count} of ${cat.total})` +
-          (cat.top[1] ? `, with "${cat.top[1].value}" next at ${pct(cat.top[1].pct)}. ` : `. `) +
-          `Since it's so common, that's a smart place to focus first.`,
+          `"${top.value}" dominates ${cat.column} — ${pct(top.pct)} of all rows (${top.count} of ${cat.total})` +
+          (cat.top[1] ? `, with "${cat.top[1].value}" a distant second at ${pct(cat.top[1].pct)}.` : ".") +
+          ` Since it's so common, that's where action pays off first.`,
       });
     }
 
-    // 5. Outliers — a gentle "double-check these" nudge.
-    for (const o of ctx.outliers.slice(0, 1)) {
-      if (o.count > 0) {
-        const ex = o.examples[0];
-        insights.push({
-          id: `ins-outlier-${o.column}`,
-          kind: "outlier",
-          confidence: "medium",
-          cites: [`outlier:${o.column}`],
-          text:
-            `A few ${o.column} values look unusually high or low (${o.count} of them` +
-            (ex ? `, the most extreme being ${fmt(ex.value)}` : "") +
-            `). Odd values like these can quietly skew the averages, so it's worth a quick check on whether they're real or just typos.`,
-        });
-      }
+    // 7. Association between two categories (chi-square).
+    const assoc = ctx.associations.find((a) => a.significant);
+    if (assoc) {
+      out.push({
+        id: `ins-assoc-${assoc.a}-${assoc.b}`,
+        kind: "correlation",
+        confidence: conf(assoc.p),
+        cites: [`assoc:${assoc.a}~${assoc.b}`],
+        text:
+          `${assoc.a} and ${assoc.b} are linked — certain ${assoc.a} values tend to come with certain ${assoc.b} values. Looking at them together reveals patterns you'd miss one at a time.`,
+      });
     }
 
-    return insights;
+    // 8. Forecast — where it's heading if nothing changes.
+    if (ctx.forecast) {
+      const f = ctx.forecast;
+      const dir = f.changePct > 0.02 ? "keep rising" : f.changePct < -0.02 ? "keep falling" : "stay about flat";
+      out.push({
+        id: "ins-forecast",
+        kind: "trend",
+        confidence: "medium",
+        cites: ["forecast"],
+        text:
+          `If the recent pattern holds, ${f.metric} should ${dir} — from about ${fmt(f.lastValue)} now to roughly ${fmt(f.projected)} over the next ${f.horizon} period${f.horizon === 1 ? "" : "s"} (${f.changePct >= 0 ? "+" : ""}${pct(f.changePct)}). Plan around it and revisit as new data lands.`,
+      });
+    }
+
+    // 9. Outliers — a quick data-quality flag.
+    const o = ctx.outliers[0];
+    if (o && o.count > 0) {
+      const ex = o.examples[0];
+      out.push({
+        id: `ins-outlier-${o.column}`,
+        kind: "outlier",
+        confidence: "medium",
+        cites: [`outlier:${o.column}`],
+        text:
+          `${o.column} has ${o.count} unusually extreme value${o.count === 1 ? "" : "s"}${ex ? ` (the most extreme is ${fmt(ex.value)})` : ""}. ` +
+          `These can quietly skew the averages — check whether they're real before trusting ${o.column} figures.`,
+      });
+    }
+
+    return out.slice(0, 8);
   }
 }
 
@@ -142,11 +171,4 @@ function labelDomain(d: InsightContext["domain"]): string {
     case "survey": return "survey";
     default: return "general";
   }
-}
-
-function fmt(n: number): string {
-  if (!Number.isFinite(n)) return "—";
-  const abs = Math.abs(n);
-  if (abs >= 1000) return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }

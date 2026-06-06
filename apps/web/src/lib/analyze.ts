@@ -20,10 +20,9 @@ import { recommendCharts } from "./charts";
 import { zOutliers } from "./stats";
 import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAnova, olsSimple, pearsonTest } from "./inference";
 import { defaultHorizon, holtForecast } from "./forecast";
-import { deriveConclusions } from "./conclusions";
 import { buildDataStory } from "./story";
 import { getInsightProvider } from "./insights";
-import { humanizeConclusions, llmEnabled, sharpenStory } from "./insights/humanize";
+import { llmEnabled, sharpenStory } from "./insights/humanize";
 
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
 // but runs locally in the browser for the Vercel-first MVP.
@@ -39,25 +38,23 @@ export async function analyze(rawTable: Table, opts: { userContext?: string } = 
 
   const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
   ctx.userContext = opts.userContext?.trim() || undefined;
-  let conclusions = deriveConclusions(ctx);
   const provider = getInsightProvider();
   const rawInsights = await provider.generate(ctx);
   // Quality filter: keep only meaningful insights (always keep the summary); drop
   // low-confidence "probably noise" items so the dashboard shows high-quality answers.
   const filtered = rawInsights.filter((i) => i.kind === "summary" || i.confidence !== "low");
   const insights = filtered.length ? filtered : rawInsights;
-  // When the (free-tier) LLM is enabled, rewrite conclusions in a warmer, human tone (numbers kept).
-  if (llmEnabled()) conclusions = await humanizeConclusions(conclusions, ctx.userContext);
 
   // Read the data's own subject/story so findings stay connected to what it's about.
   // Heuristic first; if the LLM is enabled, sharpen it (metadata-only — never raw rows).
-  let story = buildDataStory(rawTable.name, table.rowCount, profiles, domain);
+  let story = buildDataStory(rawTable.name, table.rowCount, profiles, domain, ctx.userContext);
   if (llmEnabled()) {
     story = await sharpenStory(story, {
       datasetName: rawTable.name,
       domain: domain.domain,
       rowCount: table.rowCount,
       columns: profiles.map((p) => ({ name: p.name, role: p.role, type: p.type })),
+      userContext: ctx.userContext,
     });
   }
 
@@ -72,7 +69,7 @@ export async function analyze(rawTable: Table, opts: { userContext?: string } = 
     kpis,
     charts,
     insights,
-    conclusions,
+    conclusions: [],
     narrator: provider.lastSource ?? "templated",
     story,
   };

@@ -57,7 +57,7 @@ const FEATURES = [
   { icon: I.compass, title: "Auto domain detection", body: "Figures out whether your data is financial, sales, marketing or survey — and picks the metrics that matter for it." },
   { icon: I.bars, title: "Instant KPIs & charts", body: "Ranked KPIs and precise charts for your data shape: trends, comparisons, correlations, distributions." },
   { icon: I.sigma, title: "Real statistics", body: "Significance tests, OLS & multiple regression, ANOVA, chi-square, forecasting — statsmodels-grade rigor, in your browser." },
-  { icon: I.quote, title: "Conclusions, not just charts", body: "Plain-language, statistically-calibrated takeaways grounded in the numbers — it tells you what it likely means." },
+  { icon: I.quote, title: "Understands your data", body: "Reads the rows, columns and subject behind your file to explain what the dataset actually is — so every finding stays tied to your real-world context." },
   { icon: I.spark, title: "Ask your data", body: "Type “which reason is most common” or “revenue by region as a bar chart” and get an answer — in plain English." },
 ];
 
@@ -98,9 +98,9 @@ export default function Landing() {
               <span className="lp-accent">explained dashboard</span>
             </h1>
             <p className="mt-6 max-w-lg text-[1.05rem] leading-relaxed text-[var(--muted)]">
-              Quantia cleans your data, runs real statistics, and writes the conclusions —
-              automatically. A zero-skill alternative to Power BI and Tableau, with the rigor of a
-              working data scientist.
+              Quantia cleans your data, runs real statistics, and explains what it means —
+              automatically. Upload a spreadsheet and get a clear, trustworthy dashboard in
+              seconds, with the rigor of a working data scientist.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/analyze" className="lp-cta">

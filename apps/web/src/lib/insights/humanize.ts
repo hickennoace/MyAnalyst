@@ -33,7 +33,7 @@ export async function humanizeConclusions(conclusions: Conclusion[], userContext
 // names/roles, domain, row count; never raw rows). Falls back to the draft on any failure.
 export async function sharpenStory(
   draft: DataStory,
-  meta: { datasetName: string; domain: string; rowCount: number; columns: { name: string; role: string; type: string }[] }
+  meta: { datasetName: string; domain: string; rowCount: number; columns: { name: string; role: string; type: string }[]; userContext?: string }
 ): Promise<DataStory> {
   try {
     const res = await fetch("/api/insights", {

@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   if (body && typeof body === "object" && (body as { task?: string }).task === "story") {
     const { draft, meta } = body as {
       draft?: { industry?: string; summary?: string };
-      meta?: { datasetName?: string; domain?: string; rowCount?: number; columns?: { name: string; role: string; type: string }[] };
+      meta?: { datasetName?: string; domain?: string; rowCount?: number; columns?: { name: string; role: string; type: string }[]; userContext?: string };
     };
     try {
       const { system, user } = buildStoryPrompt(draft ?? {}, meta ?? {});
@@ -127,12 +127,13 @@ function normalizeHumanized(raw: string, original: { id: string }[]): { id: stri
 
 function buildStoryPrompt(
   draft: { industry?: string; summary?: string },
-  meta: { datasetName?: string; domain?: string; rowCount?: number; columns?: { name: string; role: string; type: string }[] }
+  meta: { datasetName?: string; domain?: string; rowCount?: number; columns?: { name: string; role: string; type: string }[]; userContext?: string }
 ) {
   const system = [
     "You are a sharp data analyst. From dataset METADATA ONLY (column names + roles, detected domain, row count) and a rough draft, write a crisp, specific description of what the dataset is.",
-    "Cover, in 2–3 natural sentences: the likely industry/subject; what a single row represents; what it mainly measures (and the breakdown dimensions); and what people use data like this for.",
+    "Cover, in 3–4 natural sentences: the likely industry/subject; what a single row represents; what it mainly measures and the dimensions it's broken down by; and what people use data like this for.",
     "Be concrete and confident, but NEVER invent specific facts, numbers, names, or claims not implied by the column names and roles. You are given no raw data rows — do not pretend to know specific values.",
+    meta.userContext ? `The user described their goal: "${meta.userContext}". Frame the description around that goal.` : "(No user goal provided.)",
     "Also return a short industry/subject label of at most 4 words.",
     'Respond with ONLY JSON: {"story":{"industry":string,"summary":string}}',
   ].join("\n");

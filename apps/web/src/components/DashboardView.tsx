@@ -1,6 +1,5 @@
 import type { Ref } from "react";
-import type { Conclusion, DashboardSpec, Table } from "@/lib/types";
-import { DISCLAIMER } from "@/lib/conclusions";
+import type { DashboardSpec, Table } from "@/lib/types";
 import { KpiCard } from "./KpiCard";
 import { Chart } from "./Chart";
 import { InsightCard } from "./InsightCard";
@@ -90,28 +89,6 @@ export function DashboardView({
         </Section>
       )}
 
-      {spec.conclusions.length > 0 && (
-        <Section
-          title="Conclusions &amp; recommendations"
-          subtitle="What your data means for you — in plain English, no statistics degree required."
-          badge={
-            <span className="rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
-              ✨ AI-generated
-            </span>
-          }
-        >
-          <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
-            <span className="mt-0.5">⚠️</span>
-            <span>{DISCLAIMER}</span>
-          </div>
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {spec.conclusions.map((c) => (
-              <ConclusionCard key={c.id} conclusion={c} />
-            ))}
-          </div>
-        </Section>
-      )}
-
       {spec.charts.length > 0 && (
         <Section title="Automatic charts" subtitle="The engine picked these from your data shape.">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -139,32 +116,6 @@ export function DashboardView({
           <DataTable table={table} profiles={spec.profiles} />
         </Section>
       )}
-    </div>
-  );
-}
-
-const CONF_META: Record<Conclusion["confidence"], { style: string; label: string }> = {
-  high: { style: "bg-emerald-500/15 text-emerald-300", label: "Strong finding" },
-  medium: { style: "bg-amber-500/15 text-amber-300", label: "Worth a look" },
-  low: { style: "bg-slate-500/15 text-slate-300", label: "Just a hint" },
-};
-
-function ConclusionCard({ conclusion }: { conclusion: Conclusion }) {
-  const conf = CONF_META[conclusion.confidence];
-  return (
-    <div className="card card-hover flex gap-3 p-4">
-      <div className="text-lg leading-none">💡</div>
-      <div className="flex-1">
-        <p className="text-sm leading-relaxed text-slate-200">{conclusion.text}</p>
-        {conclusion.detail && (
-          <p className="mt-1.5 text-xs leading-snug text-slate-500">
-            <span className="text-slate-400">📊 The numbers:</span> {conclusion.detail}
-          </p>
-        )}
-        <div className="mt-2">
-          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${conf.style}`}>{conf.label}</span>
-        </div>
-      </div>
     </div>
   );
 }
