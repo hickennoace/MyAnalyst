@@ -233,7 +233,10 @@ export interface CategoryFact {
 /** An AI-derived, action-oriented interpretation of the data. Not professional advice. */
 export interface Conclusion {
   id: string;
+  /** plain-language takeaway, written for a non-statistician */
   text: string;
+  /** optional "the numbers" line with the underlying statistics, for those who want them */
+  detail?: string;
   /** what the conclusion is grounded in (e.g. "Reason frequency", "correlation X~Y"). */
   basis: string;
   confidence: "high" | "medium" | "low";

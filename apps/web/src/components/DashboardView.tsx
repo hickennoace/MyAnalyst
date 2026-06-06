@@ -74,7 +74,7 @@ export function DashboardView({
       {spec.conclusions.length > 0 && (
         <Section
           title="Conclusions &amp; recommendations"
-          subtitle="What the numbers may mean for you — interpreted, not just described."
+          subtitle="What your data means for you — in plain English, no statistics degree required."
           badge={
             <span className="rounded-full bg-gradient-to-r from-indigo-500/20 to-violet-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
               ✨ AI-generated
@@ -124,23 +124,26 @@ export function DashboardView({
   );
 }
 
-const CONF_STYLE: Record<Conclusion["confidence"], string> = {
-  high: "bg-emerald-500/15 text-emerald-300",
-  medium: "bg-amber-500/15 text-amber-300",
-  low: "bg-slate-500/15 text-slate-300",
+const CONF_META: Record<Conclusion["confidence"], { style: string; label: string }> = {
+  high: { style: "bg-emerald-500/15 text-emerald-300", label: "Strong finding" },
+  medium: { style: "bg-amber-500/15 text-amber-300", label: "Worth a look" },
+  low: { style: "bg-slate-500/15 text-slate-300", label: "Just a hint" },
 };
 
 function ConclusionCard({ conclusion }: { conclusion: Conclusion }) {
+  const conf = CONF_META[conclusion.confidence];
   return (
     <div className="card card-hover flex gap-3 p-4">
       <div className="text-lg leading-none">💡</div>
       <div className="flex-1">
         <p className="text-sm leading-relaxed text-slate-200">{conclusion.text}</p>
-        <div className="mt-2 flex items-center gap-2">
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${CONF_STYLE[conclusion.confidence]}`}>
-            {conclusion.confidence} confidence
-          </span>
-          <span className="text-[10px] uppercase tracking-wide text-slate-500">based on {conclusion.basis}</span>
+        {conclusion.detail && (
+          <p className="mt-1.5 text-xs leading-snug text-slate-500">
+            <span className="text-slate-400">📊 The numbers:</span> {conclusion.detail}
+          </p>
+        )}
+        <div className="mt-2">
+          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${conf.style}`}>{conf.label}</span>
         </div>
       </div>
     </div>
