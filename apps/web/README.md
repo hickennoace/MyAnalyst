@@ -29,6 +29,7 @@ src/
 │   └── globals.css       # Tailwind v4 + dark theme
 ├── components/
 │   ├── Uploader.tsx      # drag-drop + sample dataset
+│   ├── CleaningReport.tsx # what was fixed + before/after preview
 │   ├── KpiCard.tsx
 │   ├── Chart.tsx         # ECharts wrapper (lazy, client-only)
 │   ├── InsightCard.tsx
@@ -36,6 +37,7 @@ src/
 └── lib/                  # the analysis engine (pure TypeScript)
     ├── types.ts          # contracts between every stage
     ├── parse.ts          # CSV/TSV/Excel → Table
+    ├── clean.ts          # normalize + dedupe + drop total/empty rows → cleaned Table + CleaningReport
     ├── profile.ts        # type inference + per-column profiling
     ├── domain.ts         # rule-based domain detection
     ├── stats.ts          # mean/std/pearson/regression/outliers/cagr
@@ -50,7 +52,10 @@ src/
 ```
 
 ## The pipeline (mirrors docs/01-architecture.md, run locally)
-`parse → profile → detect domain → compute KPIs → run statistics → recommend charts → write insights → DashboardSpec → render`
+`parse → clean & normalize → profile → detect domain → compute KPIs → run statistics → recommend charts → write insights → DashboardSpec → render`
+
+Cleaning runs first and produces a transparent **CleaningReport** (rows removed, cells normalized,
+per-column type detection) plus a **before/after preview** — the dashboard renders it above the KPIs.
 
 ## Smart, without an API key
 All the "intelligence" — typing, domain detection, KPI selection, chart selection, statistics,

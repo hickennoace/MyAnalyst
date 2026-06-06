@@ -26,9 +26,12 @@ export function sampleTable(): Table {
     const units = Math.round((20 + spend / 40) * trend * seasonal + (rand() - 0.5) * 8);
     const price = 40 + products.indexOf(product) * 15;
     const revenue = units * price;
+    const iso = date.toISOString().slice(0, 10);
     rows.push({
-      Date: date.toISOString().slice(0, 10),
-      Region: region,
+      // Mix in messy formatting the cleaner will normalize: every 5th date uses M/D/Y,
+      // and some Region values carry stray whitespace.
+      Date: week % 5 === 0 ? `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}` : iso,
+      Region: week % 7 === 0 ? `  ${region} ` : region,
       Product: product,
       "Marketing Spend": `$${spend.toLocaleString()}`,
       Units: units,
@@ -38,6 +41,19 @@ export function sampleTable(): Table {
 
   // Inject one obvious outlier so the outlier detector has something to find.
   rows[40]["Units"] = 480;
+
+  // Inject realistic mess so the cleaning report has work to show:
+  rows.push({ ...rows[10] }); // an exact duplicate row
+  rows.push({ Date: "", Region: "", Product: "", "Marketing Spend": "", Units: "", Revenue: "" }); // an empty row
+  rows.push({
+    // a trailing "Total" summary row that must NOT count as a data point
+    Date: "",
+    Region: "Total",
+    Product: "",
+    "Marketing Spend": "$99,560",
+    Units: 6523,
+    Revenue: "$333,810",
+  });
 
   return {
     name: "sample-sales.csv",

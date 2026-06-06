@@ -10,6 +10,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { Chart } from "@/components/Chart";
 import { InsightCard } from "@/components/InsightCard";
 import { ChartBuilder } from "@/components/ChartBuilder";
+import { CleaningReport } from "@/components/CleaningReport";
 
 const STAGES = ["Reading file", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
 
@@ -121,6 +122,11 @@ export default function Home() {
                 <p className="mt-1 max-w-md text-[11px] text-slate-500">{spec.domain.reason}</p>
               </div>
             </div>
+
+            {/* Cleaning report + before/after preview */}
+            <Section title="Cleaning &amp; normalization" subtitle="The unglamorous core that makes everything below trustworthy.">
+              <CleaningReport report={spec.cleaning} />
+            </Section>
 
             {/* KPIs */}
             <Section title="Key metrics" subtitle="Auto-selected for this dataset's shape and domain.">

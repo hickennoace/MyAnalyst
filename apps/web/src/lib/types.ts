@@ -146,6 +146,45 @@ export interface OutlierFact {
   examples: { index: number; value: number; z: number }[];
 }
 
+// ── Cleaning stage ──────────────────────────────────────────────────────────
+
+/** Per-column account of what the cleaner did. */
+export interface ColumnCleaning {
+  name: string;
+  detectedType: SemanticType;
+  /** cells whose value was reformatted (e.g. "$1,200" → 1200, "1/3/23" → "2023-01-03"). */
+  cellsNormalized: number;
+  /** cells trimmed of surrounding whitespace. */
+  trimmed: number;
+  /** empty / null cells in the column. */
+  missing: number;
+}
+
+export interface CleaningStep {
+  label: string;
+  detail: string;
+  count: number;
+}
+
+/** A few rows shown raw vs cleaned, with per-cell changed flags, for the before/after preview. */
+export interface CleaningPreview {
+  columns: string[];
+  rows: { before: string[]; after: string[]; changed: boolean[] }[];
+}
+
+export interface CleaningReport {
+  rowsBefore: number;
+  rowsAfter: number;
+  duplicatesRemoved: number;
+  emptyRowsRemoved: number;
+  totalRowsRemoved: number;
+  cellsNormalized: number;
+  cellsTrimmed: number;
+  columns: ColumnCleaning[];
+  steps: CleaningStep[];
+  preview: CleaningPreview;
+}
+
 /** The full declarative result the dashboard renders. */
 export interface DashboardSpec {
   version: string;
@@ -153,6 +192,7 @@ export interface DashboardSpec {
   domain: DomainGuess;
   generatedAt: string;
   rowCount: number;
+  cleaning: CleaningReport;
   profiles: ColumnProfile[];
   kpis: Kpi[];
   charts: ChartSpec[];

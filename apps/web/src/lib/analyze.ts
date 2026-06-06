@@ -8,6 +8,7 @@ import type {
   TrendFact,
 } from "./types";
 import { numericColumn, profileTable } from "./profile";
+import { cleanTable } from "./clean";
 import { detectDomain } from "./domain";
 import { computeKpis, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
@@ -17,8 +18,11 @@ import { getInsightProvider } from "./insights";
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
 // but runs locally in the browser for the Vercel-first MVP.
 
-export async function analyze(table: Table): Promise<DashboardSpec> {
-  const profiles = profileTable(table);
+export async function analyze(rawTable: Table): Promise<DashboardSpec> {
+  // Stage 2: clean & normalize first, then run everything else on the trustworthy, typed table.
+  const { table, report: cleaning, typeHints } = cleanTable(rawTable);
+
+  const profiles = profileTable(table, typeHints);
   const domain = detectDomain(profiles);
   const kpis = computeKpis(table, profiles, domain.domain);
   const charts = recommendCharts(table, profiles);
@@ -28,10 +32,11 @@ export async function analyze(table: Table): Promise<DashboardSpec> {
 
   return {
     version: "1.0",
-    datasetName: table.name,
+    datasetName: rawTable.name,
     domain,
     generatedAt: new Date().toISOString(),
     rowCount: table.rowCount,
+    cleaning,
     profiles,
     kpis,
     charts,

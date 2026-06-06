@@ -7,7 +7,17 @@ const table = sampleTable();
 const spec = await analyze(table);
 
 console.log("=== DATASET ===");
-console.log(`${spec.datasetName} — ${spec.rowCount} rows, ${spec.profiles.length} columns`);
+console.log(`${spec.datasetName} — ${spec.rowCount} rows (after cleaning), ${spec.profiles.length} columns`);
+
+console.log("\n=== CLEANING REPORT ===");
+const c = spec.cleaning;
+console.log(`rows ${c.rowsBefore} → ${c.rowsAfter}  (dupes ${c.duplicatesRemoved}, totals ${c.totalRowsRemoved}, empty ${c.emptyRowsRemoved}, normalized ${c.cellsNormalized}, trimmed ${c.cellsTrimmed})`);
+for (const s of c.steps) console.log(`  ✓ ${s.label}${s.count ? ` (${s.count})` : ""}`);
+console.log("  before/after preview row 1:");
+if (c.preview.rows[0]) {
+  console.log(`    raw:     ${c.preview.rows[0].before.join(" | ")}`);
+  console.log(`    cleaned: ${c.preview.rows[0].after.join(" | ")}`);
+}
 
 console.log("\n=== DOMAIN ===");
 console.log(`${spec.domain.domain} (${(spec.domain.confidence * 100).toFixed(0)}%) — ${spec.domain.reason}`);

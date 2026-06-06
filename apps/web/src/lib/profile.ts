@@ -39,7 +39,7 @@ function toIso(raw: unknown): string | null {
 }
 
 /** Decide the semantic type of a column from a sample of its values + its header name. */
-function inferType(name: string, values: unknown[]): SemanticType {
+export function inferType(name: string, values: unknown[]): SemanticType {
   const nonNull = values.filter((v) => v !== null && v !== undefined && v !== "");
   if (nonNull.length === 0) return "text";
   const lname = name.toLowerCase();
@@ -92,11 +92,13 @@ function numericSummary(values: number[]): NumericSummary {
 
 const NUMERIC_TYPES: SemanticType[] = ["number", "currency", "percent", "integer"];
 
-/** Build a full profile for every column in the table. */
-export function profileTable(table: Table): ColumnProfile[] {
+/** Build a full profile for every column in the table.
+ *  `typeHints` lets a prior stage (e.g. cleaning) pin a column's type so re-sniffing
+ *  normalized values can't lose information (a stripped "$1,200" → 1200 staying "currency"). */
+export function profileTable(table: Table, typeHints?: Record<string, SemanticType>): ColumnProfile[] {
   return table.columns.map((col) => {
     const raw = table.rows.map((r) => r[col]);
-    const type = inferType(col, raw);
+    const type = typeHints?.[col] ?? inferType(col, raw);
     const nonNull = raw.filter((v) => v !== null && v !== undefined && v !== "");
     const fillRate = table.rowCount ? nonNull.length / table.rowCount : 0;
     const distinctSet = new Set(nonNull.map((v) => String(v)));
