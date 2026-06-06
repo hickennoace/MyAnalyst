@@ -125,8 +125,11 @@ export default function Landing() {
           </Link>
         </section>
 
-        <footer className="border-t border-slate-800 py-8 text-center text-xs text-slate-600">
-          Quantia — autonomous financial &amp; statistical analysis. Built with Next.js, runs on Vercel.
+        <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-slate-800 py-8 text-center text-xs text-slate-600">
+          <span>Quantia — autonomous financial &amp; statistical analysis.</span>
+          <Link href="/analyze" className="text-slate-500 transition hover:text-slate-300">Analyzer</Link>
+          <Link href="/privacy" className="text-slate-500 transition hover:text-slate-300">Privacy</Link>
+          <span>Built with Next.js, runs on Vercel.</span>
         </footer>
       </div>
     </main>

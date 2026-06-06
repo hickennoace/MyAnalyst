@@ -73,6 +73,8 @@ export interface Kpi {
   howComputed: string;
   /** relevance score used to rank/limit cards */
   relevance: number;
+  /** optional time-ordered series for a mini sparkline on the card. */
+  spark?: number[];
 }
 
 export type ChartType =

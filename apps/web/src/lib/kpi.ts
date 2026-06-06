@@ -81,6 +81,7 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
           trend: totalGrowth,
           howComputed: `Change in ${pm.name} from first to last period (${fmtNum(first)} → ${fmtNum(last)}).`,
           relevance: 0.9,
+          spark: downsample(series, 40),
         });
       }
 
@@ -127,6 +128,15 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
   }
 
   return kpis.sort((a, b) => b.relevance - a.relevance);
+}
+
+/** Reduce a series to at most `max` evenly-spaced points (for compact sparklines). */
+function downsample(series: number[], max: number): number[] {
+  if (series.length <= max) return series;
+  const step = series.length / max;
+  const out: number[] = [];
+  for (let i = 0; i < max; i++) out.push(series[Math.floor(i * step)]);
+  return out;
 }
 
 /** Return row indices sorted ascending by the given time column. */

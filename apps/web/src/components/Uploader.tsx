@@ -39,7 +39,7 @@ export function Uploader({
       <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-indigo-500/15 text-2xl">📊</div>
       <h2 className="text-lg font-semibold text-slate-100">Drop a spreadsheet to analyze</h2>
       <p className="mt-1 max-w-md text-sm text-slate-400">
-        CSV, TSV, or Excel. Everything runs in your browser — your data never leaves this page.
+        CSV, TSV, Excel, or JSON. Everything runs in your browser — your data never leaves this page.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -62,7 +62,7 @@ export function Uploader({
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,.tsv,.xlsx,.xls"
+        accept=".csv,.tsv,.xlsx,.xls,.json"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];

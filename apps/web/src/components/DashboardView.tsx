@@ -6,6 +6,7 @@ import { InsightCard } from "./InsightCard";
 import { ChartBuilder } from "./ChartBuilder";
 import { CleaningReport } from "./CleaningReport";
 import { QueryBox } from "./QueryBox";
+import { DataTable } from "./DataTable";
 
 // The dashboard body, rendered identically by the live analyzer (/analyze) and the read-only
 // shared view (/view). Everything renders from the DashboardSpec alone; the interactive chart
@@ -88,6 +89,12 @@ export function DashboardView({
       {table && (
         <Section title="Build your own" subtitle="Ask for any chart you want — in plain English or by picking columns.">
           <ChartBuilder table={table} profiles={spec.profiles} />
+        </Section>
+      )}
+
+      {table && (
+        <Section title="Browse the data" subtitle="Search, sort, and page through every row.">
+          <DataTable table={table} profiles={spec.profiles} />
         </Section>
       )}
     </div>
