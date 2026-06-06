@@ -1,0 +1,56 @@
+# Quantia API + compute tier. CONFIG STUB — pin/resolve versions before first install.
+[project]
+name = "quantia-api"
+version = "0.0.0"
+description = "Quantia API & data-science compute tier"
+requires-python = ">=3.12"
+dependencies = [
+    # --- web/api ---
+    "fastapi",
+    "uvicorn[standard]",
+    "gunicorn",
+    "pydantic>=2",
+    "pydantic-settings",
+    # --- db ---
+    "sqlalchemy>=2",
+    "alembic",
+    "psycopg[binary]",
+    # --- queue / cache ---
+    "celery[redis]",
+    "redis",
+    # --- storage ---
+    "boto3",                 # S3-compatible object storage
+    # --- data science ---
+    "pandas",
+    "polars",                # for large files
+    "pyarrow",
+    "duckdb",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "statsmodels",
+    "statsforecast",         # classical forecasting
+    "pandera",               # dataframe validation
+    "openpyxl",              # excel parsing
+    # --- ai ---
+    "anthropic",             # LLM provider (swap behind adapter)
+    # --- security ---
+    "python-jose[cryptography]",
+    "cryptography",          # envelope encryption of user creds
+    "argon2-cffi",           # if self-hosting auth later
+    # --- observability ---
+    "structlog",
+    "opentelemetry-api",
+    "sentry-sdk",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "mypy", "pytest", "pytest-asyncio", "httpx", "bandit", "pip-audit"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true

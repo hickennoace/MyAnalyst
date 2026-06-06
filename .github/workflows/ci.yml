@@ -1,0 +1,35 @@
+# CI pipeline. CONFIG STUB — enable jobs as the apps gain real code.
+name: CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  api:
+    name: API (lint · type · test · security)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # - run: ruff check apps/api
+      # - run: mypy apps/api
+      # - run: pytest apps/api            # includes tenant-isolation tests (A cannot read B)
+      # - run: bandit -r apps/api/app
+      # - run: pip-audit
+
+  web:
+    name: Web (lint · type · test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # - run: pnpm install --frozen-lockfile
+      # - run: pnpm -F @quantia/web lint
+      # - run: pnpm -F @quantia/web typecheck
+      # - run: pnpm -F @quantia/web test
+
+  security:
+    name: Secrets scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # - uses: gitleaks/gitleaks-action@v2

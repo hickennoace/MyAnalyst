@@ -1,0 +1,4 @@
+# JS/TS workspace. CONFIG STUB. (The Python apps under apps/api are managed separately via pyproject.)
+packages:
+  - "apps/web"
+  - "packages/*"

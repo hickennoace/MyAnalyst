@@ -1,0 +1,48 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+.turbo/
+.vercel/
+*.tsbuildinfo
+pnpm-debug.log*
+
+# --- Data / models (never commit user data) ---
+data/
+*.parquet
+*.duckdb
+models/*.pkl
+models/*.joblib
+*.csv
+*.xlsx
+*.xls
+!**/sample/**   # allow curated sample/demo files only
+
+# --- Infra / secrets ---
+*.pem
+*.key
+.terraform/
+*.tfstate
+*.tfstate.*
+docker-compose.override.yml
+
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

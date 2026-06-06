@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantia.app/schemas/dashboard-spec.json",
+  "title": "DashboardSpec",
+  "description": "Declarative dashboard the backend emits and the frontend renders. SCAFFOLD / illustrative — expand during MVP Phase 7.",
+  "type": "object",
+  "required": ["version", "datasetId", "domain", "blocks"],
+  "properties": {
+    "version": { "type": "string", "examples": ["1.0"] },
+    "datasetId": { "type": "string", "format": "uuid" },
+    "domain": { "type": "string", "examples": ["financial", "sales-operational"] },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "blocks": {
+      "type": "array",
+      "description": "Ordered dashboard blocks rendered top-to-bottom / by layout.",
+      "items": {
+        "oneOf": [
+          {
+            "title": "KpiCard",
+            "type": "object",
+            "required": ["type", "name", "value"],
+            "properties": {
+              "type": { "const": "kpi" },
+              "name": { "type": "string" },
+              "value": { "type": ["number", "string"] },
+              "unit": { "type": "string" },
+              "trend": { "type": "number", "description": "period-over-period delta" },
+              "howComputed": { "type": "string" }
+            }
+          },
+          {
+            "title": "ChartBlock",
+            "type": "object",
+            "required": ["type", "chart", "dataRef"],
+            "properties": {
+              "type": { "const": "chart" },
+              "chart": { "enum": ["line", "bar", "scatter", "heatmap", "candlestick", "area"] },
+              "title": { "type": "string" },
+              "dataRef": { "type": "string", "description": "pointer to the series/table to plot" },
+              "encodings": { "type": "object" }
+            }
+          },
+          {
+            "title": "NarrativeBlock",
+            "type": "object",
+            "required": ["type", "text"],
+            "properties": {
+              "type": { "const": "narrative" },
+              "text": { "type": "string", "description": "grounded, plain-language insight" },
+              "confidence": { "enum": ["high", "medium", "low"] },
+              "citesKpis": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
