@@ -8,6 +8,9 @@ export interface Table {
   columns: string[];
   rows: Record<string, unknown>[];
   rowCount: number;
+  /** When a very large file was down-sampled, the total number of rows actually
+   *  scanned in the source file. `rows` then holds a representative random sample. */
+  sampledFrom?: number;
 }
 
 export type SemanticType =

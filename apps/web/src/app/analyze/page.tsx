@@ -110,6 +110,8 @@ export default function AnalyzePage() {
       const result = await work;
       // Show & operate on the CLEANED data downstream (normalized values, deduped, total rows removed).
       const cleaned = cleanTable(tbl).table;
+      // Carry the "this was a sample of a huge file" note through cleaning.
+      if (tbl.sampledFrom) cleaned.sampledFrom = tbl.sampledFrom;
       setTable(cleaned);
       setSpec(result);
       try {
@@ -245,6 +247,15 @@ export default function AnalyzePage() {
         {shareMsg && (
           <div className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm text-blue-200">
             {shareMsg}
+          </div>
+        )}
+
+        {spec && table?.sampledFrom && (
+          <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
+            Large file detected — analyzed a representative random sample of{" "}
+            <strong>{table.rowCount.toLocaleString()}</strong> rows out of{" "}
+            <strong>{table.sampledFrom.toLocaleString()}</strong>. The statistics are valid for the full
+            dataset; exact totals would need the complete file.
           </div>
         )}
 

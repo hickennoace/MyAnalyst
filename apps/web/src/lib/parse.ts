@@ -49,19 +49,95 @@ async function parseJson(file: File): Promise<Table> {
   return { name: file.name, columns, rows: normalized, rowCount: normalized.length };
 }
 
+// Above this size we stream the file in chunks and keep a representative random
+// sample instead of loading the whole thing into memory — so even a 750MB CSV is
+// analyzable without freezing or crashing the tab.
+const STREAM_THRESHOLD = 24 * 1024 * 1024; // 24 MB
+const SAMPLE_CAP = 200_000; // max rows kept for analysis when sampling
+
+function isEmptyRow(r: Record<string, unknown>): boolean {
+  for (const k in r) {
+    const v = r[k];
+    if (v !== null && v !== undefined && v !== "") return false;
+  }
+  return true;
+}
+
 async function parseDelimited(file: File): Promise<Table> {
-  const text = await file.text();
-  const result = Papa.parse<Record<string, unknown>>(text, {
-    header: true,
-    dynamicTyping: false, // keep strings; our profiler does typing so we control currency/percent parsing
-    skipEmptyLines: "greedy",
-    transformHeader: (h) => h.trim(),
+  // Small/medium files: parse the whole thing in one pass (exact, simplest).
+  if (file.size <= STREAM_THRESHOLD) {
+    const text = await file.text();
+    const result = Papa.parse<Record<string, unknown>>(text, {
+      header: true,
+      dynamicTyping: false, // keep strings; our profiler does typing so we control currency/percent parsing
+      skipEmptyLines: "greedy",
+      transformHeader: (h) => h.trim(),
+    });
+    const columns = (result.meta.fields ?? []).filter((c) => c && c.length > 0);
+    const rows = (result.data as Record<string, unknown>[]).filter((r) => r && !isEmptyRow(r));
+    return { name: file.name, columns, rows, rowCount: rows.length };
+  }
+
+  // Large files: stream chunks off disk (parsed in a Web Worker so the UI stays
+  // responsive) and keep a uniform random sample via reservoir sampling.
+  // NOTE: worker mode can't accept config functions (the config is posted to the
+  // worker), so header trimming is done here by hand instead of `transformHeader`.
+  return new Promise<Table>((resolve, reject) => {
+    let rawFields: string[] = []; // header names exactly as they appear in the file
+    let columns: string[] = []; // trimmed, used for display/keys
+    let renameMap: Record<string, string> | null = null; // raw → trimmed, only if trimming changed something
+    let total = 0; // total data rows scanned across the whole file
+    const sample: Record<string, unknown>[] = [];
+
+    const normalize = (row: Record<string, unknown>): Record<string, unknown> => {
+      if (!renameMap) return row;
+      const out: Record<string, unknown> = {};
+      for (const raw of rawFields) out[renameMap[raw]] = row[raw];
+      return out;
+    };
+
+    const consider = (row: Record<string, unknown>) => {
+      total++;
+      const r = normalize(row);
+      if (sample.length < SAMPLE_CAP) {
+        sample.push(r);
+      } else {
+        // Replace an existing slot with probability SAMPLE_CAP/total → uniform sample.
+        const j = Math.floor(Math.random() * total);
+        if (j < SAMPLE_CAP) sample[j] = r;
+      }
+    };
+
+    Papa.parse<Record<string, unknown>>(file, {
+      header: true,
+      dynamicTyping: false,
+      skipEmptyLines: "greedy",
+      worker: true,
+      chunk: (results) => {
+        if (!rawFields.length && results.meta.fields) {
+          rawFields = results.meta.fields.filter((c) => c && c.length > 0);
+          columns = rawFields.map((c) => c.trim());
+          if (columns.some((c, i) => c !== rawFields[i])) {
+            renameMap = Object.fromEntries(rawFields.map((raw, i) => [raw, columns[i]]));
+          }
+        }
+        for (const row of results.data as Record<string, unknown>[]) {
+          if (row && !isEmptyRow(row)) consider(row);
+        }
+      },
+      complete: () => {
+        if (!columns.length && sample.length) columns = Object.keys(sample[0]);
+        resolve({
+          name: file.name,
+          columns,
+          rows: sample,
+          rowCount: sample.length,
+          sampledFrom: total > sample.length ? total : undefined,
+        });
+      },
+      error: (err) => reject(new Error(`Couldn't read that file: ${err.message}`)),
+    });
   });
-  const columns = (result.meta.fields ?? []).filter((c) => c && c.length > 0);
-  const rows = (result.data as Record<string, unknown>[]).filter(
-    (r) => r && Object.values(r).some((v) => v !== null && v !== "")
-  );
-  return { name: file.name, columns, rows, rowCount: rows.length };
 }
 
 async function parseExcel(file: File): Promise<Table> {
