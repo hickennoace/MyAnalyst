@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
-import { Fraunces, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-// Type system: a characterful optical serif for display, a clean grotesque for
-// body/UI, and a mono for numerals & data labels (the "terminal" voice).
-const display = Fraunces({
+// Type system: a characterful modern grotesque for display, a clean grotesque
+// for body/UI, and a mono for numerals & data labels.
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-display",
-  style: ["normal", "italic"],
-  axes: ["opsz"],
   display: "swap",
 });
 const sans = Hanken_Grotesk({

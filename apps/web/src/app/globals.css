@@ -163,195 +163,161 @@ body {
   }
 }
 
+
 /* ═══════════════════════════════════════════════════════════════════════
-   LANDING PAGE — "Quant terminal × editorial" redesign
-   A refined ink canvas, graph-paper texture, serif display + mono numerals,
-   and a single disciplined signal-lime accent. All scoped under .lp so the
-   product/app pages keep their existing look untouched.
+   LANDING PAGE — "Aurora Light" redesign
+   A crisp near-white SaaS canvas with a soft aurora mesh, a modern grotesque
+   display, gradient headlines/buttons, and a multi-color accent system across
+   icons & charts. Scoped under .lp so the dark product/app pages are untouched.
    ═══════════════════════════════════════════════════════════════════════ */
 .lp {
-  --ink: #0a0e16;
-  --ink-1: #0d1220;
-  --ink-2: #111826;
-  --hair: rgba(230, 235, 242, 0.08);
-  --hair-strong: rgba(230, 235, 242, 0.16);
-  --text: #e6ebf2;
-  --muted: #8b94a6;
-  --faint: #59617a;
-  --signal: #3d8bff;       /* electric azure — the single accent, used sparingly */
-  --signal-deep: #2f74e0;
-  --signal-glow: rgba(61, 139, 255, 0.5);
-  --cyan: #5fd2e0;         /* secondary highlight for charts/dots */
+  --bg: #fbfbfd;
+  --card: #ffffff;
+  --ink: #15151c;
+  --muted: #565a67;
+  --faint: #8a8f9c;
+  --line: rgba(20, 20, 35, 0.08);
+  --line-strong: rgba(20, 20, 35, 0.14);
+
+  --indigo: #6366f1;
+  --violet: #8b5cf6;
+  --pink: #ec4899;
+  --cyan: #06b6d4;
+  --amber: #f59e0b;
+  --grad: linear-gradient(100deg, #6366f1, #8b5cf6, #ec4899);
+
+  --shadow-sm: 0 1px 2px rgba(20, 20, 40, 0.04), 0 4px 12px rgba(20, 20, 40, 0.05);
+  --shadow-md: 0 4px 14px rgba(20, 20, 40, 0.06), 0 18px 40px -18px rgba(99, 102, 241, 0.28);
+  --shadow-lg: 0 10px 30px -8px rgba(99, 102, 241, 0.35);
 
   position: relative;
   min-height: 100vh;
-  background: var(--ink);
-  color: var(--text);
+  background: var(--bg);
+  color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
   overflow-x: clip;
 }
 
-.lp ::selection { background: var(--signal); color: #07101f; }
+.lp ::selection { background: rgba(139, 92, 246, 0.2); color: #15151c; }
 
 /* Typographic voices */
-.lp .display {
-  font-family: var(--font-display), Georgia, serif;
-  font-optical-sizing: auto;
-  letter-spacing: -0.02em;
-}
-.lp .mono {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-feature-settings: "ss01", "zero";
-}
+.lp .display { font-family: var(--font-display), system-ui, sans-serif; letter-spacing: -0.025em; font-weight: 700; }
+.lp .mono { font-family: var(--font-mono), ui-monospace, monospace; }
 
-/* ── Graph-paper canvas: fine grid + coarse grid + a single warm glow ── */
-.lp-canvas {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background-color: var(--ink);
-  background-image:
-    linear-gradient(var(--hair) 1px, transparent 1px),
-    linear-gradient(90deg, var(--hair) 1px, transparent 1px),
-    linear-gradient(rgba(233,230,223,0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(233,230,223,0.045) 1px, transparent 1px);
-  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
-  background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
-  -webkit-mask-image: radial-gradient(120% 80% at 50% -10%, #000 30%, transparent 100%);
-  mask-image: radial-gradient(120% 80% at 50% -10%, #000 30%, transparent 100%);
-}
-.lp-glow {
+/* ── Aurora mesh backdrop + faint dot grid ── */
+.lp-aurora {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(900px 520px at 78% -6%, rgba(61, 139, 255, 0.12), transparent 60%),
-    radial-gradient(1100px 600px at 8% 4%, rgba(95, 210, 224, 0.06), transparent 55%);
+    radial-gradient(680px 460px at 78% -8%, rgba(139, 92, 246, 0.22), transparent 62%),
+    radial-gradient(620px 420px at 10% -4%, rgba(99, 102, 241, 0.18), transparent 60%),
+    radial-gradient(720px 520px at 95% 18%, rgba(236, 72, 153, 0.12), transparent 60%),
+    radial-gradient(560px 420px at 40% 0%, rgba(6, 182, 212, 0.10), transparent 55%);
 }
-/* Grain overlay for tactile depth. */
-.lp-grain {
-  position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.5;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+.lp-aurora::after {
+  content: ""; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(20, 20, 50, 0.05) 1px, transparent 1px);
+  background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(110% 70% at 50% 0%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(110% 70% at 50% 0%, #000 35%, transparent 100%);
 }
 
-/* ── Hairlines & eyebrow ── */
-.lp-rule { height: 1px; background: var(--hair); }
+/* ── Eyebrow + live dot ── */
 .lp-eyebrow {
-  display: inline-flex; align-items: center; gap: 0.6rem;
-  font-family: var(--font-mono), monospace;
-  font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--muted);
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  font-family: var(--font-mono), monospace; font-size: 0.7rem;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.lp-pill {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  border-radius: 9999px; padding: 0.4rem 0.85rem;
+  background: rgba(99, 102, 241, 0.07); border: 1px solid rgba(99, 102, 241, 0.18);
+  font-size: 0.76rem; font-weight: 500; color: #4f46e5;
 }
 .lp-dot {
-  width: 7px; height: 7px; border-radius: 9999px; background: var(--signal);
-  box-shadow: 0 0 0 0 var(--signal-glow);
+  width: 7px; height: 7px; border-radius: 9999px; background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45);
   animation: lpPing 2.4s ease-out infinite;
 }
 @keyframes lpPing {
-  0% { box-shadow: 0 0 0 0 var(--signal-glow); }
-  70% { box-shadow: 0 0 0 8px rgba(61,139,255,0); }
-  100% { box-shadow: 0 0 0 0 rgba(61,139,255,0); }
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45); }
+  70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
 }
 
-/* ── Monogram ── */
-.lp-mono-mark {
-  position: relative; display: grid; place-items: center;
-  width: 38px; height: 38px; border-radius: 10px;
-  background: linear-gradient(155deg, #1a1d22, #0c0e11);
-  border: 1px solid var(--hair-strong);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+/* ── Gradient text & monogram ── */
+.lp-grad {
+  background: var(--grad); background-size: 180% auto;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: gradientPan 7s linear infinite;
 }
-.lp-mono-mark span {
-  font-family: var(--font-display), serif; font-weight: 600; font-size: 1.15rem;
-  color: var(--text); line-height: 1;
-}
-.lp-mono-mark::after {
-  content: ""; position: absolute; right: 6px; bottom: 6px;
-  width: 5px; height: 5px; border-radius: 9999px; background: var(--signal);
-  box-shadow: 0 0 8px var(--signal-glow);
+.lp-mark {
+  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px;
+  background: var(--grad); background-size: 160% 160%;
+  color: #fff; font-family: var(--font-display), serif; font-weight: 700; font-size: 1.15rem;
+  box-shadow: 0 6px 16px -4px rgba(99, 102, 241, 0.5);
+  animation: gradientPan 6s linear infinite;
 }
 
 /* ── Buttons ── */
 .lp-cta {
   position: relative; display: inline-flex; align-items: center; gap: 0.5rem;
-  border-radius: 9999px; padding: 0.8rem 1.4rem;
-  font-weight: 600; font-size: 0.9rem; letter-spacing: -0.01em;
-  background: var(--signal); color: #f5f9ff;
-  border: 1px solid var(--signal);
-  box-shadow: 0 10px 30px -10px var(--signal-glow);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  border-radius: 9999px; padding: 0.8rem 1.4rem; overflow: hidden;
+  font-weight: 600; font-size: 0.9rem; color: #fff;
+  background: var(--grad); background-size: 160% auto;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-position 0.4s ease;
 }
-.lp-cta:hover { transform: translateY(-2px); background: #5a9dff; box-shadow: 0 16px 40px -12px var(--signal-glow); }
+.lp-cta:hover { transform: translateY(-2px); background-position: right center; box-shadow: 0 16px 38px -10px rgba(139, 92, 246, 0.5); }
 .lp-ghost {
   display: inline-flex; align-items: center; gap: 0.5rem;
   border-radius: 9999px; padding: 0.8rem 1.4rem;
-  font-weight: 500; font-size: 0.9rem; color: var(--text);
-  border: 1px solid var(--hair-strong); background: rgba(255,255,255,0.015);
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  font-weight: 500; font-size: 0.9rem; color: var(--ink);
+  background: #fff; border: 1px solid var(--line-strong); box-shadow: var(--shadow-sm);
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
-.lp-ghost:hover { border-color: var(--signal); background: rgba(61,139,255,0.08); transform: translateY(-2px); }
+.lp-ghost:hover { transform: translateY(-2px); border-color: rgba(99,102,241,0.4); box-shadow: var(--shadow-md); }
 .lp-link {
-  font-family: var(--font-mono), monospace; font-size: 0.78rem; letter-spacing: 0.04em;
-  color: var(--muted); transition: color 0.18s ease;
+  font-size: 0.88rem; font-weight: 500; color: var(--muted); transition: color 0.18s ease;
 }
-.lp-link:hover { color: var(--text); }
+.lp-link:hover { color: var(--ink); }
 
-/* ── Panels / cards ── */
+/* ── Cards / panels ── */
 .lp-panel {
-  position: relative; border-radius: 14px;
-  background: linear-gradient(180deg, rgba(21,24,29,0.72), rgba(12,14,17,0.72));
-  border: 1px solid var(--hair);
-  backdrop-filter: blur(6px);
+  position: relative; border-radius: 18px; background: var(--card);
+  border: 1px solid var(--line); box-shadow: var(--shadow-md);
 }
 .lp-feature {
-  position: relative; height: 100%; padding: 1.4rem 1.4rem 1.5rem;
-  border-radius: 14px; overflow: hidden;
-  background: linear-gradient(180deg, rgba(21,24,29,0.55), rgba(12,14,17,0.4));
-  border: 1px solid var(--hair);
-  transition: border-color 0.25s ease, transform 0.25s ease, background 0.25s ease;
+  position: relative; height: 100%; padding: 1.5rem; border-radius: 16px; overflow: hidden;
+  background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
-.lp-feature::before {
-  content: ""; position: absolute; left: 0; top: 0; height: 100%; width: 2px;
-  background: var(--signal); transform: scaleY(0); transform-origin: top;
-  transition: transform 0.3s ease;
-}
-.lp-feature:hover { transform: translateY(-3px); border-color: var(--hair-strong); background: linear-gradient(180deg, rgba(24,28,33,0.7), rgba(13,15,18,0.5)); }
-.lp-feature:hover::before { transform: scaleY(1); }
-.lp-feature:hover .lp-ico { color: var(--signal); border-color: var(--signal); }
+.lp-feature:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--line-strong); }
 .lp-ico {
-  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px;
-  color: var(--text); border: 1px solid var(--hair-strong);
-  background: rgba(255,255,255,0.02);
-  transition: color 0.25s ease, border-color 0.25s ease;
+  display: grid; place-items: center; width: 46px; height: 46px; border-radius: 13px;
+  color: var(--ico, var(--indigo)); background: color-mix(in srgb, var(--ico, #6366f1) 12%, #fff);
 }
-.lp-idx {
-  font-family: var(--font-mono), monospace; font-size: 0.7rem;
-  color: var(--faint); letter-spacing: 0.1em;
-}
+.lp-idx { font-family: var(--font-mono), monospace; font-size: 0.72rem; color: var(--faint); }
 
 /* ── Capability ticker ── */
-.lp-ticker { position: relative; overflow: hidden; border-block: 1px solid var(--hair); padding: 0.9rem 0; }
-.lp-ticker::before, .lp-ticker::after {
-  content: ""; position: absolute; top: 0; bottom: 0; width: 120px; z-index: 2; pointer-events: none;
-}
-.lp-ticker::before { left: 0; background: linear-gradient(90deg, var(--ink), transparent); }
-.lp-ticker::after { right: 0; background: linear-gradient(270deg, var(--ink), transparent); }
-.lp-ticker-track { display: inline-flex; gap: 2.5rem; white-space: nowrap; animation: lpMarquee 32s linear infinite; }
-.lp-ticker-item {
-  display: inline-flex; align-items: center; gap: 0.6rem;
-  font-family: var(--font-mono), monospace; font-size: 0.8rem; letter-spacing: 0.05em; color: var(--muted);
-}
-.lp-ticker-item b { color: var(--signal); font-weight: 600; }
+.lp-ticker { position: relative; overflow: hidden; padding: 0.85rem 0; border-block: 1px solid var(--line); background: rgba(255,255,255,0.5); }
+.lp-ticker::before, .lp-ticker::after { content: ""; position: absolute; top: 0; bottom: 0; width: 120px; z-index: 2; pointer-events: none; }
+.lp-ticker::before { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+.lp-ticker::after { right: 0; background: linear-gradient(270deg, var(--bg), transparent); }
+.lp-ticker-track { display: inline-flex; gap: 2.5rem; white-space: nowrap; animation: lpMarquee 34s linear infinite; }
+.lp-ticker-item { display: inline-flex; align-items: center; gap: 0.55rem; font-size: 0.85rem; font-weight: 500; color: var(--muted); }
+.lp-ticker-item b { color: var(--violet); font-weight: 700; }
 @keyframes lpMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-/* ── Step connector ── */
-.lp-step-n {
-  font-family: var(--font-display), serif; font-size: 2.4rem; line-height: 1; font-weight: 500;
-  color: var(--text);
-}
-.lp-step-n em { color: var(--signal); font-style: normal; }
+/* ── Steps ── */
+.lp-step-n { font-family: var(--font-display), serif; font-weight: 700; font-size: 2.6rem; line-height: 1; }
 
-/* Hero terminal panel ticker header */
-.lp-tape { font-family: var(--font-mono), monospace; font-size: 0.7rem; letter-spacing: 0.05em; }
-.lp-up { color: var(--signal); }
+/* Hero terminal panel tape */
+.lp-tape { font-family: var(--font-mono), monospace; font-size: 0.7rem; letter-spacing: 0.03em; }
+.lp-up { color: #16a34a; font-weight: 600; }
 
 @media (prefers-reduced-motion: reduce) {
-  .lp-dot, .lp-ticker-track { animation: none !important; }
+  .lp-dot, .lp-ticker-track, .lp-grad, .lp-mark, .lp-cta { animation: none !important; }
 }
+
+/* Keep the page chrome (overscroll/rubber-band) light on the landing route. */
+body:has(.lp) { background: #fbfbfd; }
