@@ -1,13 +1,13 @@
 import type { Kpi } from "@/lib/types";
 
-export function KpiCard({ kpi }: { kpi: Kpi }) {
+export function KpiCard({ kpi, index = 0 }: { kpi: Kpi; index?: number }) {
   const trend = kpi.trend;
   const trendColor =
     trend === undefined ? "" : trend > 0 ? "text-emerald-400" : trend < 0 ? "text-rose-400" : "text-slate-400";
   const arrow = trend === undefined ? "" : trend > 0 ? "▲" : trend < 0 ? "▼" : "—";
 
   return (
-    <div className="card group p-4" title={kpi.howComputed}>
+    <div className="card card-hover fade-up group p-4" style={{ animationDelay: `${index * 45}ms` }} title={kpi.howComputed}>
       <div className="flex items-center justify-between">
         <p className="truncate text-xs font-medium uppercase tracking-wide text-slate-400">{kpi.name}</p>
         {trend !== undefined && (

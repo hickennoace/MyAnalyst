@@ -137,7 +137,7 @@ export default function AnalyzePage() {
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-lg font-black text-white">
+            <div className="brand-mark animate grid h-10 w-10 place-items-center rounded-xl text-lg font-black text-white">
               Q
             </div>
             <div>

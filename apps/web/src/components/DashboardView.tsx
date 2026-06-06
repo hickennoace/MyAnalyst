@@ -45,8 +45,8 @@ export function DashboardView({
 
       <Section title="Key metrics" subtitle="Auto-selected for this dataset's shape and domain.">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {spec.kpis.slice(0, 8).map((kpi) => (
-            <KpiCard key={kpi.id} kpi={kpi} />
+          {spec.kpis.slice(0, 8).map((kpi, i) => (
+            <KpiCard key={kpi.id} kpi={kpi} index={i} />
           ))}
         </div>
       </Section>
@@ -132,7 +132,7 @@ const CONF_STYLE: Record<Conclusion["confidence"], string> = {
 
 function ConclusionCard({ conclusion }: { conclusion: Conclusion }) {
   return (
-    <div className="card flex gap-3 p-4">
+    <div className="card card-hover flex gap-3 p-4">
       <div className="text-lg leading-none">💡</div>
       <div className="flex-1">
         <p className="text-sm leading-relaxed text-slate-200">{conclusion.text}</p>

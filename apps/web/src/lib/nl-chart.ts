@@ -119,7 +119,17 @@ export function parseChartRequest(prompt: string, profiles: ColumnProfile[]): Nl
     return { request: { type, x: xs.name, y: [ysC.name] }, message: `Plotting ${xs.name} vs ${ysC.name}.` };
   }
 
+  // Never chart a column against itself — drop any y equal to x.
+  if (xProfile) yProfiles = yProfiles.filter((y) => y.name !== xProfile!.name);
+
   if (!xProfile || !yProfiles.length) {
+    // If the only thing named was one column, show its distribution/count rather than nothing.
+    const solo = xProfile ?? metrics[0] ?? dims[0];
+    if (solo) {
+      return solo.role === "metric"
+        ? { request: { type: "histogram", x: solo.name, y: [solo.name] }, message: `Showing the distribution of ${solo.name}.` }
+        : { request: { type: "bar", x: solo.name, y: [], count: true }, message: `Counting how often each ${solo.name} occurs.` };
+    }
     return {
       message:
         "I couldn't map that to columns. Try naming them, e.g. \"" +

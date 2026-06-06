@@ -39,6 +39,10 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
   }
 
   function handleManual() {
+    if (y !== COUNT && type !== "histogram" && x === y) {
+      setNote("Pick two different columns — X and Y can't be the same. (Tip: use “Count of rows” to chart a single column.)");
+      return;
+    }
     const req: ChartRequest =
       y === COUNT
         ? { type, x, y: [], count: true }
@@ -91,7 +95,7 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
           <Field label={type === "histogram" ? "Metric" : "Measure (Y)"}>
             <select value={y} onChange={(e) => setY(e.target.value)} className={selectCls}>
               <option value={COUNT}>Count of rows</option>
-              {metrics.map((p) => (
+              {metrics.filter((p) => p.name !== x).map((p) => (
                 <option key={p.name} value={p.name}>{p.name}</option>
               ))}
             </select>

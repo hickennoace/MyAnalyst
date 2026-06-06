@@ -17,7 +17,7 @@ const CONF: Record<Insight["confidence"], string> = {
 
 export function InsightCard({ insight }: { insight: Insight }) {
   return (
-    <div className="card flex gap-3 p-4">
+    <div className="card card-hover flex gap-3 p-4">
       <div className="text-lg leading-none">{ICONS[insight.kind]}</div>
       <div className="flex-1">
         <p className="text-sm leading-relaxed text-slate-200">{insight.text}</p>

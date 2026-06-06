@@ -307,6 +307,12 @@ export function buildChart(table: Table, profiles: ColumnProfile[], req: ChartRe
   const xProfile = profiles.find((p) => p.name === req.x);
   const ys = req.y.filter((y) => profiles.some((p) => p.name === y));
 
+  // Safety net: X and Y the same column is meaningless (it just draws a flat/diagonal line).
+  // Show the column's distribution instead of a nonsense chart.
+  if (req.count !== true && req.type !== "histogram" && ys.length === 1 && ys[0] === req.x) {
+    return buildChart(table, profiles, { type: "histogram", x: req.x, y: [req.x] });
+  }
+
   // Count mode: tally rows per value of x. Works for ANY column type (strings included).
   if (req.count === true || ys.length === 0) {
     const pairs = aggregateCount(table, req.x);
