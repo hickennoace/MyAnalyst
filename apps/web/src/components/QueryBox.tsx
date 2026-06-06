@@ -32,6 +32,7 @@ export function QueryBox({ table, profiles }: { table: Table; profiles: ColumnPr
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && ask(q)}
           placeholder={suggestions[0] ?? "e.g. total revenue by region"}
+          aria-label="Ask a question about your data"
           className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none"
         />
         <button
@@ -57,7 +58,7 @@ export function QueryBox({ table, profiles }: { table: Table; profiles: ColumnPr
       )}
 
       {result && (
-        <div className="mt-4">
+        <div className="mt-4" aria-live="polite">
           <div
             className={`rounded-xl border px-4 py-3 text-sm ${
               result.ok ? "border-indigo-500/30 bg-indigo-500/10 text-slate-100" : "border-slate-700 bg-slate-800/40 text-slate-300"

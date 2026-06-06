@@ -14,6 +14,7 @@ import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEnt
 import { Uploader } from "@/components/Uploader";
 import { DashboardView } from "@/components/DashboardView";
 import { HistoryList } from "@/components/HistoryList";
+import { PipelineProgress } from "@/components/PipelineProgress";
 
 const CONTEXT_KEY = "quantia:context";
 
@@ -151,7 +152,7 @@ export default function AnalyzePage() {
   }
 
   return (
-    <main className="glow min-h-screen">
+    <main id="main-content" className="glow app-bg min-h-screen">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
@@ -212,12 +213,7 @@ export default function AnalyzePage() {
         {!spec && (
           <div className="space-y-4">
             <Uploader onFile={handleFile} onSample={() => run(sampleTable())} busy={busy} />
-            {busy && stage && (
-              <div className="card flex items-center gap-3 p-4">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
-                <span className="text-sm text-slate-300">{stage}…</span>
-              </div>
-            )}
+            {busy && stage && <PipelineProgress stages={STAGES} current={stage} />}
             {error && <div className="card border-rose-500/40 bg-rose-500/5 p-4 text-sm text-rose-300">{error}</div>}
 
             <details className="card p-4 text-sm">

@@ -22,9 +22,9 @@ const STEPS = [
 
 export default function Landing() {
   return (
-    <main className="relative min-h-screen overflow-hidden">
+    <main id="main-content" className="relative min-h-screen overflow-hidden">
       {/* Animated aurora backdrop */}
-      <div className="aurora">
+      <div className="aurora" aria-hidden>
         <span className="a1" />
         <span className="a2" />
         <span className="a3" />
@@ -32,7 +32,7 @@ export default function Landing() {
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
         {/* Nav */}
-        <nav className="flex items-center justify-between py-6">
+        <nav className="flex items-center justify-between py-6" aria-label="Primary">
           <div className="flex items-center gap-3">
             <div className="brand-mark animate grid h-10 w-10 place-items-center rounded-xl text-lg font-black text-white shadow-lg shadow-indigo-500/30">Q</div>
             <span className="text-lg font-bold tracking-tight text-slate-50">Quantia</span>

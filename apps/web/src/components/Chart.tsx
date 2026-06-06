@@ -75,6 +75,7 @@ export function Chart({ spec }: { spec: ChartSpec }) {
           <button
             onClick={downloadPng}
             title="Download this chart as PNG (with its title)"
+            aria-label={`Download chart "${spec.title}" as PNG`}
             className="rounded-md border border-slate-700 px-2 py-0.5 text-[11px] text-slate-400 transition hover:bg-slate-800/60 hover:text-slate-200"
           >
             ⬇ PNG

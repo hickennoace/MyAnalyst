@@ -25,37 +25,82 @@ export async function POST(req: Request) {
   const apiKey = process.env.LLM_API_KEY?.trim();
   const model = process.env.LLM_MODEL?.trim();
 
-  // No key → signal the client to use its local templated narrator.
+  // No key → signal the client to use its local templated narrator / original conclusions.
   if (!apiKey) {
-    return NextResponse.json({ insights: [], provider: "none" });
+    return NextResponse.json({ insights: [], conclusions: [], provider: "none" });
   }
 
-  let ctx: InsightContext;
+  let body: unknown;
   try {
-    ctx = (await req.json()) as InsightContext;
+    body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
+
+  const callLLM = (system: string, user: string) =>
+    provider === "anthropic"
+      ? callAnthropic(apiKey, model ?? "claude-haiku-4-5", system, user)
+      : callOpenAICompat(provider, apiKey, model ?? "llama-3.3-70b-versatile", system, user);
+
+  // Task: humanize — rewrite the deterministic conclusions in a warm, human tone (numbers preserved).
+  if (body && typeof body === "object" && (body as { task?: string }).task === "humanize") {
+    const { conclusions, userContext } = body as { conclusions?: { id: string; text: string; detail?: string }[]; userContext?: string };
+    if (!Array.isArray(conclusions) || conclusions.length === 0) {
+      return NextResponse.json({ conclusions: [] });
+    }
+    try {
+      const { system, user } = buildHumanizePrompt(conclusions, userContext);
+      const raw = await callLLM(system, user);
+      return NextResponse.json({ conclusions: normalizeHumanized(raw, conclusions), provider });
+    } catch (err) {
+      console.error("[insights] humanize failed:", err instanceof Error ? err.message : err);
+      return NextResponse.json({ conclusions: [], provider: "error" });
+    }
+  }
+
+  // Default task: generate grounded insights from an InsightContext.
+  const ctx = body as InsightContext;
   if (!ctx || typeof ctx !== "object" || !Array.isArray(ctx.kpis)) {
     return NextResponse.json({ error: "Body must be an InsightContext." }, { status: 400 });
   }
-
   const validCites = collectValidCites(ctx);
   const { system, user } = buildPrompt(ctx, validCites);
-
   try {
-    const raw =
-      provider === "anthropic"
-        ? await callAnthropic(apiKey, model ?? "claude-haiku-4-5", system, user)
-        : await callOpenAICompat(provider, apiKey, model ?? "llama-3.3-70b-versatile", system, user);
-
-    const insights = normalizeInsights(raw, validCites);
+    const insights = normalizeInsights(await callLLM(system, user), validCites);
     return NextResponse.json({ insights, provider });
   } catch (err) {
-    // Never break the dashboard on an LLM hiccup — fall back to templated on the client.
     console.error("[insights] LLM call failed:", err instanceof Error ? err.message : err);
     return NextResponse.json({ insights: [], provider: "error" });
   }
+}
+
+// ── Humanize conclusions ──────────────────────────────────────────────────────
+
+function buildHumanizePrompt(conclusions: { id: string; text: string; detail?: string }[], userContext?: string) {
+  const system = [
+    "You are a warm, friendly analyst explaining findings to someone with NO statistics background.",
+    "Rewrite each conclusion so it sounds natural and human — like a smart colleague talking, not a textbook.",
+    "HARD RULES:",
+    "1. Keep the exact meaning and EVERY specific number/percentage/name. Never invent or change facts or numbers.",
+    "2. Plain everyday language, no jargon. 1–2 short sentences each. Encouraging, clear, concrete.",
+    userContext ? `3. The reader's context: "${userContext}". Tailor wording/examples to that.` : "3. (No extra context.)",
+    'Respond with ONLY JSON: {"conclusions":[{"id":string,"text":string}]} — same ids you were given.',
+  ].join("\n");
+  const user = JSON.stringify({ conclusions: conclusions.map((c) => ({ id: c.id, text: c.text, detail: c.detail })) });
+  return { system, user };
+}
+
+function normalizeHumanized(raw: string, original: { id: string }[]): { id: string; text: string }[] {
+  const parsed = extractJson(raw) as { conclusions?: { id?: unknown; text?: unknown }[] };
+  const list = Array.isArray(parsed.conclusions) ? parsed.conclusions : [];
+  const valid = new Set(original.map((c) => c.id));
+  const out: { id: string; text: string }[] = [];
+  for (const it of list) {
+    const id = String(it?.id ?? "");
+    const text = String(it?.text ?? "").trim();
+    if (valid.has(id) && text) out.push({ id, text });
+  }
+  return out;
 }
 
 // ── Prompt ───────────────────────────────────────────────────────────────────

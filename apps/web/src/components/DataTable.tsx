@@ -63,6 +63,7 @@ export function DataTable({ table, profiles }: { table: Table; profiles: ColumnP
             setPage(0);
           }}
           placeholder="Search all columns…"
+          aria-label="Search the data table"
           className="w-56 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none"
         />
       </div>

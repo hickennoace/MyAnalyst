@@ -41,7 +41,7 @@ export default function ViewPage() {
   }
 
   return (
-    <main className="glow min-h-screen">
+    <main id="main-content" className="glow app-bg min-h-screen">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">

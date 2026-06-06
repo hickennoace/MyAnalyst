@@ -42,6 +42,7 @@ export function HistoryList({
               <button
                 onClick={() => onDelete(e.id)}
                 title="Delete from history"
+                aria-label={`Delete ${e.name} from history`}
                 className="rounded-lg px-2 py-1.5 text-xs text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-300"
               >
                 ✕

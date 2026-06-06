@@ -22,6 +22,7 @@ import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAno
 import { defaultHorizon, holtForecast } from "./forecast";
 import { deriveConclusions } from "./conclusions";
 import { getInsightProvider } from "./insights";
+import { humanizeConclusions, llmEnabled } from "./insights/humanize";
 
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
 // but runs locally in the browser for the Vercel-first MVP.
@@ -37,9 +38,11 @@ export async function analyze(rawTable: Table, opts: { userContext?: string } = 
 
   const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
   ctx.userContext = opts.userContext?.trim() || undefined;
-  const conclusions = deriveConclusions(ctx);
+  let conclusions = deriveConclusions(ctx);
   const provider = getInsightProvider();
   const insights = await provider.generate(ctx);
+  // When the (free-tier) LLM is enabled, rewrite conclusions in a warmer, human tone (numbers kept).
+  if (llmEnabled()) conclusions = await humanizeConclusions(conclusions, ctx.userContext);
 
   return {
     version: "1.0",
