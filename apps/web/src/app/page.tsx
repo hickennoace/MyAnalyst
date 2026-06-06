@@ -1,188 +1,134 @@
-"use client";
+import Link from "next/link";
 
-import { useState } from "react";
-import type { DashboardSpec, Table } from "@/lib/types";
-import { parseFile } from "@/lib/parse";
-import { analyze } from "@/lib/analyze";
-import { sampleTable } from "@/lib/sample";
-import { Uploader } from "@/components/Uploader";
-import { KpiCard } from "@/components/KpiCard";
-import { Chart } from "@/components/Chart";
-import { InsightCard } from "@/components/InsightCard";
-import { ChartBuilder } from "@/components/ChartBuilder";
-import { CleaningReport } from "@/components/CleaningReport";
+// Marketing landing page. Static (server component) for fast first paint + SEO.
+// The interactive product lives at /analyze.
 
-const STAGES = ["Reading file", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
+const FEATURES = [
+  { icon: "🧹", title: "Relentless cleaning", body: "Strips currency symbols, unifies date formats, removes duplicates, empty rows, and trailing totals — with a transparent before/after report." },
+  { icon: "🧭", title: "Auto domain detection", body: "Figures out whether your data is financial, sales, marketing, or survey — and picks the metrics that matter for it." },
+  { icon: "📊", title: "Instant KPIs & charts", body: "Ranked KPIs and the right charts for your data shape: trends, comparisons, correlations, distributions." },
+  { icon: "🧮", title: "Real statistics", body: "Correlation, OLS regression with R², outlier detection, growth & volatility — computed exactly, locally." },
+  { icon: "💬", title: "Plain-language insights", body: "Conclusions written in human language and grounded in the actual numbers — never hallucinated." },
+  { icon: "✨", title: "Ask for any graph", body: "Type “revenue by region as a bar chart” and get it — or build one by picking columns." },
+];
 
-export default function Home() {
-  const [busy, setBusy] = useState(false);
-  const [stage, setStage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [table, setTable] = useState<Table | null>(null);
-  const [spec, setSpec] = useState<DashboardSpec | null>(null);
+const STEPS = [
+  { n: "1", title: "Upload", body: "Drop a CSV, TSV, or Excel file. Nothing is uploaded to a server — it's parsed in your browser." },
+  { n: "2", title: "We analyze", body: "Clean → profile → detect domain → KPIs → statistics → charts → insights, in seconds." },
+  { n: "3", title: "Explore", body: "Read your dashboard, generate extra charts, and understand your data — no skills required." },
+];
 
-  async function run(tbl: Table) {
-    setError(null);
-    setBusy(true);
-    setSpec(null);
-    try {
-      // Light staged feedback so the user watches the pipeline run.
-      for (const s of STAGES) {
-        setStage(s);
-        await new Promise((r) => setTimeout(r, 120));
-      }
-      const result = await analyze(tbl);
-      setTable(tbl);
-      setSpec(result);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong analyzing that file.");
-    } finally {
-      setBusy(false);
-      setStage(null);
-    }
-  }
-
-  async function handleFile(file: File) {
-    try {
-      setBusy(true);
-      setStage("Reading file");
-      const tbl = await parseFile(file);
-      if (!tbl.columns.length || !tbl.rowCount) {
-        throw new Error("No tabular data found. Make sure the first row contains column headers.");
-      }
-      await run(tbl);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not read that file.");
-      setBusy(false);
-      setStage(null);
-    }
-  }
-
-  function reset() {
-    setSpec(null);
-    setTable(null);
-    setError(null);
-  }
-
+export default function Landing() {
   return (
     <main className="glow min-h-screen">
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        {/* Header */}
-        <header className="mb-8 flex items-center justify-between">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        {/* Nav */}
+        <nav className="flex items-center justify-between py-6">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-lg font-black text-white">
-              Q
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-lg font-black text-white">Q</div>
+            <span className="text-lg font-bold tracking-tight text-slate-50">Quantia</span>
+          </div>
+          <div className="flex items-center gap-5 text-sm">
+            <a href="#features" className="hidden text-slate-300 transition hover:text-white sm:block">Features</a>
+            <a href="#how" className="hidden text-slate-300 transition hover:text-white sm:block">How it works</a>
+            <Link href="/analyze" className="rounded-lg bg-indigo-500 px-4 py-2 font-semibold text-white transition hover:bg-indigo-400">
+              Open the app
+            </Link>
+          </div>
+        </nav>
+
+        {/* Hero */}
+        <section className="py-16 text-center sm:py-24">
+          <div className="mx-auto mb-5 w-fit rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-300">
+            AI-assisted analysis · runs in your browser · no setup
+          </div>
+          <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl">
+            Turn a spreadsheet into a{" "}
+            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+              beautiful dashboard
+            </span>{" "}
+            in seconds
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400">
+            Upload your data and Quantia cleans it, finds the KPIs that matter, runs the right statistics,
+            and explains what it all means — automatically. A zero-skill alternative to Power BI and Tableau.
+          </p>
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/analyze" className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-400">
+              Analyze your data →
+            </Link>
+            <Link href="/analyze?demo=1" className="rounded-xl border border-slate-700 px-6 py-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60">
+              ▶ Try a live sample
+            </Link>
+          </div>
+          <p className="mt-4 text-xs text-slate-500">No account. No upload. Your data never leaves this page.</p>
+        </section>
+
+        {/* Features */}
+        <section id="features" className="py-14">
+          <h2 className="text-center text-2xl font-bold text-white sm:text-3xl">Everything, automatically</h2>
+          <p className="mx-auto mt-2 max-w-xl text-center text-slate-400">
+            The work an analyst does by hand — done the moment your file lands.
+          </p>
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((f) => (
+              <div key={f.title} className="card p-6 transition hover:border-indigo-500/40">
+                <div className="mb-3 grid h-11 w-11 place-items-center rounded-xl bg-slate-800/60 text-xl">{f.icon}</div>
+                <h3 className="text-base font-semibold text-slate-100">{f.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-400">{f.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section id="how" className="py-14">
+          <h2 className="text-center text-2xl font-bold text-white sm:text-3xl">Three steps</h2>
+          <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+            {STEPS.map((s) => (
+              <div key={s.n} className="card p-6">
+                <div className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-bold text-white">{s.n}</div>
+                <h3 className="text-base font-semibold text-slate-100">{s.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-400">{s.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Privacy / AI strip */}
+        <section className="py-14">
+          <div className="card grid grid-cols-1 gap-6 p-8 md:grid-cols-2">
+            <div>
+              <h3 className="text-lg font-semibold text-white">🔒 Private by design</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                All parsing, cleaning, KPIs, statistics, and charts run entirely in your browser. Your raw
+                rows never touch a server. When AI narration is enabled, only small aggregate statistics —
+                never your underlying data — are sent for wording.
+              </p>
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-50">Quantia</h1>
-              <p className="text-xs text-slate-400">AI-assisted data analysis — instant dashboards from any spreadsheet</p>
+              <h3 className="text-lg font-semibold text-white">🤖 Smart, your way</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                Works fully offline with a built-in narrator that writes insights from the real numbers.
+                Want richer prose? Plug in any LLM — Claude, Groq, Gemini — with one environment variable.
+                No key, no problem: it still works.
+              </p>
             </div>
           </div>
-          {spec && (
-            <button
-              onClick={reset}
-              className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
-            >
-              New analysis
-            </button>
-          )}
-        </header>
+        </section>
 
-        {/* Upload / progress */}
-        {!spec && (
-          <div className="space-y-4">
-            <Uploader onFile={handleFile} onSample={() => run(sampleTable())} busy={busy} />
-            {busy && stage && (
-              <div className="card flex items-center gap-3 p-4">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
-                <span className="text-sm text-slate-300">{stage}…</span>
-              </div>
-            )}
-            {error && (
-              <div className="card border-rose-500/40 bg-rose-500/5 p-4 text-sm text-rose-300">{error}</div>
-            )}
-          </div>
-        )}
+        {/* CTA */}
+        <section className="py-16 text-center">
+          <h2 className="text-3xl font-bold text-white">Ready to see your data clearly?</h2>
+          <Link href="/analyze" className="mt-6 inline-block rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-400">
+            Open Quantia →
+          </Link>
+        </section>
 
-        {/* Dashboard */}
-        {spec && table && (
-          <div className="space-y-8">
-            {/* Dataset + domain banner */}
-            <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-100">{spec.datasetName}</p>
-                <p className="text-xs text-slate-400">
-                  {spec.rowCount.toLocaleString()} rows · {spec.profiles.length} columns
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-300">
-                  {spec.domain.domain} · {(spec.domain.confidence * 100).toFixed(0)}% confidence
-                </span>
-                <p className="mt-1 max-w-md text-[11px] text-slate-500">{spec.domain.reason}</p>
-              </div>
-            </div>
-
-            {/* Cleaning report + before/after preview */}
-            <Section title="Cleaning &amp; normalization" subtitle="The unglamorous core that makes everything below trustworthy.">
-              <CleaningReport report={spec.cleaning} />
-            </Section>
-
-            {/* KPIs */}
-            <Section title="Key metrics" subtitle="Auto-selected for this dataset's shape and domain.">
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                {spec.kpis.slice(0, 8).map((kpi) => (
-                  <KpiCard key={kpi.id} kpi={kpi} />
-                ))}
-              </div>
-            </Section>
-
-            {/* Insights */}
-            {spec.insights.length > 0 && (
-              <Section title="What the data is telling you" subtitle="Plain-language conclusions, grounded in the computed numbers.">
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {spec.insights.map((ins) => (
-                    <InsightCard key={ins.id} insight={ins} />
-                  ))}
-                </div>
-              </Section>
-            )}
-
-            {/* Auto charts */}
-            {spec.charts.length > 0 && (
-              <Section title="Automatic charts" subtitle="The engine picked these from your data shape.">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  {spec.charts.map((c) => (
-                    <Chart key={c.id} spec={c} />
-                  ))}
-                </div>
-              </Section>
-            )}
-
-            {/* On-demand chart builder */}
-            <Section title="Build your own" subtitle="Ask for any chart you want — in plain English or by picking columns.">
-              <ChartBuilder table={table} profiles={spec.profiles} />
-            </Section>
-          </div>
-        )}
-
-        <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-          Quantia · Algorithmic analysis runs locally in your browser. Insight narration is pluggable —
-          swap in an LLM later without changing the UI.
+        <footer className="border-t border-slate-800 py-8 text-center text-xs text-slate-600">
+          Quantia — autonomous financial &amp; statistical analysis. Built with Next.js, runs on Vercel.
         </footer>
       </div>
     </main>
-  );
-}
-
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <div className="mb-3">
-        <h2 className="text-base font-semibold text-slate-100">{title}</h2>
-        {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
-      </div>
-      {children}
-    </section>
   );
 }
