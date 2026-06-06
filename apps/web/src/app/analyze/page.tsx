@@ -11,9 +11,12 @@ import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
+import { useAuth } from "@/lib/auth";
+import { getJobDescription, saveAnalysisToAccount } from "@/lib/account";
 import { Uploader } from "@/components/Uploader";
 import { DashboardView } from "@/components/DashboardView";
 import { HistoryList } from "@/components/HistoryList";
+import { UserMenu } from "@/components/auth/UserMenu";
 
 const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
 
@@ -26,11 +29,27 @@ export default function AnalyzePage() {
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [jobDesc, setJobDesc] = useState("");
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     setHistory(listHistory());
   }, []);
+
+  // Load the signed-in user's saved job description (sharpens the AI). Empty for guests.
+  useEffect(() => {
+    if (user) getJobDescription().then(setJobDesc).catch(() => {});
+    else setJobDesc("");
+  }, [user]);
+
+  async function handleSaveAccount() {
+    if (!spec || !table) return;
+    setSaveMsg("Saving…");
+    const res = await saveAnalysisToAccount(spec, table);
+    setSaveMsg(res.error ? `Couldn't save: ${res.error}` : "✓ Saved to your account.");
+  }
 
   async function handleOpenHistory(id: string) {
     const loaded = await getAnalysis(id);
@@ -87,7 +106,7 @@ export default function AnalyzePage() {
         setStage(s);
         await new Promise((r) => setTimeout(r, 110));
       }
-      const result = await analyze(tbl);
+      const result = await analyze(tbl, { userContext: jobDesc });
       // Show & operate on the CLEANED data downstream (normalized values, deduped, total rows removed).
       const cleaned = cleanTable(tbl).table;
       setTable(cleaned);
@@ -149,8 +168,18 @@ export default function AnalyzePage() {
               <p className="text-xs text-slate-400">Analyzer</p>
             </div>
           </Link>
+          <div className="flex items-center gap-3">
           {spec ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {user && (
+                <button
+                  onClick={handleSaveAccount}
+                  className="rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-sm font-medium text-indigo-200 transition hover:bg-indigo-500/20"
+                  title="Save this analysis to your account"
+                >
+                  💾 Save
+                </button>
+              )}
               <button
                 onClick={() => table && downloadCsv(table, spec.datasetName)}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
@@ -193,7 +222,15 @@ export default function AnalyzePage() {
               ← Home
             </Link>
           )}
+          <UserMenu />
+          </div>
         </header>
+
+        {saveMsg && (
+          <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-sm text-indigo-200">
+            {saveMsg}
+          </div>
+        )}
 
         {!spec && (
           <div className="space-y-4">

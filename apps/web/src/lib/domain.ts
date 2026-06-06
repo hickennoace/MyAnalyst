@@ -26,14 +26,17 @@ const SIGNALS: { domain: Domain; words: RegExp; label: string }[] = [
   },
 ];
 
-export function detectDomain(profiles: ColumnProfile[]): DomainGuess {
+export function detectDomain(profiles: ColumnProfile[], userContext?: string): DomainGuess {
   const hasTime = profiles.some((p) => p.role === "time");
   const hasMetric = profiles.some((p) => p.role === "metric");
+  const context = (userContext ?? "").toLowerCase();
 
   const scores = SIGNALS.map((sig) => {
     const matches = profiles.filter((p) => sig.words.test(p.name)).length;
     let score = matches;
     if (sig.domain === "financial-timeseries" && hasTime) score += 1;
+    // The user's described job/goal is a strong hint about the domain.
+    if (context && sig.words.test(context)) score += 2;
     return { ...sig, score, matches };
   }).sort((a, b) => b.score - a.score);
 

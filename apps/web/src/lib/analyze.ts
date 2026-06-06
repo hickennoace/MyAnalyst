@@ -26,16 +26,17 @@ import { getInsightProvider } from "./insights";
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
 // but runs locally in the browser for the Vercel-first MVP.
 
-export async function analyze(rawTable: Table): Promise<DashboardSpec> {
+export async function analyze(rawTable: Table, opts: { userContext?: string } = {}): Promise<DashboardSpec> {
   // Stage 2: clean & normalize first, then run everything else on the trustworthy, typed table.
   const { table, report: cleaning, typeHints } = cleanTable(rawTable);
 
   const profiles = profileTable(table, typeHints);
-  const domain = detectDomain(profiles);
+  const domain = detectDomain(profiles, opts.userContext);
   const kpis = computeKpis(table, profiles, domain.domain);
   const charts = recommendCharts(table, profiles);
 
   const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
+  ctx.userContext = opts.userContext?.trim() || undefined;
   const conclusions = deriveConclusions(ctx);
   const provider = getInsightProvider();
   const insights = await provider.generate(ctx);

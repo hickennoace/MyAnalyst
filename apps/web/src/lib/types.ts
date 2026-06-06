@@ -119,6 +119,8 @@ export interface Insight {
 /** Metadata-only context handed to an InsightProvider. NEVER contains raw rows. */
 export interface InsightContext {
   domain: Domain;
+  /** optional free-text description of the user's job/goal — sharpens AI wording & relevance. */
+  userContext?: string;
   rowCount: number;
   columns: { name: string; type: SemanticType; role: ColumnProfile["role"] }[];
   kpis: Kpi[];

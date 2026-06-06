@@ -83,7 +83,8 @@ function buildPrompt(ctx: InsightContext, validCites: Set<string>) {
     "1. Only state numbers that appear in the provided context. NEVER invent, round differently, or estimate numbers.",
     "2. Every insight must reference at least one id from the provided `validCites` list in its `cites` array.",
     "3. Be specific and actionable; avoid filler. Note when correlation does not imply causation.",
-    "4. Return 4 to 6 insights, most important first.",
+    "4. If the context includes `userContext` (the user's job/goal), tailor your wording, emphasis, and examples to that goal.",
+    "5. Return 4 to 6 insights, most important first.",
     'Respond with ONLY a JSON object: {"insights":[{"text":string,"confidence":"high"|"medium"|"low","kind":"summary"|"trend"|"correlation"|"regression"|"outlier"|"composition","cites":string[]}]}',
   ].join("\n");
 
