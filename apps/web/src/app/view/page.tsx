@@ -6,6 +6,7 @@ import type { DashboardSpec } from "@/lib/types";
 import { decodeSpec } from "@/lib/share";
 import { DashboardView } from "@/components/DashboardView";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LangToggle } from "@/components/LangToggle";
 import { exportPdf, exportPng } from "@/lib/export";
 
 // Read-only shared dashboard. Reconstructs a DashboardSpec from the URL hash fragment (never sent to
@@ -55,6 +56,7 @@ export default function ViewPage() {
             </div>
           </Link>
           <div className="flex items-center gap-2">
+            <LangToggle />
             <ThemeToggle />
             {spec && (
               <>

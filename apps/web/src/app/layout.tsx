@@ -43,8 +43,8 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-// Set the theme on <html> before first paint to avoid a flash of the wrong theme.
-const THEME_INIT = `(function(){try{var t=localStorage.getItem('quantia:theme');if(t!=='dark'&&t!=='light'){t='light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
+// Set the theme + language/direction on <html> before first paint (no flash).
+const THEME_INIT = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('quantia:theme');if(t!=='dark'&&t!=='light'){t='light';}d.dataset.theme=t;var l=localStorage.getItem('quantia:lang');if(l!=='he'&&l!=='en'){l='en';}d.lang=l;d.dir=l==='he'?'rtl':'ltr';}catch(e){var d2=document.documentElement;d2.dataset.theme='light';d2.lang='en';d2.dir='ltr';}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

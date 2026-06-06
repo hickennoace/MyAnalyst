@@ -13,6 +13,7 @@ import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
 import { Uploader } from "@/components/Uploader";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LangToggle } from "@/components/LangToggle";
 import { DashboardView } from "@/components/DashboardView";
 import { HistoryList } from "@/components/HistoryList";
 import { PipelineProgress } from "@/components/PipelineProgress";
@@ -173,6 +174,7 @@ export default function AnalyzePage() {
             </div>
           </Link>
           <div className="flex flex-wrap items-center justify-end gap-2">
+          <LangToggle />
           <ThemeToggle />
           {spec ? (
             <div className="flex flex-wrap items-center justify-end gap-2">

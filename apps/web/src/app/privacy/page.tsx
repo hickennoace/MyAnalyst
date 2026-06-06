@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LangToggle } from "@/components/LangToggle";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -15,7 +16,10 @@ export default function Privacy() {
           <Link href="/" className="text-sm text-slate-400 transition hover:text-slate-200">
             ← Quantia
           </Link>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <LangToggle />
+            <ThemeToggle />
+          </div>
         </div>
         <h1 className="mt-6 text-3xl font-bold text-slate-50">Privacy</h1>
         <p className="mt-2 text-sm text-slate-400">Short version: your data stays on your device.</p>
