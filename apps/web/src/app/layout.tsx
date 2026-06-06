@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-// Type system: a characterful modern grotesque for display, a clean grotesque
-// for body/UI, and a mono for numerals & data labels.
-const display = Bricolage_Grotesque({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-});
+// Type system: one clean, neutral grotesque for everything (headings + body),
+// and a mono for small numerals & data labels. Kept deliberately plain.
 const sans = Hanken_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -50,7 +45,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body>
         <a href="#main-content" className="skip-link">Skip to content</a>
         {children}

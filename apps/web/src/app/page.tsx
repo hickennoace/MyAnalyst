@@ -3,11 +3,11 @@ import { Reveal } from "@/components/Reveal";
 import { HeroChart } from "@/components/HeroChart";
 
 // Marketing landing page. Static (server component) for fast first paint + SEO.
-// Aesthetic: "Aurora Light" — crisp near-white SaaS canvas, soft aurora mesh,
-// modern grotesque display, gradient headlines/buttons, and a multi-color
-// accent system. Motion is CSS/SVG-driven; the product lives at /analyze.
+// Aesthetic: "Refined Light" — clean near-white SaaS canvas, a single indigo
+// accent, solid fills, neutral type. Motion is CSS/SVG-driven; the product
+// lives at /analyze.
 
-// Crafted stroke icons (consistent 24-grid, 1.5px) — no emoji.
+// Crafted stroke icons (consistent 24-grid, 1.6px) — no emoji.
 const I = {
   broom: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -39,21 +39,31 @@ const I = {
       <path d="M12 3v4M12 17v4M3 12h4M17 12h4" /><path d="M12 8.5 13 11l2.5 1L13 13l-1 2.5L11 13l-2.5-1L11 11Z" />
     </svg>
   ),
+  lock: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  ),
+  cpu: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <rect x="7" y="7" width="10" height="10" rx="2" /><path d="M10 3v2M14 3v2M10 19v2M14 19v2M3 10h2M3 14h2M19 10h2M19 14h2" />
+    </svg>
+  ),
 };
 
 const FEATURES = [
-  { icon: I.broom, color: "#6366f1", title: "Relentless cleaning", body: "Strips currency symbols, unifies date formats, removes duplicates, empty rows and trailing totals — with a transparent before/after report." },
-  { icon: I.compass, color: "#8b5cf6", title: "Auto domain detection", body: "Figures out whether your data is financial, sales, marketing or survey — and picks the metrics that matter for it." },
-  { icon: I.bars, color: "#06b6d4", title: "Instant KPIs & charts", body: "Ranked KPIs and precise charts for your data shape: trends, comparisons, correlations, distributions." },
-  { icon: I.sigma, color: "#ec4899", title: "Real statistics", body: "Significance tests, OLS & multiple regression, ANOVA, chi-square, forecasting — statsmodels-grade rigor, in your browser." },
-  { icon: I.quote, color: "#f59e0b", title: "Conclusions, not just charts", body: "Plain-language, statistically-calibrated takeaways grounded in the numbers — it tells you what it likely means." },
-  { icon: I.spark, color: "#10b981", title: "Ask your data", body: "Type “which reason is most common” or “revenue by region as a bar chart” and get an answer — in plain English." },
+  { icon: I.broom, title: "Relentless cleaning", body: "Strips currency symbols, unifies date formats, removes duplicates, empty rows and trailing totals — with a transparent before/after report." },
+  { icon: I.compass, title: "Auto domain detection", body: "Figures out whether your data is financial, sales, marketing or survey — and picks the metrics that matter for it." },
+  { icon: I.bars, title: "Instant KPIs & charts", body: "Ranked KPIs and precise charts for your data shape: trends, comparisons, correlations, distributions." },
+  { icon: I.sigma, title: "Real statistics", body: "Significance tests, OLS & multiple regression, ANOVA, chi-square, forecasting — statsmodels-grade rigor, in your browser." },
+  { icon: I.quote, title: "Conclusions, not just charts", body: "Plain-language, statistically-calibrated takeaways grounded in the numbers — it tells you what it likely means." },
+  { icon: I.spark, title: "Ask your data", body: "Type “which reason is most common” or “revenue by region as a bar chart” and get an answer — in plain English." },
 ];
 
 const STEPS = [
-  { n: "01", color: "#6366f1", title: "Upload", body: "Drop a CSV, TSV, Excel or JSON file. Nothing is sent to a server — it's parsed entirely in your browser." },
-  { n: "02", color: "#8b5cf6", title: "We analyze", body: "Clean → profile → detect domain → KPIs → statistics → forecast → conclusions, in seconds." },
-  { n: "03", color: "#ec4899", title: "Explore", body: "Read your dashboard, ask questions, generate charts, export & share — no skills required." },
+  { n: "01", title: "Upload", body: "Drop a CSV, TSV, Excel or JSON file. Nothing is sent to a server — it's parsed entirely in your browser." },
+  { n: "02", title: "We analyze", body: "Clean → profile → detect domain → KPIs → statistics → forecast → conclusions, in seconds." },
+  { n: "03", title: "Explore", body: "Read your dashboard, ask questions, generate charts, export & share — no skills required." },
 ];
 
 const TICKER = ["Cleaning report", "Domain detection", "Ranked KPIs", "OLS regression", "ANOVA", "Chi-square", "Forecasting", "Correlation", "Distributions", "Plain-language insight"];
@@ -81,16 +91,16 @@ export default function Landing() {
         <section className="grid items-center gap-12 pt-12 pb-16 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24">
           <div className="fade-up">
             <span className="lp-pill"><i className="lp-dot" /> AI-assisted · runs in your browser · no setup</span>
-            <h1 className="display mt-6 text-[2.7rem] leading-[1.04] text-[var(--ink)] sm:text-[4rem]">
-              Turn a spreadsheet into a{" "}
-              <span className="lp-grad">beautiful, explained dashboard</span>
+            <h1 className="display mt-6 text-[2.6rem] leading-[1.06] text-[var(--ink)] sm:text-[3.7rem]">
+              Turn a spreadsheet into an{" "}
+              <span className="lp-accent">explained dashboard</span>
             </h1>
-            <p className="mt-7 max-w-lg text-[1.05rem] leading-relaxed text-[var(--muted)]">
+            <p className="mt-6 max-w-lg text-[1.05rem] leading-relaxed text-[var(--muted)]">
               Quantia cleans your data, runs real statistics, and writes the conclusions —
               automatically. A zero-skill alternative to Power BI and Tableau, with the rigor of a
               working data scientist.
             </p>
-            <div className="mt-9 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/analyze" className="lp-cta">
                 Analyze your data
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -104,7 +114,7 @@ export default function Landing() {
           </div>
 
           {/* Chart panel */}
-          <div className="animate-float">
+          <div>
             <div className="lp-panel overflow-hidden p-4">
               <div className="flex items-center justify-between border-b border-[var(--line)] px-1 pb-3">
                 <span className="lp-tape text-[var(--muted)]">revenue.csv · 12 periods</span>
@@ -114,9 +124,9 @@ export default function Landing() {
                 <HeroChart className="w-full" />
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                {[["+23.4%", "growth", "#6366f1"], ["0.47", "r · p<.001", "#06b6d4"], ["A+", "data quality", "#10b981"]].map(([v, l, c]) => (
-                  <div key={l} className="rounded-xl border border-[var(--line)] bg-[#fafaff] px-3 py-2.5">
-                    <p className="mono text-[0.95rem] font-bold" style={{ color: c }}>{v}</p>
+                {[["+23.4%", "growth"], ["0.47", "r · p<.001"], ["A+", "data quality"]].map(([v, l]) => (
+                  <div key={l} className="rounded-lg border border-[var(--line)] bg-[var(--bg-soft)] px-3 py-2.5">
+                    <p className="mono text-[0.95rem] font-bold text-[var(--ink)]">{v}</p>
                     <p className="mt-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-[var(--faint)]">{l}</p>
                   </div>
                 ))}
@@ -142,7 +152,7 @@ export default function Landing() {
             <div className="flex items-end justify-between gap-6">
               <div>
                 <span className="lp-eyebrow">Capabilities</span>
-                <h2 className="display mt-3 text-[2rem] text-[var(--ink)] sm:text-[2.6rem]">Everything, automatically</h2>
+                <h2 className="display mt-3 text-[1.9rem] text-[var(--ink)] sm:text-[2.4rem]">Everything, automatically</h2>
               </div>
               <p className="hidden max-w-xs text-sm leading-relaxed text-[var(--muted)] md:block">
                 The work a data scientist does by hand — done the moment your file lands.
@@ -154,7 +164,7 @@ export default function Landing() {
               <Reveal key={f.title} delay={i * 60}>
                 <article className="lp-feature">
                   <div className="flex items-start justify-between">
-                    <div className="lp-ico" style={{ ["--ico" as string]: f.color }}>{f.icon}</div>
+                    <div className="lp-ico">{f.icon}</div>
                     <span className="lp-idx">{String(i + 1).padStart(2, "0")}</span>
                   </div>
                   <h3 className="mt-5 text-base font-semibold text-[var(--ink)]">{f.title}</h3>
@@ -169,14 +179,14 @@ export default function Landing() {
         <section id="how" className="py-12">
           <Reveal>
             <span className="lp-eyebrow">The method</span>
-            <h2 className="display mt-3 text-[2rem] text-[var(--ink)] sm:text-[2.6rem]">Three steps, no friction</h2>
+            <h2 className="display mt-3 text-[1.9rem] text-[var(--ink)] sm:text-[2.4rem]">Three steps, no friction</h2>
           </Reveal>
           <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3">
             {STEPS.map((s, i) => (
               <Reveal key={s.n} delay={i * 90}>
                 <div className="lp-feature">
-                  <p className="lp-step-n" style={{ color: s.color }}>{s.n}</p>
-                  <h3 className="mt-4 text-base font-semibold text-[var(--ink)]">{s.title}</h3>
+                  <p className="lp-step-n">STEP {s.n}</p>
+                  <h3 className="mt-3 text-base font-semibold text-[var(--ink)]">{s.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{s.body}</p>
                 </div>
               </Reveal>
@@ -189,9 +199,7 @@ export default function Landing() {
           <Reveal>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="lp-feature">
-                <div className="lp-ico" style={{ ["--ico" as string]: "#10b981" }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" strokeLinecap="round" /></svg>
-                </div>
+                <div className="lp-ico">{I.lock}</div>
                 <h3 className="mt-5 text-base font-semibold text-[var(--ink)]">Private by design</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
                   All parsing, cleaning, KPIs, statistics and charts run entirely in your browser. Your raw
@@ -200,9 +208,7 @@ export default function Landing() {
                 </p>
               </div>
               <div className="lp-feature">
-                <div className="lp-ico" style={{ ["--ico" as string]: "#8b5cf6" }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" strokeLinecap="round" /></svg>
-                </div>
+                <div className="lp-ico">{I.cpu}</div>
                 <h3 className="mt-5 text-base font-semibold text-[var(--ink)]">Smart, your way</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
                   Works fully offline with a built-in engine that writes conclusions from real statistical
@@ -215,21 +221,18 @@ export default function Landing() {
         </section>
 
         {/* ── CTA ── */}
-        <section className="py-20">
+        <section className="py-16">
           <Reveal>
-            <div className="lp-panel relative overflow-hidden px-8 py-16 text-center sm:px-16">
-              <div className="lp-aurora !absolute opacity-90" aria-hidden />
-              <div className="relative">
-                <h2 className="display mx-auto max-w-2xl text-[2.2rem] leading-tight text-[var(--ink)] sm:text-[3rem]">
-                  See your data <span className="lp-grad">clearly.</span>
-                </h2>
-                <p className="mx-auto mt-4 max-w-md text-[var(--muted)]">No setup, no spreadsheets skills, no waiting. Just answers.</p>
-                <div className="mt-8 flex justify-center">
-                  <Link href="/analyze" className="lp-cta">
-                    Open Quantia
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  </Link>
-                </div>
+            <div className="lp-panel px-8 py-14 text-center sm:px-16">
+              <h2 className="display mx-auto max-w-2xl text-[2rem] leading-tight text-[var(--ink)] sm:text-[2.6rem]">
+                See your data <span className="lp-accent">clearly</span>.
+              </h2>
+              <p className="mx-auto mt-4 max-w-md text-[var(--muted)]">No setup, no spreadsheet skills, no waiting. Just answers.</p>
+              <div className="mt-8 flex justify-center">
+                <Link href="/analyze" className="lp-cta">
+                  Open Quantia
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </Link>
               </div>
             </div>
           </Reveal>
