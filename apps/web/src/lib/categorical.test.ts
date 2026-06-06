@@ -49,6 +49,8 @@ describe("deriveConclusions", () => {
     correlations: [],
     trends: [],
     outliers: [],
+    groupComparisons: [],
+    associations: [],
     categories: [
       {
         column: "Reason",

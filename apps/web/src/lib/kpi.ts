@@ -59,9 +59,24 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
       name: `Average ${m.name}`,
       value: fmt(n.mean),
       unit: isMoney ? "USD" : undefined,
-      howComputed: `Arithmetic mean of ${m.name} (σ = ${fmtNum(n.std)}).`,
+      howComputed: `Mean of ${m.name} (median ${fmt(n.median)}, σ = ${fmtNum(n.std)}).`,
       relevance: 0.6,
     });
+  }
+
+  // Variability of the primary metric — how consistent the data is (coefficient of variation).
+  const pmSpread = primaryMetric(profiles);
+  if (pmSpread?.numeric && pmSpread.numeric.mean !== 0) {
+    const cv = pmSpread.numeric.std / Math.abs(pmSpread.numeric.mean);
+    if (Number.isFinite(cv)) {
+      kpis.push({
+        id: `kpi-cv-${pmSpread.name}`,
+        name: `${pmSpread.name} variability`,
+        value: `${(cv * 100).toFixed(0)}%`,
+        howComputed: `Coefficient of variation (σ ÷ mean) — higher means less consistent ${pmSpread.name}.`,
+        relevance: 0.55,
+      });
+    }
   }
 
   // Time-series KPIs: growth & volatility of the primary metric over the time axis.

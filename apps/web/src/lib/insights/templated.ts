@@ -46,36 +46,35 @@ export class TemplatedInsightProvider implements InsightProvider {
       });
     }
 
-    // 3. Correlations.
+    // 3. Correlations — report significance.
     const strong = ctx.correlations.filter((c) => c.strength !== "weak").slice(0, 2);
     for (const c of strong) {
       const sign = c.r > 0 ? "positively" : "negatively";
+      const sig = c.significant ? `statistically significant (p ${c.p < 0.001 ? "< 0.001" : "= " + c.p.toFixed(3)})` : `NOT statistically significant (p = ${c.p.toFixed(3)}) — possibly noise`;
       insights.push({
         id: `ins-corr-${c.a}-${c.b}`,
         kind: "correlation",
-        confidence: c.strength === "strong" ? "high" : "medium",
+        confidence: c.significant ? (c.strength === "strong" ? "high" : "medium") : "low",
         cites: [`corr:${c.a}~${c.b}`],
         text:
-          `${c.a} and ${c.b} are ${c.strength}ly ${sign} correlated (r = ${c.r.toFixed(2)}). ` +
-          (c.r > 0
-            ? `When ${c.a} rises, ${c.b} tends to rise too.`
-            : `When ${c.a} rises, ${c.b} tends to fall.`) +
-          " Correlation isn't causation — treat this as a lead, not a conclusion.",
+          `${c.a} and ${c.b} are ${c.strength}ly ${sign} correlated (r = ${c.r.toFixed(2)}, ${sig}). ` +
+          (c.r > 0 ? `When ${c.a} rises, ${c.b} tends to rise too.` : `When ${c.a} rises, ${c.b} tends to fall.`) +
+          " Correlation isn't causation.",
       });
     }
 
-    // 4. Regression.
-    if (ctx.regression && ctx.regression.r2 > 0.2) {
+    // 4. Regression with inference.
+    if (ctx.regression && ctx.regression.r2 > 0.1) {
       const r = ctx.regression;
       insights.push({
         id: "ins-regression",
         kind: "regression",
-        confidence: r.r2 > 0.6 ? "high" : "medium",
+        confidence: r.significant ? (r.adjR2 > 0.5 ? "high" : "medium") : "low",
         cites: ["regression"],
         text:
-          `A simple model of ${r.target} against ${r.driver} explains ${pct(r.r2)} of its variation ` +
-          `(R² = ${r.r2.toFixed(2)}). Each unit increase in ${r.driver} is associated with a ` +
-          `${r.slope >= 0 ? "+" : ""}${fmt(r.slope)} change in ${r.target}.`,
+          `An OLS model of ${r.target} on ${r.driver} explains ${pct(r.adjR2)} of its variation (adjusted R² = ${r.adjR2.toFixed(2)}). ` +
+          `Each unit increase in ${r.driver} is associated with a ${r.slope >= 0 ? "+" : ""}${fmt(r.slope)} change in ${r.target} ` +
+          `(95% CI [${fmt(r.ciLow)}, ${fmt(r.ciHigh)}], ${r.significant ? `significant, p ${r.slopeP < 0.001 ? "< 0.001" : "= " + r.slopeP.toFixed(3)}` : `not significant, p = ${r.slopeP.toFixed(3)}`}).`,
       });
     }
 

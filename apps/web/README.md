@@ -46,7 +46,9 @@ src/
     ├── clean.ts          # normalize + dedupe + drop total/empty rows → cleaned Table + CleaningReport
     ├── profile.ts        # type inference + per-column profiling
     ├── domain.ts         # rule-based domain detection
-    ├── stats.ts          # mean/std/pearson/regression/outliers/cagr
+    ├── stats.ts          # mean/std/pearson/regression/outliers/cagr (lightweight)
+    ├── inference.ts      # statsmodels-grade: t/F/χ² distributions, correlation sig,
+    │                     #   OLS w/ CI+p, one-way ANOVA, chi-square independence, describe
     ├── forecast.ts       # Holt's linear-trend time-series forecast (grid-fit α/β)
     ├── kpi.ts            # domain-aware KPI engine
     ├── charts.ts         # auto chart recommendation + on-demand builder

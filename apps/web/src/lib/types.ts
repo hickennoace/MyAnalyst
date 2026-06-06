@@ -128,6 +128,8 @@ export interface InsightContext {
   outliers: OutlierFact[];
   forecast?: ForecastFact;
   categories: CategoryFact[];
+  groupComparisons: GroupComparison[];
+  associations: Association[];
 }
 
 export interface CorrelationPair {
@@ -135,6 +137,12 @@ export interface CorrelationPair {
   b: string;
   r: number;
   strength: "strong" | "moderate" | "weak";
+  /** two-sided significance test of the correlation */
+  p: number;
+  significant: boolean;
+  ciLow: number;
+  ciHigh: number;
+  n: number;
 }
 
 export interface RegressionResult {
@@ -143,6 +151,14 @@ export interface RegressionResult {
   slope: number;
   intercept: number;
   r2: number;
+  adjR2: number;
+  slopeP: number;
+  slopeSE: number;
+  ciLow: number; // 95% CI for the slope
+  ciHigh: number;
+  fP: number;
+  n: number;
+  significant: boolean;
 }
 
 export interface TrendFact {
@@ -151,6 +167,31 @@ export interface TrendFact {
   direction: "up" | "down" | "flat";
   from: number;
   to: number;
+  /** significance of the time trend (OLS of the metric on the time index) */
+  slopeP?: number;
+  significant?: boolean;
+}
+
+/** One-way ANOVA result: does a metric's mean differ across a categorical column's groups? */
+export interface GroupComparison {
+  metric: string;
+  dimension: string;
+  f: number;
+  p: number;
+  etaSq: number; // effect size
+  significant: boolean;
+  top: { name: string; mean: number; n: number };
+  bottom: { name: string; mean: number; n: number };
+}
+
+/** Chi-square test of independence between two categorical columns. */
+export interface Association {
+  a: string;
+  b: string;
+  chi2: number;
+  p: number;
+  cramersV: number; // effect size
+  significant: boolean;
 }
 
 export interface OutlierFact {

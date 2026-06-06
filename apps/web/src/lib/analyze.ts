@@ -1,8 +1,10 @@
 import type {
+  Association,
   CategoryFact,
   CorrelationPair,
   DashboardSpec,
   ForecastFact,
+  GroupComparison,
   InsightContext,
   OutlierFact,
   RegressionResult,
@@ -14,7 +16,8 @@ import { cleanTable } from "./clean";
 import { detectDomain } from "./domain";
 import { computeKpis, primaryMetric, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
-import { linearRegression, pearson, zOutliers } from "./stats";
+import { zOutliers } from "./stats";
+import { chiSquareIndependence, oneWayAnova, olsSimple, pearsonTest } from "./inference";
 import { defaultHorizon, holtForecast } from "./forecast";
 import { deriveConclusions } from "./conclusions";
 import { getInsightProvider } from "./insights";
@@ -60,40 +63,57 @@ function buildInsightContext(
   domain: InsightContext["domain"]
 ): InsightContext {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const dims = profiles.filter((p) => p.role === "dimension");
   const time = profiles.find((p) => p.role === "time");
 
-  // Correlations between metric pairs.
+  // Correlations between metric pairs — with significance test + 95% CI (statsmodels-grade).
   const correlations: CorrelationPair[] = [];
   for (let i = 0; i < metrics.length; i++) {
     for (let j = i + 1; j < metrics.length; j++) {
-      const r = pearson(numericColumn(table, metrics[i].name), numericColumn(table, metrics[j].name));
-      if (!Number.isFinite(r)) continue;
-      const abs = Math.abs(r);
+      const test = pearsonTest(numericColumn(table, metrics[i].name), numericColumn(table, metrics[j].name));
+      if (!test) continue;
+      const abs = Math.abs(test.r);
       correlations.push({
         a: metrics[i].name,
         b: metrics[j].name,
-        r,
+        r: test.r,
         strength: abs > 0.7 ? "strong" : abs > 0.4 ? "moderate" : "weak",
+        p: test.p,
+        significant: test.significant,
+        ciLow: test.ciLow,
+        ciHigh: test.ciHigh,
+        n: test.n,
       });
     }
   }
-  correlations.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
+  // Rank by significance first, then strength.
+  correlations.sort((a, b) => Number(b.significant) - Number(a.significant) || Math.abs(b.r) - Math.abs(a.r));
 
-  // Regression: target = highest-variance metric, driver = its strongest correlate.
+  // Regression with full inference: target/driver = the strongest SIGNIFICANT correlate pair.
   let regression: RegressionResult | undefined;
-  const topCorr = correlations.find((c) => c.strength !== "weak");
+  const topCorr = correlations.find((c) => c.significant && c.strength !== "weak") ?? correlations.find((c) => c.strength !== "weak");
   if (topCorr) {
-    const reg = linearRegression(numericColumn(table, topCorr.b), numericColumn(table, topCorr.a));
-    regression = {
-      target: topCorr.a,
-      driver: topCorr.b,
-      slope: reg.slope,
-      intercept: reg.intercept,
-      r2: reg.r2,
-    };
+    const reg = olsSimple(numericColumn(table, topCorr.b), numericColumn(table, topCorr.a));
+    if (reg) {
+      regression = {
+        target: topCorr.a,
+        driver: topCorr.b,
+        slope: reg.slope,
+        intercept: reg.intercept,
+        r2: reg.r2,
+        adjR2: reg.adjR2,
+        slopeP: reg.slopeP,
+        slopeSE: reg.slopeSE,
+        ciLow: reg.ciSlopeLow,
+        ciHigh: reg.ciSlopeHigh,
+        fP: reg.fP,
+        n: reg.n,
+        significant: reg.significant,
+      };
+    }
   }
 
-  // Trends along the time axis.
+  // Trends along the time axis — with a significance test on the time slope (real trend vs noise).
   const trends: TrendFact[] = [];
   if (time) {
     const order = sortByTime(table, time.name);
@@ -103,15 +123,70 @@ function buildInsightContext(
       const from = series[0];
       const to = series[series.length - 1];
       const changePct = from !== 0 ? (to - from) / Math.abs(from) : 0;
+      const idx = series.map((_, i) => i);
+      const reg = olsSimple(idx, series);
       trends.push({
         metric: m.name,
         changePct,
         direction: changePct > 0.02 ? "up" : changePct < -0.02 ? "down" : "flat",
         from,
         to,
+        slopeP: reg?.slopeP,
+        significant: reg?.significant,
       });
     }
   }
+
+  // Group comparisons (one-way ANOVA): does a metric's mean differ across a category's groups?
+  const groupComparisons: GroupComparison[] = [];
+  for (const dim of dims.slice(0, 3)) {
+    if (dim.distinctCount < 2 || dim.distinctCount > 20) continue;
+    for (const m of metrics.slice(0, 3)) {
+      const groups = new Map<string, number[]>();
+      const vals = numericColumn(table, m.name);
+      table.rows.forEach((r, i) => {
+        if (!Number.isFinite(vals[i])) return;
+        const key = String(r[dim.name] ?? "—");
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(vals[i]);
+      });
+      const a = oneWayAnova(groups);
+      if (a && Number.isFinite(a.p)) {
+        groupComparisons.push({
+          metric: m.name,
+          dimension: dim.name,
+          f: a.f,
+          p: a.p,
+          etaSq: a.etaSq,
+          significant: a.significant,
+          top: a.groups[0],
+          bottom: a.groups[a.groups.length - 1],
+        });
+      }
+    }
+  }
+  groupComparisons.sort((a, b) => Number(b.significant) - Number(a.significant) || b.etaSq - a.etaSq);
+
+  // Associations between categorical columns (chi-square test of independence).
+  const associations: Association[] = [];
+  const catCols = dims.filter((d) => d.distinctCount >= 2 && d.distinctCount <= 15);
+  for (let i = 0; i < catCols.length; i++) {
+    for (let j = i + 1; j < catCols.length; j++) {
+      const counts = contingency(table, catCols[i], catCols[j]);
+      const chi = chiSquareIndependence(counts);
+      if (chi && Number.isFinite(chi.p)) {
+        associations.push({
+          a: catCols[i].name,
+          b: catCols[j].name,
+          chi2: chi.chi2,
+          p: chi.p,
+          cramersV: chi.cramersV,
+          significant: chi.significant,
+        });
+      }
+    }
+  }
+  associations.sort((a, b) => Number(b.significant) - Number(a.significant) || b.cramersV - a.cramersV);
 
   // Outliers per metric.
   const outliers: OutlierFact[] = [];
@@ -159,5 +234,22 @@ function buildInsightContext(
     outliers: outliers.slice(0, 3),
     forecast,
     categories,
+    groupComparisons: groupComparisons.slice(0, 4),
+    associations: associations.slice(0, 4),
   };
+}
+
+/** Build a contingency table (counts) for two categorical columns, capped to their top values. */
+function contingency(table: Table, colA: { name: string; topValues?: { value: string }[] }, colB: { name: string; topValues?: { value: string }[] }): number[][] {
+  const aVals = (colA.topValues ?? []).slice(0, 10).map((v) => v.value);
+  const bVals = (colB.topValues ?? []).slice(0, 10).map((v) => v.value);
+  const aIdx = new Map(aVals.map((v, i) => [v, i]));
+  const bIdx = new Map(bVals.map((v, i) => [v, i]));
+  const counts = aVals.map(() => bVals.map(() => 0));
+  for (const r of table.rows) {
+    const ai = aIdx.get(String(r[colA.name] ?? ""));
+    const bi = bIdx.get(String(r[colB.name] ?? ""));
+    if (ai !== undefined && bi !== undefined) counts[ai][bi]++;
+  }
+  return counts;
 }

@@ -69,6 +69,8 @@ function collectValidCites(ctx: InsightContext): Set<string> {
   for (const o of ctx.outliers ?? []) ids.add(`outlier:${o.column}`);
   for (const t of ctx.trends ?? []) ids.add(`trend:${t.metric}`);
   for (const c of ctx.categories ?? []) ids.add(`category:${c.column}`);
+  for (const g of ctx.groupComparisons ?? []) ids.add(`anova:${g.metric}~${g.dimension}`);
+  for (const a of ctx.associations ?? []) ids.add(`assoc:${a.a}~${a.b}`);
   return ids;
 }
 
