@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { ColumnProfile, Table } from "@/lib/types";
 import { parseNumeric } from "@/lib/profile";
+import { useT } from "@/lib/i18n";
 
 // Browsable view of the dataset: search, click-to-sort, pagination. Lightweight, no table library.
 
@@ -10,6 +11,7 @@ const PAGE_SIZE = 10;
 const NUMERIC_TYPES = new Set(["number", "currency", "percent", "integer"]);
 
 export function DataTable({ table, profiles }: { table: Table; profiles: ColumnProfile[] }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -55,15 +57,15 @@ export function DataTable({ table, profiles }: { table: Table; profiles: ColumnP
   return (
     <div className="card p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-100">Data</h3>
+        <h3 className="text-sm font-semibold text-slate-100">{t.table.title}</h3>
         <input
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
             setPage(0);
           }}
-          placeholder="Search all columns…"
-          aria-label="Search the data table"
+          placeholder={t.table.search}
+          aria-label={t.table.search}
           className="w-56 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
         />
       </div>
@@ -104,7 +106,7 @@ export function DataTable({ table, profiles }: { table: Table; profiles: ColumnP
             {rows.length === 0 && (
               <tr>
                 <td colSpan={table.columns.length} className="px-3 py-6 text-center text-slate-500">
-                  No rows match “{query}”.
+                  {t.table.noMatch} “{query}”.
                 </td>
               </tr>
             )}
@@ -114,8 +116,8 @@ export function DataTable({ table, profiles }: { table: Table; profiles: ColumnP
 
       <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
         <span>
-          {sorted.length.toLocaleString()} row{sorted.length === 1 ? "" : "s"}
-          {query && ` (filtered from ${table.rowCount.toLocaleString()})`}
+          {sorted.length.toLocaleString()} {t.table.rows}
+          {query && ` (${t.table.filtered} ${table.rowCount.toLocaleString()})`}
         </span>
         <div className="flex items-center gap-2">
           <button
@@ -123,7 +125,7 @@ export function DataTable({ table, profiles }: { table: Table; profiles: ColumnP
             disabled={safePage === 0}
             className="rounded-lg border border-slate-700 px-2.5 py-1 transition hover:bg-slate-800/60 disabled:opacity-40"
           >
-            ← Prev
+            ← {t.table.prev}
           </button>
           <span>
             {safePage + 1} / {pageCount}
@@ -133,7 +135,7 @@ export function DataTable({ table, profiles }: { table: Table; profiles: ColumnP
             disabled={safePage >= pageCount - 1}
             className="rounded-lg border border-slate-700 px-2.5 py-1 transition hover:bg-slate-800/60 disabled:opacity-40"
           >
-            Next →
+            {t.table.next} →
           </button>
         </div>
       </div>

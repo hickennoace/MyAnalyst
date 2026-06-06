@@ -27,7 +27,7 @@ import { humanizeConclusions, llmEnabled } from "./insights/humanize";
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
 // but runs locally in the browser for the Vercel-first MVP.
 
-export async function analyze(rawTable: Table, opts: { userContext?: string } = {}): Promise<DashboardSpec> {
+export async function analyze(rawTable: Table, opts: { userContext?: string; lang?: "en" | "he" } = {}): Promise<DashboardSpec> {
   // Stage 2: clean & normalize first, then run everything else on the trustworthy, typed table.
   const { table, report: cleaning, typeHints } = cleanTable(rawTable);
 
@@ -38,6 +38,7 @@ export async function analyze(rawTable: Table, opts: { userContext?: string } = 
 
   const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
   ctx.userContext = opts.userContext?.trim() || undefined;
+  ctx.lang = opts.lang ?? "en";
   let conclusions = deriveConclusions(ctx);
   const provider = getInsightProvider();
   const insights = await provider.generate(ctx);

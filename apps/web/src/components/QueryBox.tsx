@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react";
 import type { ColumnProfile, Table } from "@/lib/types";
 import { answerQuestion, type QueryAnswer } from "@/lib/query";
+import { useT } from "@/lib/i18n";
 import { Chart } from "./Chart";
 
 // "Ask your data" box. Heuristic Q&A over the local dataset — no LLM, no key. Answers with the real
 // computed numbers and an optional chart.
 
 export function QueryBox({ table, profiles }: { table: Table; profiles: ColumnProfile[] }) {
+  const t = useT();
   const [q, setQ] = useState("");
   const [result, setResult] = useState<QueryAnswer | null>(null);
 
@@ -21,25 +23,23 @@ export function QueryBox({ table, profiles }: { table: Table; profiles: ColumnPr
 
   return (
     <div className="card p-5">
-      <h3 className="text-sm font-semibold text-slate-100">Ask your data</h3>
-      <p className="mt-1 text-xs text-slate-400">
-        Plain-English questions, answered with your real numbers. Runs locally — no AI key needed.
-      </p>
+      <h3 className="text-sm font-semibold text-slate-100">{t.query.title}</h3>
+      <p className="mt-1 text-xs text-slate-400">{t.query.desc}</p>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && ask(q)}
-          placeholder={suggestions[0] ?? "e.g. total revenue by region"}
-          aria-label="Ask a question about your data"
+          placeholder={suggestions[0] ?? t.query.placeholder}
+          aria-label={t.query.title}
           className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
         />
         <button
           onClick={() => ask(q)}
           className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
         >
-          Ask
+          {t.query.ask}
         </button>
       </div>
 

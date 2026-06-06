@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { ChartSpec, ChartType, ColumnProfile, Table } from "@/lib/types";
 import { buildChart, type ChartRequest } from "@/lib/charts";
 import { parseChartRequest } from "@/lib/nl-chart";
+import { useT } from "@/lib/i18n";
 import { Chart } from "./Chart";
 
 const CHART_TYPES: ChartType[] = ["line", "bar", "area", "scatter", "pie", "histogram"];
@@ -12,6 +13,7 @@ const CHART_TYPES: ChartType[] = ["line", "bar", "area", "scatter", "pie", "hist
 //   1. Ask in plain English ("revenue by region as a bar chart") -> nl-chart parser.
 //   2. Pick columns + type manually.
 export function ChartBuilder({ table, profiles }: { table: Table; profiles: ColumnProfile[] }) {
+  const t = useT();
   const metrics = useMemo(() => profiles.filter((p) => p.role === "metric"), [profiles]);
   const dimsAndTime = useMemo(
     () => profiles.filter((p) => p.role === "time" || p.role === "dimension" || p.role === "metric"),
@@ -40,7 +42,7 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
 
   function handleManual() {
     if (y !== COUNT && type !== "histogram" && x === y) {
-      setNote("Pick two different columns — X and Y can't be the same. (Tip: use “Count of rows” to chart a single column.)");
+      setNote(t.builder.sameCol);
       return;
     }
     const req: ChartRequest =
@@ -54,10 +56,8 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
   return (
     <section className="space-y-4">
       <div className="card p-5">
-        <h3 className="text-sm font-semibold text-slate-100">Generate a graph</h3>
-        <p className="mt-1 text-xs text-slate-400">
-          Ask in plain language, or pick the columns yourself. The engine maps your request to a chart.
-        </p>
+        <h3 className="text-sm font-semibold text-slate-100">{t.builder.title}</h3>
+        <p className="mt-1 text-xs text-slate-400">{t.builder.desc}</p>
 
         {/* Natural language */}
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -72,29 +72,29 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
             onClick={handleAsk}
             className="rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
           >
-            ✨ Generate
+            ✨ {t.builder.generate}
           </button>
         </div>
 
         {/* Manual controls */}
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
-          <Field label="Chart type">
+          <Field label={t.builder.chartType}>
             <select value={type} onChange={(e) => setType(e.target.value as ChartType)} className={selectCls}>
-              {CHART_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
+              {CHART_TYPES.map((ct) => (
+                <option key={ct} value={ct}>{ct}</option>
               ))}
             </select>
           </Field>
-          <Field label={type === "scatter" ? "X (metric)" : "X axis"}>
+          <Field label={type === "scatter" ? t.builder.xMetric : t.builder.xAxis}>
             <select value={x} onChange={(e) => setX(e.target.value)} className={selectCls}>
               {(type === "scatter" ? metrics : dimsAndTime).map((p) => (
                 <option key={p.name} value={p.name}>{p.name}</option>
               ))}
             </select>
           </Field>
-          <Field label={type === "histogram" ? "Metric" : "Measure (Y)"}>
+          <Field label={type === "histogram" ? t.builder.metric : t.builder.measure}>
             <select value={y} onChange={(e) => setY(e.target.value)} className={selectCls}>
-              <option value={COUNT}>Count of rows</option>
+              <option value={COUNT}>{t.builder.countRows}</option>
               {metrics.filter((p) => p.name !== x).map((p) => (
                 <option key={p.name} value={p.name}>{p.name}</option>
               ))}
@@ -105,7 +105,7 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
               onClick={handleManual}
               className="w-full rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
             >
-              Add chart
+              {t.builder.addChart}
             </button>
           </div>
         </div>

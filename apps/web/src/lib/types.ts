@@ -124,6 +124,8 @@ export interface InsightContext {
   domain: Domain;
   /** optional free-text description of the user's job/goal — sharpens AI wording & relevance. */
   userContext?: string;
+  /** UI language for generated prose (conclusions/insights). Defaults to English. */
+  lang?: "en" | "he";
   rowCount: number;
   columns: { name: string; type: SemanticType; role: ColumnProfile["role"] }[];
   kpis: Kpi[];

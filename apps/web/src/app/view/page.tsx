@@ -7,12 +7,14 @@ import { decodeSpec } from "@/lib/share";
 import { DashboardView } from "@/components/DashboardView";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
+import { useT } from "@/lib/i18n";
 import { exportPdf, exportPng } from "@/lib/export";
 
 // Read-only shared dashboard. Reconstructs a DashboardSpec from the URL hash fragment (never sent to
 // any server) and renders it. No uploader, no chart builder — view + export only.
 
 export default function ViewPage() {
+  const t = useT();
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
@@ -52,7 +54,7 @@ export default function ViewPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-slate-50">Quantia</h1>
-              <p className="text-xs text-slate-400">Shared dashboard · read-only</p>
+              <p className="text-xs text-slate-400">{t.view.subtitle}</p>
             </div>
           </Link>
           <div className="flex items-center gap-2">
@@ -65,14 +67,14 @@ export default function ViewPage() {
                   disabled={!!exporting}
                   className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
                 >
-                  {exporting === "png" ? "Exporting…" : "⬇ PNG"}
+                  {exporting === "png" ? t.header.exporting : `⬇ ${t.header.png}`}
                 </button>
                 <button
                   onClick={() => handleExport("pdf")}
                   disabled={!!exporting}
                   className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
                 >
-                  {exporting === "pdf" ? "Exporting…" : "⬇ PDF"}
+                  {exporting === "pdf" ? t.header.exporting : `⬇ ${t.header.pdf}`}
                 </button>
               </>
             )}
@@ -80,7 +82,7 @@ export default function ViewPage() {
               href="/analyze"
               className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400"
             >
-              Analyze your own →
+              {t.view.analyzeOwn} →
             </Link>
           </div>
         </header>
