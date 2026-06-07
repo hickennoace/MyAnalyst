@@ -5,6 +5,7 @@ import { Chart } from "./Chart";
 import { InsightCard } from "./InsightCard";
 import { ChartBuilder } from "./ChartBuilder";
 import { CleaningReport } from "./CleaningReport";
+import { QualityCard } from "./QualityCard";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
 
@@ -60,6 +61,12 @@ export function DashboardView({
             <p className="mt-1.5 text-sm leading-relaxed text-slate-300">{spec.story.summary}</p>
           </div>
         </div>
+      )}
+
+      {spec.quality && (
+        <Section title="Data quality" subtitle="An at-a-glance health check — what's solid and what to fix before you trust the numbers.">
+          <QualityCard quality={spec.quality} />
+        </Section>
       )}
 
       <Section title="Cleaning &amp; normalization" subtitle="The unglamorous core that makes everything below trustworthy.">

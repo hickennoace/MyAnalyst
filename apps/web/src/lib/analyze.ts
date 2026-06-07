@@ -21,6 +21,7 @@ import { isRedundantCorrelation, zOutliers } from "./stats";
 import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAnova, olsSimple, pearsonTest } from "./inference";
 import { defaultHorizon, holtForecast } from "./forecast";
 import { buildDataStory } from "./story";
+import { computeDataQuality } from "./quality";
 import { getInsightProvider } from "./insights";
 import { llmEnabled, sharpenStory } from "./insights/humanize";
 
@@ -49,6 +50,7 @@ export async function analyze(
 
   stage("Profiling columns");
   const profiles = profileTable(table, typeHints);
+  const quality = computeDataQuality(table, profiles, cleaning);
   stage("Detecting domain");
   const domain = detectDomain(profiles, opts.userContext);
   stage("Computing KPIs");
@@ -93,6 +95,7 @@ export async function analyze(
     conclusions: [],
     narrator: provider.lastSource ?? "templated",
     story,
+    quality,
   };
 }
 

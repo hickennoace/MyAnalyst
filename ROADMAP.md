@@ -60,7 +60,7 @@ Differentiate on *statistical substance*, not just charts.
 - **2.3 Richer time series.** Trend + **seasonality decomposition**, period-over-period (MoM/YoY) tables, moving averages, and a confidence band on the forecast (today's forecast is naive). Detect cadence (daily/weekly/monthly) automatically.
 - **2.4 Cohort & retention** (when an entity id + time exist) — retention curves and cohort heatmaps; huge for SaaS/marketing datasets.
 - **2.5 Driver analysis, explained.** The multiple-regression driver model exists; turn it into a plain-language "what moves the needle" ranked list with effect sizes and the correlation-≠-causation caveat.
-- **2.6 Data-quality scorecard.** A single 0–100 "health score" (fill rates, duplicates, type consistency, outliers, leakage/constant columns) with prioritized fixes. Reuses the cleaning report.
+- **2.6 Data-quality scorecard.** ✅ DONE (2026-06-07) — `computeDataQuality()` in `lib/quality.ts` scores five weighted, plain-language checks (completeness, uniqueness, informative columns, value consistency, outlier levels) into a 0–100 health score + letter grade, each failing check carrying a concrete fix. Reuses the cleaning report + profiles (cheap, runs in the worker). Surfaced as a score-ring `QualityCard` in `DashboardView`. 3 tests.
 - **2.7 Smarter domain packs.** Per-domain (sales / finance / marketing / survey) KPI + insight templates so the dashboard feels purpose-built, not generic.
 
 ---

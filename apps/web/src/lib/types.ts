@@ -286,6 +286,31 @@ export interface CleaningReport {
   preview: CleaningPreview;
 }
 
+// ── Data-quality scorecard ────────────────────────────────────────────────────
+
+/** One dimension of the data-quality score (completeness, uniqueness, …). */
+export interface QualityCheck {
+  id: string;
+  label: string;
+  /** 0..1 sub-score for this dimension. */
+  score: number;
+  /** contribution weight in the overall score. */
+  weight: number;
+  status: "good" | "warn" | "bad";
+  /** what we found, in plain language. */
+  detail: string;
+  /** a concrete suggested fix (present when the check isn't already good). */
+  fix?: string;
+}
+
+/** An at-a-glance 0–100 health score for the dataset, with a letter grade and per-dimension breakdown. */
+export interface DataQuality {
+  score: number; // 0..100
+  grade: "A" | "B" | "C" | "D" | "F";
+  checks: QualityCheck[];
+  summary: string;
+}
+
 /** The full declarative result the dashboard renders. */
 export interface DashboardSpec {
   version: string;
@@ -305,6 +330,8 @@ export interface DashboardSpec {
   /** A short plain-language "what is this data" narrative: inferred industry,
    *  subject, and likely purpose — so findings stay connected to the subject. */
   story?: DataStory;
+  /** A 0–100 data-quality health score with a per-dimension breakdown and fixes. */
+  quality?: DataQuality;
 }
 
 export interface DataStory {
