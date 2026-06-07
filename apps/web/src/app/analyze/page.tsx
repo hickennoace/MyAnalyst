@@ -42,7 +42,7 @@ export default function AnalyzePage() {
   const dashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setHistory(listHistory());
+    listHistory().then(setHistory).catch(() => {});
     // Work-context lives only in this browser (localStorage) — never sent anywhere.
     setJobDesc(localStorage.getItem(CONTEXT_KEY) ?? "");
   }, []);
@@ -68,6 +68,14 @@ export default function AnalyzePage() {
     if (!loaded) return;
     setError(null);
     setToast(null);
+    // Chart formatters don't survive JSON serialization, so rebuild the charts from the stored
+    // table + profiles — same as the live path — so reopened dashboards look identical to fresh ones.
+    try {
+      const { recommendCharts } = await import("@/lib/charts");
+      loaded.spec.charts = recommendCharts(loaded.table, loaded.spec.profiles);
+    } catch {
+      /* fall back to the stored (functionless) charts */
+    }
     setTable(loaded.table);
     setSpec(loaded.spec);
     // Re-runnable from the loaded table; the stored spec already reflects its prior column choices.
@@ -77,9 +85,9 @@ export default function AnalyzePage() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   }
 
-  function handleDeleteHistory(id: string) {
-    deleteAnalysis(id);
-    setHistory(listHistory());
+  async function handleDeleteHistory(id: string) {
+    await deleteAnalysis(id);
+    setHistory(await listHistory());
   }
 
   async function handleShare() {
@@ -146,7 +154,7 @@ export default function AnalyzePage() {
       setTypeOverrides(ov);
       try {
         await saveAnalysis(result, cleaned);
-        setHistory(listHistory());
+        setHistory(await listHistory());
       } catch {
         /* history is best-effort; never block the dashboard on it */
       }
