@@ -1,12 +1,11 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/BrandMark";
 
 export default function NotFound() {
   return (
     <main className="glow grid min-h-screen place-items-center px-6">
       <div className="text-center">
-        <div className="mx-auto mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-2xl font-black text-white">
-          Q
-        </div>
+        <BrandMark className="mx-auto mb-6 h-14 w-14" />
         <p className="text-5xl font-extrabold tracking-tight text-slate-50">404</p>
         <p className="mt-2 text-slate-400">This page wandered off the dashboard.</p>
         <div className="mt-6 flex items-center justify-center gap-3">

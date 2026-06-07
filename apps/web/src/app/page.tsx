@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Reveal } from "@/components/Reveal";
 import { HeroChart } from "@/components/HeroChart";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BrandMark } from "@/components/BrandMark";
 
 // Marketing landing page. Static (server component) for fast first paint + SEO.
 // Aesthetic: "Refined Light" — clean near-white SaaS canvas, a single indigo
@@ -77,9 +78,9 @@ export default function Landing() {
       <div className="relative z-10 mx-auto max-w-6xl px-5 sm:px-6">
         {/* Nav */}
         <nav className="flex items-center justify-between py-5" aria-label="Primary">
-          <div className="flex items-center gap-3">
-            <div className="lp-mark">Q</div>
-            <span className="display text-xl text-[var(--ink)]">Quantia</span>
+          <div className="flex items-center gap-2.5">
+            <BrandMark className="h-9 w-9" />
+            <span className="display text-xl text-[var(--ink)]">Lumora</span>
           </div>
           <div className="flex items-center gap-4 sm:gap-6">
             <a href="#features" className="lp-link hidden sm:inline">Features</a>
@@ -98,7 +99,7 @@ export default function Landing() {
               <span className="lp-accent">explained dashboard</span>
             </h1>
             <p className="mt-6 max-w-lg text-[1.05rem] leading-relaxed text-[var(--muted)]">
-              Quantia cleans your data, runs real statistics, and explains what it means —
+              Lumora cleans your data, runs real statistics, and explains what it means —
               automatically. Upload a spreadsheet and get a clear, trustworthy dashboard in
               seconds, with the rigor of a working data scientist.
             </p>
@@ -232,7 +233,7 @@ export default function Landing() {
               <p className="mx-auto mt-4 max-w-md text-[var(--muted)]">No setup, no spreadsheet skills, no waiting. Just answers.</p>
               <div className="mt-8 flex justify-center">
                 <Link href="/analyze" className="lp-cta">
-                  Open Quantia
+                  Open Lumora
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </Link>
               </div>
@@ -242,8 +243,8 @@ export default function Landing() {
 
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line)] py-8">
           <div className="flex items-center gap-3">
-            <div className="lp-mark !h-8 !w-8 !text-base">Q</div>
-            <span className="text-[0.82rem] text-[var(--faint)]">© 2026 Quantia · autonomous statistical analysis</span>
+            <BrandMark className="h-8 w-8" />
+            <span className="text-[0.82rem] text-[var(--faint)]">© 2026 Lumora · autonomous statistical analysis</span>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/analyze" className="lp-link">Analyzer</Link>

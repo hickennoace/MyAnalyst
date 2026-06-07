@@ -147,7 +147,7 @@ export function buildDataStory(
     sentences.push(`Data like this is typically used to ${purpose}.`);
   }
 
-  return { industry, summary: sentences.join(" ") };
+  return { industry, summary: sentences.join(" "), source: "heuristic" };
 }
 
 function lowerFirst(s: string): string {

@@ -6,6 +6,7 @@ import type { DashboardSpec } from "@/lib/types";
 import { decodeSpec } from "@/lib/share";
 import { DashboardView } from "@/components/DashboardView";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BrandMark } from "@/components/BrandMark";
 import { exportPdf, exportPng } from "@/lib/export";
 
 // Read-only shared dashboard. Reconstructs a DashboardSpec from the URL hash fragment (never sent to
@@ -46,11 +47,9 @@ export default function ViewPage() {
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className="brand-mark animate grid h-10 w-10 place-items-center rounded-xl text-lg font-black text-white">
-              Q
-            </div>
+            <BrandMark className="h-10 w-10" />
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-50">Quantia</h1>
+              <h1 className="text-xl font-bold tracking-tight text-slate-50">Lumora</h1>
               <p className="text-xs text-slate-400">Shared dashboard · read-only</p>
             </div>
           </Link>
@@ -110,7 +109,7 @@ export default function ViewPage() {
         )}
 
         <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-          Quantia · Shared dashboards are encoded in the link itself — nothing is stored on a server.
+          Lumora · Shared dashboards are encoded in the link itself — nothing is stored on a server.
         </footer>
       </div>
     </main>

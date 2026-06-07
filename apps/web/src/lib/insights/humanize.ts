@@ -21,6 +21,7 @@ export async function sharpenStory(
         return {
           industry: (data.story.industry || draft.industry).trim().slice(0, 60),
           summary: data.story.summary.trim(),
+          source: "llm",
         };
       }
     }

@@ -1,4 +1,4 @@
-# Quantia
+# Lumora
 
 > **Autonomous financial & statistical analysis platform.** An AI-powered, zero-skill-required alternative to Power BI / Tableau. Upload data → get a clean, beautiful, fully-explained analytical dashboard with KPIs, statistics, forecasts, and plain-language insights — automatically.
 

@@ -1,4 +1,4 @@
-// Core contracts for Quantia's analysis engine.
+// Core contracts for Lumora's analysis engine.
 // Everything flows: raw file -> Table -> ColumnProfile[] -> Domain -> KPIs/Stats/Charts -> Insights -> DashboardSpec.
 // These types are the seams between stages; keep them stable so stages can be swapped independently.
 
@@ -312,6 +312,8 @@ export interface DataStory {
   industry: string;
   /** 2–3 sentence plain-language description of what the dataset is and is used for. */
   summary: string;
+  /** Whether the description came from the local heuristic or was sharpened by the LLM. */
+  source?: "heuristic" | "llm";
 }
 
 /** Pluggable insight generator. Templated impl now; an LLM-backed impl can replace it later. */

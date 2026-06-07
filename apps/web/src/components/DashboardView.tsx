@@ -46,11 +46,16 @@ export function DashboardView({
             </svg>
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-semibold text-slate-100">About this data</h3>
               <span className="rounded-full bg-slate-800/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-300">
                 {spec.story.industry}
               </span>
+              {spec.story.source === "llm" && (
+                <span className="rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
+                  ✨ AI-sharpened
+                </span>
+              )}
             </div>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-300">{spec.story.summary}</p>
           </div>

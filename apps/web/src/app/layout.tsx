@@ -15,29 +15,29 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://quantia.vercel.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lumora.vercel.app";
 const DESCRIPTION =
   "Upload a spreadsheet, get an instant, fully-explained analytical dashboard: KPIs, statistics, forecasts, and plain-language insights — automatically. Your data never leaves your browser.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Quantia — AI-assisted data analysis",
-    template: "%s · Quantia",
+    default: "Lumora — AI-assisted data analysis",
+    template: "%s · Lumora",
   },
   description: DESCRIPTION,
-  applicationName: "Quantia",
+  applicationName: "Lumora",
   keywords: ["data analysis", "dashboard", "KPI", "statistics", "forecast", "CSV", "Excel", "AI", "BI"],
   openGraph: {
-    title: "Quantia — turn a spreadsheet into a beautiful dashboard",
+    title: "Lumora — turn a spreadsheet into a beautiful dashboard",
     description: DESCRIPTION,
     url: SITE_URL,
-    siteName: "Quantia",
+    siteName: "Lumora",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Quantia — AI-assisted data analysis",
+    title: "Lumora — AI-assisted data analysis",
     description: DESCRIPTION,
   },
   robots: { index: true, follow: true },
