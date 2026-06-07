@@ -1,0 +1,88 @@
+# MyAnalyst — Roadmap to surpass myAnalyst Pro
+
+> **Goal:** the analysis a $2k/mo operator-BI consultant gives a chain — delivered **instantly, for any data, privately, by AI**, with no integration project and no login.
+
+Living roadmap — updated 2026-06-08.
+
+---
+
+## 1. Who we're beating, and how
+
+**myanalystpro.com** is a *vertical B2B operator-BI platform* for multi-unit chains (Jiffy Lube, Midas, Bojangles…): it **integrates** with POS / QuickBooks / payroll, shows **live cross-location dashboards + benchmarking + alerts**, ships **industry modules** (AutoCare, CarWash, QSR…), and sells a **human-written monthly consultant report** ("Pro"). Strengths: deep operational data, benchmarking, managed consulting, trust with chains. Weaknesses: needs integration projects, a sales motion, humans in the loop, and only serves a few verticals.
+
+**We don't clone them.** We win a different, winnable game and out-execute on the things AI now does better than humans + integrations:
+
+| Where they're strong | How **MyAnalyst** beats it |
+|---|---|
+| Integrations consolidate data daily | **Zero setup** — drop any file (or paste a URL) and get analysis in seconds. No IT project. |
+| Human consultant writes a monthly report | **Instant AI "action report"** — ranked, specific recommendations in seconds, for *any* dataset, any time. |
+| Live KPI dashboards | **Auto dashboard + an AI analyst you can ask anything**, grounded in the real numbers. |
+| Location benchmarking | **Compare any two datasets** (period vs period, A vs B, vs a benchmark) self-serve. |
+| Off-track alerts | **Refreshable sources + anomaly alerts** (opt-in). |
+| Industry modules | **Domain auto-detection + vertical templates**, no configuration. |
+| Enterprise trust | **Privacy as the moat** — the engine runs in your browser; raw data never leaves the page. A chain can use it without a data-sharing agreement. |
+
+**Positioning one-liner:** *"Upload a spreadsheet, get the report a consultant charges thousands for — in seconds, and your data never leaves your browser."*
+
+---
+
+## 2. Where we already lead (shipped)
+
+The product is already deep and live at **myanalyst.net**:
+
+- **Ingest:** CSV (streamed ~1GB), Excel (multi-sheet), JSON, SQLite (multi-table), TSV/TXT, **public CSV URL**, **multi-table joins**.
+- **Auto-pipeline:** clean/normalize → **data-quality scorecard** → profile → domain detect → KPIs → stats → charts → insights → story → **executive summary**.
+- **Real statistics:** regression w/ inference, correlation (FDR-corrected), ANOVA, chi-square, **multiple-regression driver analysis**, **anomaly detection**, **k-means segmentation**, **time-series MoM/YoY + moving averages**, **cohort retention**, forecasting.
+- **Ask your data (the edge):** plain-English Q&A grounded in real numbers — filters, comparisons, smart "most-X-by-Y" intent, AI-picked charts, "show the math", and an **LLM query-planner so you can ask almost anything** (the model plans the computation; the engine runs it locally → exact + private).
+- **Output:** auto charts + NL chart builder, PNG/PDF export, shareable read-only links, dark/light, a11y, **privacy badge**.
+- **Quality bar:** 123 unit tests, Playwright E2E, smoke, grounding evals.
+
+We are already *broader and more intelligent on arbitrary data* than their self-serve surface. The roadmap closes the few gaps where they still feel more "complete" for an operator.
+
+---
+
+## 3. The plan (prioritized)
+
+Each item says **why it beats them** and **done-when**. ✅ = done.
+
+### Phase A — Intelligence (the moat: "ask anything, get a real answer")
+- **A1. LLM query-planner** ✅ *(shipped 2026-06-08)* — ask almost any question; AI plans, engine computes locally. **Beats:** their canned dashboards can't answer free-form questions.
+- **A2. Multi-step / diagnostic reasoning** — chain 2–3 computations for "why did revenue drop?", "which segment should we cut?", "what changed vs last month?". The planner returns a short plan-of-steps; the client runs each locally and the AI synthesizes. **Done-when:** a "why/what-should-I-do" question returns a grounded, multi-number diagnosis + recommendation. **Beats:** this is what their *human* consultant does — automated.
+- **A3. Resilience & cost** — keep prompts lean; cache identical Q&A; graceful throttle fallback to the (correct) heuristic. **Done-when:** no user-visible failures under burst load on the free tier.
+
+### Phase B — The instant "action report" (counters their paid Pro tier) ⭐ next
+- **B1. Ranked action report** — a polished, multi-page **"What to do" report**: top 3–5 *prioritized, specific, quantified* actions ("Win back ~$203K by following up on stalled leads"), each tied to the real numbers, plus the supporting analysis. One click; seconds; any dataset. **Done-when:** every dashboard offers a downloadable action report whose recommendations are grounded and ranked by impact. **Beats:** their flagship is a human writing this monthly per store; we do it instantly for anyone.
+- **B2. Report polish** — branded multi-page PDF layout (cover, exec summary, findings, actions, appendix). **Done-when:** the PDF reads like a consultant deliverable.
+
+### Phase C — Benchmarking & monitoring, self-serve (their operational edge)
+- **C1. Compare two datasets** — upload "this month" + "last month" (or store A + store B) → deltas, movers, what improved/regressed, with charts. **Done-when:** a two-file compare produces a ranked "what changed" view. **Beats:** their cross-location benchmarking, but for any files, no integration.
+- **C2. Refreshable sources + alerts** *(needs a tiny opt-in backend — your call)* — connect a URL/Sheet, auto-refresh on a schedule, and get emailed when a metric goes off-track. **Done-when:** a saved source refreshes and fires a threshold/anomaly alert. **Beats:** their "data consolidated daily + smart alerts" — self-serve.
+
+### Phase D — Reach, trust & polish
+- **D1. More sources** — Google Sheets URL, Parquet (eval bundle cost first), clipboard paste.
+- **D2. Vertical starter templates** — retail / restaurant / SaaS / clinic sample+lens, mirroring their industry modules, zero config.
+- **D3. Optional encrypted accounts** *(opt-in backend)* — save dashboards/sources across devices, client-encrypted so privacy holds.
+- **D4. Presenter mode, guided first-run tour, perf budget (lazy-load ECharts), AAA a11y, i18n/RTL (Hebrew).**
+
+---
+
+## 4. Explicitly deferred (need your decision)
+- **Any backend** (C2 alerts/scheduled refresh, D3 accounts): crosses today's 100%-client-side line. Worth it for monitoring/saved dashboards, but it's infra to build/run — **your go/no-go when we reach Phase C.**
+- **Heavy deps** (Parquet, DuckDB-WASM for exact huge-file analysis): bundle-size cost — decide per-feature.
+- **Their actual model** (POS/QuickBooks integrations, multi-tenant SaaS, sales team, human consulting): deliberately *not* pursued — that's their game, capital-heavy, and not our edge.
+
+## 5. How we'll know we're winning
+- A non-technical user can upload *any* file and get a correct, professional answer to *any* reasonable question (Phase A) — track with the grounding eval suite + real questions.
+- The action report's recommendations are specific and quantified, not generic (Phase B).
+- Two-file compare and (opt-in) monitoring match the operator workflows people pay myAnalyst Pro for (Phase C) — without an integration project.
+- Privacy stays absolute: raw rows never leave the browser. This is the line we never cross.
+
+## 6. What I need from you
+- **Now:** nothing — A2 and B1 are pure client-side + free-tier AI; I can build them next.
+- **At Phase C/D3:** a yes/no on a small **opt-in backend** for alerts/scheduled refresh/saved accounts.
+- **Optional, anytime:** a **target vertical/audience** to tune templates + copy toward, and whether to ever move off the free LLM tier for higher reliability.
+
+---
+
+### Immediate next step
+Build **B1 — the ranked action report** (the single most visible win vs. their consulting tier), or **A2 — multi-step diagnostic reasoning** (deepens "ask anything"). Recommendation: **B1 first.**
