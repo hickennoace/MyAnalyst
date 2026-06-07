@@ -77,7 +77,7 @@ Differentiate on *statistical substance*, not just charts.
 ## Phase 4 — Output & sharing that spreads the product
 
 - **4.1 Live, interactive shared dashboards** (not just static read-only): the `/view` link keeps filters and the Ask box (read-only engine, no raw data in the URL — store the dataset in a user-chosen way, never server-side by default).
-- **4.2 Narrative report export.** One-click "Analyst report" → a polished multi-page PDF/Notion-style doc: story, KPIs, key charts, insights, recommendations. This is what people actually hand to their boss.
+- **4.2 Narrative report export.** ✅ DONE (2026-06-07) — `buildExecutiveSummary()` in `lib/report.ts` synthesizes the whole analysis into a few grounded, plain-language paragraphs (what the data is + quality grade, headline KPIs, the key movement + its driver, the standout finding), rendered as an `ExecutiveSummary` card that leads the dashboard. Since the existing PDF/PNG export snapshots the dashboard, the report now opens with this narrative and includes every new analysis section (quality, trends, segments, drivers, anomalies). 1 integration test (runs the full pipeline). (Follow-up: a dedicated text-first multi-page PDF layout.)
 - **4.3 Scheduled / refreshable analysis** for connected URLs (opt-in).
 - **4.4 Embeddable charts** (iframe/snippet) with the MyAnalyst credit — organic distribution.
 - **4.5 Presenter mode** — full-screen, swipeable insight cards for meetings.

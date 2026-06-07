@@ -10,6 +10,7 @@ import { AnomalyCard } from "./AnomalyCard";
 import { TimeTrendCard } from "./TimeTrendCard";
 import { SegmentCard } from "./SegmentCard";
 import { DriverCard } from "./DriverCard";
+import { ExecutiveSummary } from "./ExecutiveSummary";
 import { domainFocus } from "@/lib/domain-pack";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
@@ -43,6 +44,8 @@ export function DashboardView({
           <p className="mt-1 max-w-md text-[11px] text-slate-500">{spec.domain.reason}</p>
         </div>
       </div>
+
+      <ExecutiveSummary spec={spec} />
 
       {spec.story && (
         <div className="card card-hover flex gap-3 p-5">
