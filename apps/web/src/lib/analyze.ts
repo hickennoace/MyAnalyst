@@ -29,20 +29,28 @@ import { llmEnabled, sharpenStory } from "./insights/humanize";
 
 export async function analyze(
   rawTable: Table,
-  opts: { userContext?: string; cleaned?: CleanResult } = {}
+  opts: { userContext?: string; cleaned?: CleanResult; onStage?: (stage: string) => void } = {}
 ): Promise<DashboardSpec> {
+  const stage = (s: string) => opts.onStage?.(s);
+
   // Stage 2: clean & normalize first, then run everything else on the trustworthy, typed table.
   // Cleaning is the heaviest preprocessing step (per-row dedup over up to 200k rows); callers that
   // also need the cleaned table can pass it in via `opts.cleaned` so we don't clean the same file twice.
+  if (!opts.cleaned) stage("Cleaning & normalizing");
   const { table, report: cleaning, typeHints } = opts.cleaned ?? cleanTable(rawTable);
 
+  stage("Profiling columns");
   const profiles = profileTable(table, typeHints);
+  stage("Detecting domain");
   const domain = detectDomain(profiles, opts.userContext);
+  stage("Computing KPIs");
   const kpis = computeKpis(table, profiles, domain.domain);
+  stage("Running statistics");
   const charts = recommendCharts(table, profiles);
 
   const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
   ctx.userContext = opts.userContext?.trim() || undefined;
+  stage("Writing insights");
   const provider = getInsightProvider();
   const rawInsights = await provider.generate(ctx);
   // Quality filter: keep only meaningful insights (always keep the summary); drop

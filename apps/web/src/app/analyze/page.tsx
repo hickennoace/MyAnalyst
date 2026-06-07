@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { DashboardSpec, Table } from "@/lib/types";
 import { parseFile } from "@/lib/parse";
-import { analyze } from "@/lib/analyze";
-import { cleanTable } from "@/lib/clean";
+import { runAnalysis } from "@/lib/analyze-client";
 import { downloadCsv } from "@/lib/csv";
 import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
@@ -113,23 +112,11 @@ export default function AnalyzePage() {
     setBusy(true);
     setSpec(null);
     try {
-      // Clean once, here, and hand the result to analyze so the heavy cleaning pass doesn't run
-      // twice on the same (up to 200k-row) file. We also operate on this CLEANED table downstream.
-      const cleanResult = cleanTable(tbl);
-      // Kick off the real work immediately, then let the staged progress animation
-      // play *concurrently* with it (instead of blocking before it). On large files
-      // the compute dominates and the animation is free; on small files it still
-      // reads as a quick, intentional pipeline.
-      const work = analyze(tbl, { userContext: jobDesc, cleaned: cleanResult });
-      for (const s of STAGES) {
-        setStage(s);
-        await new Promise((r) => setTimeout(r, 60));
-      }
-      const result = await work;
-      // Show & operate on the CLEANED data downstream (normalized values, deduped, total rows removed).
-      const cleaned = cleanResult.table;
-      // Carry the "this was a sample of a huge file" note through cleaning.
-      if (tbl.sampledFrom) cleaned.sampledFrom = tbl.sampledFrom;
+      // The whole pipeline (clean → profile → stats → charts → insights) runs in a Web Worker,
+      // so the UI never freezes even on a 200k-row file — and the progress here reflects the
+      // worker's REAL stage transitions instead of a timed animation.
+      setStage("Cleaning & normalizing");
+      const { spec: result, table: cleaned } = await runAnalysis(tbl, jobDesc, (s) => setStage(s));
       setTable(cleaned);
       setSpec(result);
       try {
