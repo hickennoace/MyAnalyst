@@ -82,7 +82,8 @@ export class TemplatedInsightProvider implements InsightProvider {
       out.push({
         id: `ins-trend-${t.metric}`,
         kind: "trend",
-        confidence: Math.abs(t.changePct) > 0.05 ? "high" : "medium",
+        // Flat = not statistically real → low, so it's filtered out of the high-quality view.
+        confidence: t.direction === "flat" ? "low" : t.significant ? "high" : "medium",
         cites: kpi ? [kpi.id] : [],
         text,
       });

@@ -41,12 +41,19 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
     const isMoney = m.type === "currency";
     const fmt = isMoney ? fmtCurrency : fmtNum;
 
-    // Sum is meaningful for additive metrics (money, quantities), not for ratios/prices-over-time.
-    const additive = isMoney || /(qty|quantity|units|count|orders|volume|sales|spend|revenue)/i.test(m.name);
+    // Sum is only meaningful for additive metrics (money, quantities) — never for
+    // ratios, rates, percentages, prices, scores or averages. Word boundaries matter:
+    // "discount" must NOT match "count".
+    // Snapshot/stock figures (MRR, ARR, balance) are currency but NOT additive — you
+    // don't sum a recurring-revenue or balance snapshot across periods.
+    const ratioLike = m.type === "percent" || /(%|\brate\b|ratio|\baverage\b|\bavg\b|\bmean\b|margin|\bprice\b|score|rating|index|\bper\b|\bmrr\b|\barr\b|\bbalance\b)/i.test(m.name);
+    const additive = !ratioLike && (isMoney || /\b(qty|quantity|units|count|orders|volume|sales|spend|revenue|amount|cost|profit|total|sum)\b/i.test(m.name));
     if (additive) {
+      // Avoid awkward labels like "Total Total" when the column is already named "Total".
+      const totalLabel = /^total\b/i.test(m.name) ? m.name : `Total ${m.name}`;
       kpis.push({
         id: `kpi-total-${m.name}`,
-        name: `Total ${m.name}`,
+        name: totalLabel,
         value: fmt(n.sum),
         unit: isMoney ? "USD" : undefined,
         howComputed: `Sum of all ${m.name} values.`,

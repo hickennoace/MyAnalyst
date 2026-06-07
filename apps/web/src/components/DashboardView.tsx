@@ -72,7 +72,7 @@ export function DashboardView({
       {spec.insights.length > 0 && (
         <Section
           title="What the data is telling you"
-          subtitle="Plain-language conclusions, grounded in the computed numbers."
+          subtitle="The most important, statistically-backed findings — and what to do about them."
           badge={
             spec.narrator === "llm" ? (
               <span className="rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">

@@ -146,15 +146,19 @@ function buildInsightContext(
     for (const m of metrics.slice(0, 3)) {
       const series = order.map((idx) => numericColumn(table, m.name)[idx]).filter(Number.isFinite);
       if (series.length < 2) continue;
-      const from = series[0];
-      const to = series[series.length - 1];
-      const changePct = from !== 0 ? (to - from) / Math.abs(from) : 0;
       const idx = series.map((_, i) => i);
       const reg = olsSimple(idx, series);
+      // Use the FITTED trend line's endpoints, not the raw first/last rows — a single
+      // noisy data point shouldn't define the trend. Magnitude/direction come from the
+      // model, and a direction is only claimed when the slope is statistically real.
+      const from = reg ? reg.intercept : series[0];
+      const to = reg ? reg.intercept + reg.slope * (series.length - 1) : series[series.length - 1];
+      const changePct = from !== 0 ? (to - from) / Math.abs(from) : 0;
+      const real = reg?.significant === true;
       trends.push({
         metric: m.name,
         changePct,
-        direction: changePct > 0.02 ? "up" : changePct < -0.02 ? "down" : "flat",
+        direction: !real ? "flat" : reg!.slope > 0 ? "up" : "down",
         from,
         to,
         slopeP: reg?.slopeP,
