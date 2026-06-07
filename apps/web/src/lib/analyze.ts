@@ -23,6 +23,7 @@ import { defaultHorizon, holtForecast } from "./forecast";
 import { buildDataStory } from "./story";
 import { computeDataQuality } from "./quality";
 import { analyzeTimeSeries } from "./timeseries";
+import { segmentRows } from "./segment";
 import { getInsightProvider } from "./insights";
 import { llmEnabled, sharpenStory } from "./insights/humanize";
 
@@ -53,6 +54,7 @@ export async function analyze(
   const profiles = profileTable(table, typeHints);
   const quality = computeDataQuality(table, profiles, cleaning);
   const anomalies = detectAnomalies(table, profiles);
+  const segmentation = segmentRows(table, profiles);
   stage("Detecting domain");
   const domain = detectDomain(profiles, opts.userContext);
   stage("Computing KPIs");
@@ -110,6 +112,7 @@ export async function analyze(
     quality,
     anomalies,
     timeAnalysis: timeAnalysis.length ? timeAnalysis : undefined,
+    segmentation,
   };
 }
 

@@ -8,6 +8,7 @@ import { CleaningReport } from "./CleaningReport";
 import { QualityCard } from "./QualityCard";
 import { AnomalyCard } from "./AnomalyCard";
 import { TimeTrendCard } from "./TimeTrendCard";
+import { SegmentCard } from "./SegmentCard";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
 
@@ -106,6 +107,12 @@ export function DashboardView({
       {spec.timeAnalysis && spec.timeAnalysis.length > 0 && (
         <Section title="Trends over time" subtitle="Period-over-period change with a moving-average trend line.">
           <TimeTrendCard analyses={spec.timeAnalysis} profiles={spec.profiles} />
+        </Section>
+      )}
+
+      {spec.segmentation && spec.segmentation.segments.length > 1 && (
+        <Section title="Natural segments" subtitle="Groups the data falls into on its own — and what defines each.">
+          <SegmentCard segmentation={spec.segmentation} profiles={spec.profiles} />
         </Section>
       )}
 

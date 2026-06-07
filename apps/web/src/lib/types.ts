@@ -313,6 +313,27 @@ export interface TimeSeriesAnalysis {
   worst: PeriodPoint;
 }
 
+// ── Segmentation ──────────────────────────────────────────────────────────────
+
+/** One natural group found by clustering, described by the features that set it apart. */
+export interface Segment {
+  id: number;
+  /** plain-language descriptor, e.g. "High Revenue, low Tenure". */
+  label: string;
+  size: number;
+  sharePct: number;
+  /** the features that most distinguish this group from the overall average. */
+  defining: { column: string; direction: "high" | "low"; z: number; mean: number }[];
+}
+
+export interface Segmentation {
+  k: number;
+  features: string[];
+  segments: Segment[];
+  /** number of rows clustered, when a sample was used instead of the full table. */
+  sampled?: number;
+}
+
 // ── Data-quality scorecard ────────────────────────────────────────────────────
 
 /** One dimension of the data-quality score (completeness, uniqueness, …). */
@@ -363,6 +384,8 @@ export interface DashboardSpec {
   anomalies?: OutlierFact[];
   /** Period-over-period analysis (cadence, MoM/YoY change, moving average) for the top metrics. */
   timeAnalysis?: TimeSeriesAnalysis[];
+  /** Natural groups found by clustering the numeric columns. */
+  segmentation?: Segmentation;
 }
 
 export interface DataStory {
