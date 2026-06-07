@@ -258,7 +258,6 @@ export default function Landing() {
           <div className="flex items-center gap-6">
             <Link href="/analyze" className="lp-link">Analyzer</Link>
             <Link href="/privacy" className="lp-link">Privacy</Link>
-            <span className="text-[0.82rem] text-[var(--faint)]">Built on Next.js · Vercel</span>
           </div>
         </footer>
       </div>
