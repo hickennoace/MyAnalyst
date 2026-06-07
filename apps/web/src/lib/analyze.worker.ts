@@ -32,6 +32,9 @@ ctx.onmessage = async (e: MessageEvent<AnalyzeRequest>) => {
       userContext,
       cleaned,
       onStage: (stage) => post({ type: "progress", stage }),
+      // Charts carry function formatters that can't be cloned back to the main thread; the client
+      // rebuilds them there. Everything else in the spec is plain, cloneable data.
+      skipCharts: true,
     });
     // Carry the "this was a sample of a huge file" note through cleaning.
     if (table.sampledFrom) cleaned.table.sampledFrom = table.sampledFrom;

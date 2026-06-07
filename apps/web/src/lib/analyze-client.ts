@@ -29,14 +29,21 @@ export function runAnalysis(
       worker.terminate();
     };
 
-    worker.onmessage = (e: MessageEvent<AnalyzeMessage>) => {
+    worker.onmessage = async (e: MessageEvent<AnalyzeMessage>) => {
       const msg = e.data;
       if (msg.type === "progress") {
         onStage?.(msg.stage);
       } else if (msg.type === "done") {
         settled = true;
         cleanup();
-        resolve({ spec: msg.spec, table: msg.table });
+        try {
+          // The worker skipped charts (their formatters aren't cloneable) — build them here.
+          const { recommendCharts } = await import("./charts");
+          msg.spec.charts = recommendCharts(msg.table, msg.spec.profiles);
+          resolve({ spec: msg.spec, table: msg.table });
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error("Failed to build charts."));
+        }
       } else if (msg.type === "error") {
         settled = true;
         cleanup();

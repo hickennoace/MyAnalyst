@@ -29,7 +29,15 @@ import { llmEnabled, sharpenStory } from "./insights/humanize";
 
 export async function analyze(
   rawTable: Table,
-  opts: { userContext?: string; cleaned?: CleanResult; onStage?: (stage: string) => void } = {}
+  opts: {
+    userContext?: string;
+    cleaned?: CleanResult;
+    onStage?: (stage: string) => void;
+    /** Skip chart construction. Chart `option` objects carry function formatters that can't be
+     *  structured-cloned across a Web Worker boundary, so the worker skips them and the main
+     *  thread (analyze-client) builds the charts after receiving the spec. */
+    skipCharts?: boolean;
+  } = {}
 ): Promise<DashboardSpec> {
   const stage = (s: string) => opts.onStage?.(s);
 
@@ -46,7 +54,7 @@ export async function analyze(
   stage("Computing KPIs");
   const kpis = computeKpis(table, profiles, domain.domain);
   stage("Running statistics");
-  const charts = recommendCharts(table, profiles);
+  const charts = opts.skipCharts ? [] : recommendCharts(table, profiles);
 
   const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
   ctx.userContext = opts.userContext?.trim() || undefined;
