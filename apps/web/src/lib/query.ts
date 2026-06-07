@@ -1,7 +1,7 @@
 import type { ChartSpec, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
 import { maxOf, minOf, pearson, isRedundantCorrelation } from "./stats";
-import { aggregateCount, buildChart } from "./charts";
+import { aggregateCount, buildChart, buildComparisonChart } from "./charts";
 import { sortByTime } from "./kpi";
 
 // ── AI-enhanced answers ────────────────────────────────────────────────────────
@@ -89,6 +89,12 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
 
   const mMetrics = resolveCols(text, metrics);
   const mDims = resolveCols(text, dims);
+
+  // Comparison questions ("North vs South revenue", "how does 2023 compare to 2022") — two slices of
+  // the same dimension or two periods, answered with the gap, ratio and % difference plus a paired bar.
+  // Detected before the single filter so a "vs" question isn't collapsed to one slice.
+  const comparison = detectComparison(text, table, profiles);
+  if (comparison) return answerComparison(comparison, table, profiles);
 
   // Filtered & conditional questions: "total revenue in 2023", "average order value for the North
   // region", "how many orders where revenue is over 100". We answer over a filtered VIEW of the rows
@@ -370,6 +376,120 @@ export function detectFilter(question: string, table: Table, profiles: ColumnPro
   return undefined;
 }
 
+// ── Comparisons ──────────────────────────────────────────────────────────────
+// "X vs Y": compare a metric across two slices of one dimension (or two periods). Produces the gap,
+// the % difference, the multiple (×), the winner, and a paired bar chart. Runs before the single
+// filter so a "vs" question isn't collapsed to one side.
+
+interface Slice {
+  label: string;
+  predicate: (row: Record<string, unknown>) => boolean;
+}
+
+export interface Comparison {
+  metric: ColumnProfile;
+  agg: "sum" | "mean"; // the other aggregators are nonsensical for a two-slice comparison
+  column: string;
+  kind: "category" | "time";
+  left: Slice;
+  right: Slice;
+}
+
+const COMPARE_SIGNAL = /\b(vs\.?|versus|compare[ds]?|comparison|compared to|compared with|against|difference between)\b/;
+
+/** Aggregate a metric over the rows matching a predicate. */
+function sliceAgg(table: Table, metricName: string, pred: (row: Record<string, unknown>) => boolean, agg: Agg): number {
+  const vals = numericColumn(table, metricName);
+  const xs: number[] = [];
+  table.rows.forEach((row, i) => {
+    if (Number.isFinite(vals[i]) && pred(row)) xs.push(vals[i]);
+  });
+  return aggregate(xs, agg);
+}
+
+export function detectComparison(question: string, table: Table, profiles: ColumnProfile[]): Comparison | undefined {
+  const lower = question.toLowerCase();
+  if (!COMPARE_SIGNAL.test(lower)) return undefined;
+
+  const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  if (!metrics.length) return undefined;
+  const metric = resolveCols(question, metrics)[0] ?? metrics[0];
+  const agg: "sum" | "mean" = /\b(average|avg|mean|per|typical)\b/.test(lower) ? "mean" : "sum";
+
+  // Two distinct years on the time column → period comparison.
+  const time = profiles.find((p) => p.role === "time");
+  if (time) {
+    const years = [...new Set([...lower.matchAll(/\b((?:19|20)\d{2})\b/g)].map((m) => Number(m[1])))];
+    if (years.length >= 2) {
+      const yearOf = (row: Record<string, unknown>): number | null => {
+        const d = new Date(String(row[time.name]));
+        return Number.isNaN(d.getTime()) ? null : d.getFullYear();
+      };
+      // Keep the order they appear in the question.
+      const ordered = years.sort((a, b) => lower.indexOf(String(a)) - lower.indexOf(String(b))).slice(0, 2);
+      const [y1, y2] = ordered;
+      return {
+        metric, agg, column: time.name, kind: "time",
+        left: { label: `${y1}`, predicate: (r) => yearOf(r) === y1 },
+        right: { label: `${y2}`, predicate: (r) => yearOf(r) === y2 },
+      };
+    }
+  }
+
+  // A dimension with ≥2 of its values named in the question → category comparison.
+  let bestDim: { col: string; values: { value: string; pos: number }[] } | undefined;
+  for (const d of profiles.filter((p) => p.role === "dimension")) {
+    const seen = new Map<string, { value: string; pos: number }>();
+    for (const v of distinctValues(table, d.name)) {
+      const vl = v.toLowerCase();
+      if (vl.length < 2 || FILTER_STOP.has(vl) || /^-?\d+(\.\d+)?$/.test(vl) || vl === d.name.toLowerCase()) continue;
+      if (containsPhrase(lower, vl) && !seen.has(vl)) seen.set(vl, { value: v, pos: lower.indexOf(vl) });
+    }
+    const values = [...seen.values()];
+    if (values.length >= 2 && (!bestDim || values.length > bestDim.values.length)) bestDim = { col: d.name, values };
+  }
+  if (bestDim) {
+    const [a, b] = bestDim.values.sort((x, y) => x.pos - y.pos);
+    const col = bestDim.col;
+    const eq = (val: string) => (r: Record<string, unknown>) => String(r[col] ?? "").toLowerCase() === val.toLowerCase();
+    return {
+      metric, agg, column: col, kind: "category",
+      left: { label: a.value, predicate: eq(a.value) },
+      right: { label: b.value, predicate: eq(b.value) },
+    };
+  }
+
+  return undefined;
+}
+
+function answerComparison(c: Comparison, table: Table, profiles: ColumnProfile[]): QueryAnswer {
+  const l = sliceAgg(table, c.metric.name, c.left.predicate, c.agg);
+  const r = sliceAgg(table, c.metric.name, c.right.predicate, c.agg);
+  const aggLabel = c.agg === "mean" ? "average" : "total";
+  if (!Number.isFinite(l) || !Number.isFinite(r)) {
+    return { ok: false, answer: `I don't have enough data to compare ${aggLabel} ${c.metric.name} for both "${c.left.label}" and "${c.right.label}".` };
+  }
+
+  const chart = buildComparisonChart(c.metric.name, c.agg, [[c.left.label, l], [c.right.label, r]]);
+  const head = `${cap(aggLabel)} ${c.metric.name}: ${c.left.label} ${fmt(l, c.metric)} vs ${c.right.label} ${fmt(r, c.metric)}.`;
+
+  if (l === r) return { ok: true, answer: `${head} They're equal.`, chart };
+
+  const higher = l > r ? c.left.label : c.right.label;
+  const lowerLabel = l > r ? c.right.label : c.left.label;
+  const gap = Math.abs(l - r);
+  const hi = Math.max(l, r);
+  const lo = Math.min(l, r);
+  const pctAbove = lo > 0 ? (gap / lo) * 100 : NaN;
+  const ratio = lo > 0 ? hi / lo : NaN;
+  const detail =
+    `${higher} is higher by ${fmt(gap, c.metric)}` +
+    (Number.isFinite(pctAbove) ? ` (${pctAbove.toFixed(1)}% above ${lowerLabel})` : "") +
+    (Number.isFinite(ratio) && ratio >= 1.1 ? `, about ${ratio.toFixed(2)}×` : "") +
+    ".";
+  return { ok: true, answer: `${head} ${detail}`, chart };
+}
+
 // ── AI path ────────────────────────────────────────────────────────────────────
 
 const round2 = (n: number): number | null => (Number.isFinite(n) ? Math.round(n * 100) / 100 : null);
@@ -520,6 +640,27 @@ function buildFocalFacts(question: string, table: Table, profiles: ColumnProfile
   const dim = mDims[0];
 
   const facts: Record<string, unknown> = {};
+
+  // "X vs Y" comparison facts, so the AI narrates the gap/ratio with the exact slice numbers.
+  const comparison = detectComparison(question, table, profiles);
+  if (comparison) {
+    const l = sliceAgg(table, comparison.metric.name, comparison.left.predicate, comparison.agg);
+    const r = sliceAgg(table, comparison.metric.name, comparison.right.predicate, comparison.agg);
+    if (Number.isFinite(l) && Number.isFinite(r)) {
+      const lo = Math.min(l, r);
+      facts.comparison = {
+        metric: comparison.metric.name,
+        basis: comparison.agg === "mean" ? "average" : "total",
+        dimension: comparison.column,
+        left: { label: comparison.left.label, value: round2(l) },
+        right: { label: comparison.right.label, value: round2(r) },
+        difference: round2(Math.abs(l - r)),
+        pctDiff: r !== 0 ? round2(((l - r) / Math.abs(r)) * 100) : null,
+        ratio: lo > 0 ? round2(Math.max(l, r) / lo) : null,
+        higher: l === r ? "equal" : l > r ? comparison.left.label : comparison.right.label,
+      };
+    }
+  }
 
   if (metric && dim) {
     const stats = groupStats(table, dim.name, metric.name); // sorted by total desc

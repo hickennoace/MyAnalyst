@@ -105,6 +105,64 @@ describe("answerQuestion", () => {
   });
 });
 
+describe("comparison questions (Phase 1.2)", () => {
+  it("compares a metric across two categorical values", () => {
+    const r = answerQuestion("compare revenue for North vs South", table, profiles);
+    expect(r.ok).toBe(true);
+    // North total = 600, South total = 450.
+    expect(r.answer).toContain("600");
+    expect(r.answer).toContain("450");
+    expect(r.answer).toContain("North"); // North is the higher side
+    expect(r.answer.toLowerCase()).toContain("higher by");
+    expect(r.chart?.type).toBe("bar");
+  });
+
+  it("honors average vs total in a comparison", () => {
+    const r = answerQuestion("compare average revenue North vs South", table, profiles);
+    expect(r.ok).toBe(true);
+    // North avg = 600/3 = 200, South avg = 450/3 = 150.
+    expect(r.answer).toContain("200");
+    expect(r.answer).toContain("150");
+    expect(r.answer.toLowerCase()).toContain("average");
+  });
+
+  it("does not hijack a two-metric correlation 'vs' question", () => {
+    const r = answerQuestion("revenue vs units", table, profiles);
+    expect(r.ok).toBe(true);
+    // No dimension values / years named → falls through to correlation, not comparison.
+    expect(r.answer.toLowerCase()).toContain("correlation");
+    expect(r.chart?.type).toBe("scatter");
+  });
+
+  it("compares two years on the time column", () => {
+    const rows = [
+      { Date: "2022-01-01", Region: "North", Revenue: 100 },
+      { Date: "2022-06-01", Region: "South", Revenue: 200 },
+      { Date: "2023-01-01", Region: "North", Revenue: 300 },
+      { Date: "2023-06-01", Region: "South", Revenue: 250 },
+      { Date: "2023-09-01", Region: "North", Revenue: 150 },
+      { Date: "2022-09-01", Region: "South", Revenue: 50 },
+    ];
+    const t: Table = { name: "y.csv", columns: ["Date", "Region", "Revenue"], rows, rowCount: rows.length };
+    const p = profileTable(t);
+    const r = answerQuestion("how does 2023 compare to 2022 for revenue", t, p);
+    expect(r.ok).toBe(true);
+    // 2023 total = 300+250+150 = 700; 2022 total = 100+200+50 = 350.
+    expect(r.answer).toContain("700");
+    expect(r.answer).toContain("350");
+    expect(r.answer).toContain("2023");
+  });
+
+  it("detectComparison returns the dimension and slices", async () => {
+    const { detectComparison } = await import("./query");
+    const c = detectComparison("North vs South revenue", table, profiles);
+    expect(c?.kind).toBe("category");
+    expect(c?.column).toBe("Region");
+    expect(c?.left.label).toBe("North");
+    expect(c?.right.label).toBe("South");
+  });
+});
+
 describe("detectFilter", () => {
   it("returns undefined when there is no condition", async () => {
     const { detectFilter } = await import("./query");

@@ -285,6 +285,27 @@ export function aggregateCount(table: Table, col: string, topN = 15): [string, n
   return [...acc.entries()].sort((a, b) => b[1] - a[1]).slice(0, topN);
 }
 
+/** A side-by-side bar of labeled slices — powers "X vs Y" comparison answers. Values are pre-aggregated. */
+export function buildComparisonChart(metricName: string, agg: "sum" | "mean", pairs: [string, number][]): ChartSpec {
+  const labels = pairs.map((p) => p[0]);
+  const values = pairs.map((p) => p[1]);
+  const aggLabel = agg === "mean" ? "average" : "total";
+  return {
+    id: `chart-compare-${Date.now()}`,
+    type: "bar",
+    title: `${aggLabel.charAt(0).toUpperCase() + aggLabel.slice(1)} ${metricName}: ${labels.join(" vs ")}`,
+    rationale: "Side-by-side comparison of the requested slices.",
+    option: {
+      ...ANIMATION,
+      tooltip: tooltip(),
+      grid: grid({ top: 28 }),
+      xAxis: categoryAxis(labels, { axisLabel: { color: INK.sub, fontSize: 12, interval: 0, hideOverlap: true } }),
+      yAxis: valueAxis({ name: aggLabel }),
+      series: [barSeries(values, 1, { label: valueLabel })],
+    },
+  };
+}
+
 function pieOption(pairs: [string, number][]) {
   return {
     ...ANIMATION,
