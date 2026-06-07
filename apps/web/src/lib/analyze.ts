@@ -22,6 +22,7 @@ import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAno
 import { defaultHorizon, holtForecast } from "./forecast";
 import { buildDataStory } from "./story";
 import { computeDataQuality } from "./quality";
+import { buildActionReport } from "./actions";
 import { analyzeTimeSeries } from "./timeseries";
 import { segmentRows } from "./segment";
 import { analyzeCohorts } from "./cohort";
@@ -117,6 +118,7 @@ export async function analyze(
     segmentation,
     drivers: ctx.drivers,
     cohorts,
+    actions: buildActionReport(ctx, quality, profiles),
   };
 }
 

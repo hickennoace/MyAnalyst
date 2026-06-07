@@ -334,6 +334,20 @@ export interface Segmentation {
   sampled?: number;
 }
 
+// ── Action report ─────────────────────────────────────────────────────────────
+
+/** One prioritized, grounded "do this next" recommendation derived from the analysis. */
+export interface ActionItem {
+  id: string;
+  /** imperative headline — "do this". */
+  title: string;
+  /** grounded rationale with the actual numbers. */
+  detail: string;
+  impact: "high" | "medium" | "low";
+  /** what the recommendation is grounded in. */
+  basis: string;
+}
+
 // ── Cohort & retention ────────────────────────────────────────────────────────
 
 export interface CohortRow {
@@ -410,6 +424,8 @@ export interface DashboardSpec {
   drivers?: DriverAnalysis;
   /** Cohort retention grid, when the data has a recurring entity id + a time column. */
   cohorts?: CohortAnalysis;
+  /** A ranked, quantified "what to do next" action plan derived from the analysis. */
+  actions?: ActionItem[];
 }
 
 export interface DataStory {

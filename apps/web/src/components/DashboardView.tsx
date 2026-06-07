@@ -12,6 +12,7 @@ import { SegmentCard } from "./SegmentCard";
 import { DriverCard } from "./DriverCard";
 import { CohortCard } from "./CohortCard";
 import { ExecutiveSummary } from "./ExecutiveSummary";
+import { ActionPlanCard } from "./ActionPlanCard";
 import { domainFocus } from "@/lib/domain-pack";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
@@ -47,6 +48,12 @@ export function DashboardView({
       </div>
 
       <ExecutiveSummary spec={spec} />
+
+      {spec.actions && spec.actions.length > 0 && (
+        <Section title="Your action plan" subtitle="What to do next — ranked by impact, grounded in the numbers. The report a consultant would hand you.">
+          <ActionPlanCard actions={spec.actions} />
+        </Section>
+      )}
 
       {spec.story && (
         <div className="card card-hover flex gap-3 p-5">
