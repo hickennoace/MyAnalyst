@@ -8,10 +8,13 @@ This is a living document. It is ordered by **value × leverage**, grouped into 
 
 **Phase 1 — Ask-your-data: complete** (1.1 filters, 1.2 comparisons, 1.3 AI-picked charts, 1.4 show-the-math; 1.5 shipped as deterministic multi-facet enrichment, full LLM tool-loop deferred with rationale).
 **Phase 2 — Deeper engine: 2.1, 2.2, 2.3, 2.5, 2.6, 2.7 complete** (anomalies, segmentation, time-series MoM/YoY, driver analysis, quality scorecard, domain packs); 2.4 cohort/retention still open.
+**Phase 2 — also 2.4 cohorts complete.**
+**Phase 3 — 3.1 multi-table joins complete; 3.2 partial (public CSV/TSV URL import).**
 **Phase 4 — 4.2 complete** (executive-summary narrative leading the export).
 **Phase 5 — 5.1, 5.3, 5.7 complete** (sample datasets for all domains, reduced-motion polish, privacy indicator).
-**Verification:** typecheck clean · 86 unit tests (15 files) · production build · 6 Playwright E2E · full-pipeline smoke — all green.
-**Deferred (need a product/infra decision or new paid deps — not started):** 3.1 multi-table joins, 3.2 Parquet/Sheets, 3.3 DuckDB-WASM, 2.4 cohorts, 4.1/4.3/4.4/4.5 sharing extras, 5.2/5.4/5.5/5.6 onboarding/i18n/perf, all of Phase 6 (accounts, team workspaces, AI Gateway, public API, evals). These either require a backend/auth, a heavy new dependency, or an external service — flagged for Daniel rather than guessed.
+**Phase 6 — 6.5 AI grounding evals complete.**
+**Verification:** typecheck clean · 108 unit tests (20 files) · production build · 6 Playwright E2E · full-pipeline smoke — all green.
+**Still deferred (need a product/infra decision or a heavy new dependency):** 3.2 Parquet + Google Sheets, 3.3 DuckDB-WASM, 4.1/4.3/4.4/4.5 sharing extras, 5.2/5.4/5.5/5.6 onboarding/i18n/perf, Phase 6 platform (accounts, team workspaces, AI Gateway, public API). These require a backend/auth, a heavy new dependency, or an external service — flagged for Daniel rather than guessed.
 
 ---
 
