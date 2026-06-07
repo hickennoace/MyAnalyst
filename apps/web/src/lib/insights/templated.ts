@@ -102,19 +102,36 @@ export class TemplatedInsightProvider implements InsightProvider {
       });
     }
 
-    // 6. Most common category value (e.g. the top reason / segment).
+    // 6. Most common category value (e.g. the top reason / segment). Phrasing adapts to the ACTUAL
+    //    distribution: only call it "dominates" when it really does, and only "a distant second" when
+    //    there's a real gap — a near-even split is described as such, not over-claimed.
     const cat = ctx.categories[0];
     if (cat && cat.top[0]) {
       const top = cat.top[0];
+      const second = cat.top[1];
+      const lead = second ? top.pct - second.pct : top.pct; // gap in share between #1 and #2
+      const dominant = top.pct >= 0.5;
+      const strongLead = top.pct >= 0.4 && lead >= 0.15;
+      const headVerb = dominant ? "dominates" : strongLead ? "leads" : "is the most common value in";
+      let secondClause = ".";
+      if (second) {
+        secondClause =
+          lead <= 0.03
+            ? `, essentially tied with "${second.value}" (${pct(second.pct)}).`
+            : lead <= 0.12
+            ? `, just ahead of "${second.value}" (${pct(second.pct)}).`
+            : `, with "${second.value}" a distant second at ${pct(second.pct)}.`;
+      }
+      const closer =
+        dominant || strongLead
+          ? ` Since it's so common, that's where action pays off first.`
+          : ` No single value really stands out, so the split itself is the story.`;
       out.push({
         id: `ins-cat-${cat.column}`,
         kind: "composition",
-        confidence: top.pct >= 0.4 ? "high" : "medium",
+        confidence: dominant || strongLead ? "high" : "medium",
         cites: [`category:${cat.column}`],
-        text:
-          `"${top.value}" dominates ${cat.column} — ${pct(top.pct)} of all rows (${top.count} of ${cat.total})` +
-          (cat.top[1] ? `, with "${cat.top[1].value}" a distant second at ${pct(cat.top[1].pct)}.` : ".") +
-          ` Since it's so common, that's where action pays off first.`,
+        text: `"${top.value}" ${headVerb} ${cat.column} — ${pct(top.pct)} of all rows (${top.count} of ${cat.total})` + secondClause + closer,
       });
     }
 
