@@ -113,6 +113,7 @@ export async function analyze(
     anomalies,
     timeAnalysis: timeAnalysis.length ? timeAnalysis : undefined,
     segmentation,
+    drivers: ctx.drivers,
   };
 }
 

@@ -386,6 +386,8 @@ export interface DashboardSpec {
   timeAnalysis?: TimeSeriesAnalysis[];
   /** Natural groups found by clustering the numeric columns. */
   segmentation?: Segmentation;
+  /** Multiple-regression "what moves the primary metric" driver analysis (when ≥2 predictors exist). */
+  drivers?: DriverAnalysis;
 }
 
 export interface DataStory {

@@ -9,6 +9,7 @@ import { QualityCard } from "./QualityCard";
 import { AnomalyCard } from "./AnomalyCard";
 import { TimeTrendCard } from "./TimeTrendCard";
 import { SegmentCard } from "./SegmentCard";
+import { DriverCard } from "./DriverCard";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
 
@@ -107,6 +108,12 @@ export function DashboardView({
       {spec.timeAnalysis && spec.timeAnalysis.length > 0 && (
         <Section title="Trends over time" subtitle="Period-over-period change with a moving-average trend line.">
           <TimeTrendCard analyses={spec.timeAnalysis} profiles={spec.profiles} />
+        </Section>
+      )}
+
+      {spec.drivers && spec.drivers.drivers.length > 0 && (
+        <Section title="What moves the needle" subtitle={`The factors that most influence ${spec.drivers.target}, each holding the others constant.`}>
+          <DriverCard drivers={spec.drivers} />
         </Section>
       )}
 
