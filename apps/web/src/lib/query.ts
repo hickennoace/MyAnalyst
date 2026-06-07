@@ -235,67 +235,154 @@ function cap(s: string): string {
 
 const round2 = (n: number): number | null => (Number.isFinite(n) ? Math.round(n * 100) / 100 : null);
 
+// The work-context the user optionally typed on the analyzer ("what this data is about"), stored
+// locally. Threaded into the AI prompt so answers are framed around the user's actual goal.
+const CONTEXT_KEY = "quantia:context";
+
 /** Whether the optional server-side LLM narrator is switched on (the key itself stays server-side). */
 function llmOn(): boolean {
   return typeof process !== "undefined" && process.env.NEXT_PUBLIC_LLM_ENABLED === "1";
 }
 
-/**
- * Gather an aggregates-only "evidence" payload for a question: dataset metadata plus the relevant
- * pre-computed numbers (metric summary, group breakdown with shares, correlation, trend, distribution).
- * No raw rows ever leave — this mirrors the /api/insights privacy boundary.
- */
-function buildEvidence(
-  question: string,
-  table: Table,
-  profiles: ColumnProfile[],
-  grounded: string,
-  domain?: string
-) {
+function readUserContext(): string | undefined {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return undefined;
+    const v = window.localStorage.getItem(CONTEXT_KEY);
+    return v && v.trim() ? v.trim().slice(0, 400) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function strengthLabel(r: number): string {
+  const a = Math.abs(r);
+  return a > 0.7 ? "strong" : a > 0.4 ? "moderate" : a > 0.2 ? "weak" : "negligible";
+}
+
+/** A rich, plain-number brief for one metric, reusing the already-computed NumericSummary. */
+function metricBrief(p: ColumnProfile) {
+  const n = p.numeric!;
+  const cv = n.mean !== 0 ? Math.abs(n.std / n.mean) : null; // coefficient of variation (relative spread)
+  const skew =
+    n.median !== 0 && n.mean > n.median * 1.1
+      ? "right-skewed (a few large values pull the average above the typical value)"
+      : n.median !== 0 && n.mean < n.median * 0.9
+      ? "left-skewed (a few small values pull the average down)"
+      : "roughly symmetric";
+  return {
+    name: p.name,
+    type: p.type,
+    total: round2(n.sum),
+    average: round2(n.mean),
+    median: round2(n.median),
+    min: round2(n.min),
+    max: round2(n.max),
+    stdDev: round2(n.std),
+    spreadCV: cv === null ? null : round2(cv),
+    shape: skew,
+    fillRatePct: round2(p.fillRate * 100),
+    count: n.count,
+  };
+}
+
+/** Strongest pairwise correlations among the given metrics (capped for cost), ranked by |r|. */
+function topCorrelations(table: Table, metrics: ColumnProfile[], limit: number) {
+  const out: { a: string; b: string; r: number | null; r2: number | null; strength: string; direction: string }[] = [];
+  for (let i = 0; i < metrics.length; i++) {
+    for (let j = i + 1; j < metrics.length; j++) {
+      const r = pearson(numericColumn(table, metrics[i].name), numericColumn(table, metrics[j].name));
+      if (Number.isFinite(r)) {
+        out.push({
+          a: metrics[i].name,
+          b: metrics[j].name,
+          r: round2(r),
+          r2: round2(r * r),
+          strength: strengthLabel(r),
+          direction: r > 0 ? "positive" : "negative",
+        });
+      }
+    }
+  }
+  return out.sort((x, y) => Math.abs(y.r ?? 0) - Math.abs(x.r ?? 0)).slice(0, limit);
+}
+
+/** An always-on statistical brief of the WHOLE dataset, so even open-ended questions are grounded. */
+function buildOverview(table: Table, profiles: ColumnProfile[]) {
+  const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const dims = profiles.filter((p) => p.role === "dimension");
+  const time = profiles.find((p) => p.role === "time");
+  const o: Record<string, unknown> = {};
+
+  if (metrics.length) o.metrics = metrics.slice(0, 8).map(metricBrief);
+
+  const corr = topCorrelations(table, metrics.slice(0, 8), 6);
+  if (corr.length) o.correlations = corr;
+
+  if (dims.length) {
+    o.categories = dims.slice(0, 4).map((d) => {
+      const counts = aggregateCount(table, d.name);
+      const total = counts.reduce((s, [, c]) => s + c, 0);
+      return {
+        column: d.name,
+        distinct: counts.length,
+        top: counts.slice(0, 5).map(([value, count]) => ({ value, count, pct: total ? round2((count / total) * 100) : null })),
+      };
+    });
+  }
+
+  if (time && metrics[0]) {
+    const order = sortByTime(table, time.name);
+    const series = order.map((i) => numericColumn(table, metrics[0].name)[i]).filter(Number.isFinite);
+    if (series.length >= 2) {
+      const first = series[0];
+      const last = series[series.length - 1];
+      const pct = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : 0;
+      o.overallTrend = { metric: metrics[0].name, over: time.name, first: round2(first), last: round2(last), changePct: round2(pct), periods: series.length };
+    }
+  }
+
+  return o;
+}
+
+/** Question-specific numbers: the focal group breakdown, trend, distribution, and cited correlation. */
+function buildFocalFacts(question: string, table: Table, profiles: ColumnProfile[]) {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   const dims = profiles.filter((p) => p.role === "dimension");
   const time = profiles.find((p) => p.role === "time");
   const mMetrics = resolveCols(question, metrics);
   const mDims = resolveCols(question, dims);
   const metric = mMetrics[0] ?? metrics[0];
-  const dim = mDims[0] ?? dims[0];
+  const dim = mDims[0];
 
   const facts: Record<string, unknown> = {};
-
-  if (metric) {
-    const vals = numericColumn(table, metric.name);
-    facts.metricSummary = {
-      name: metric.name,
-      total: round2(aggregate(vals, "sum")),
-      average: round2(aggregate(vals, "mean")),
-      min: round2(aggregate(vals, "min")),
-      max: round2(aggregate(vals, "max")),
-      count: vals.filter(Number.isFinite).length,
-    };
-  }
 
   if (metric && dim) {
     const ranked = groupBy(table, dim.name, metric.name, "sum");
     const grandTotal = ranked.reduce((s, [, v]) => s + v, 0);
+    const top3 = ranked.slice(0, 3).reduce((s, [, v]) => s + v, 0);
     facts.breakdown = {
       dimension: dim.name,
       metric: metric.name,
       aggregate: "sum",
       groupCount: ranked.length,
       total: round2(grandTotal),
+      topGroupSharePct: grandTotal && ranked[0] ? round2((ranked[0][1] / grandTotal) * 100) : null,
+      top3SharePct: grandTotal ? round2((top3 / grandTotal) * 100) : null,
       topGroups: ranked.slice(0, 8).map(([key, value]) => ({
         key,
         value: round2(value),
         sharePct: grandTotal ? round2((value / grandTotal) * 100) : null,
       })),
+      bottomGroup: ranked.length ? { key: ranked[ranked.length - 1][0], value: round2(ranked[ranked.length - 1][1]) } : null,
     };
   }
 
-  const ms = mMetrics.length >= 2 ? mMetrics : metrics;
-  if (ms.length >= 2) {
-    const [a, b] = ms;
+  if (mMetrics.length >= 2) {
+    const [a, b] = mMetrics;
     const r = pearson(numericColumn(table, a.name), numericColumn(table, b.name));
-    if (Number.isFinite(r)) facts.correlation = { a: a.name, b: b.name, r: round2(r) };
+    if (Number.isFinite(r)) {
+      facts.correlation = { a: a.name, b: b.name, r: round2(r), r2: round2(r * r), strength: strengthLabel(r), direction: r > 0 ? "positive" : "negative" };
+    }
   }
 
   if (time && metric) {
@@ -305,49 +392,52 @@ function buildEvidence(
       const first = series[0];
       const last = series[series.length - 1];
       const pct = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : 0;
-      facts.trend = {
-        metric: metric.name,
-        over: time.name,
-        first: round2(first),
-        last: round2(last),
-        changePct: round2(pct),
-        periods: series.length,
-      };
+      facts.trend = { metric: metric.name, over: time.name, first: round2(first), last: round2(last), changePct: round2(pct), peak: round2(Math.max(...series)), trough: round2(Math.min(...series)), periods: series.length };
     }
   }
 
-  if (dim) {
-    const counts = aggregateCount(table, dim.name);
+  if (mDims[0]) {
+    const counts = aggregateCount(table, mDims[0].name);
     const totalC = counts.reduce((s, [, c]) => s + c, 0);
     if (totalC > 0) {
       facts.distribution = {
-        column: dim.name,
+        column: mDims[0].name,
         distinct: counts.length,
-        top: counts.slice(0, 8).map(([value, count]) => ({
-          value,
-          count,
-          pct: round2((count / totalC) * 100),
-        })),
+        top: counts.slice(0, 8).map(([value, count]) => ({ value, count, pct: round2((count / totalC) * 100) })),
       };
     }
   }
 
+  return facts;
+}
+
+/**
+ * Assemble the full aggregates-only evidence payload: dataset metadata (+ the user's goal), the
+ * deterministic one-liner, question-specific facts, and a whole-dataset statistical overview. No raw
+ * rows ever leave — this mirrors the /api/insights privacy boundary.
+ */
+function buildEvidence(question: string, table: Table, profiles: ColumnProfile[], grounded: string, domain?: string) {
   return {
     question,
+    intent: grounded ? "specific" : "open-ended",
     dataset: {
       name: table.name,
       rowCount: table.rowCount,
+      sampledFrom: table.sampledFrom ?? null,
       domain: domain || undefined,
-      columns: profiles.map((p) => ({ name: p.name, role: p.role, type: p.type })),
+      userContext: readUserContext(),
+      columns: profiles.map((p) => ({ name: p.name, role: p.role, type: p.type, fillRatePct: round2(p.fillRate * 100) })),
     },
-    grounded,
-    facts,
+    grounded: grounded || undefined,
+    facts: buildFocalFacts(question, table, profiles),
+    overview: buildOverview(table, profiles),
   };
 }
 
 /**
- * Answer a question with the optional LLM as a thorough analyst, grounded in the exact numbers the
- * deterministic engine computed. Falls back to the heuristic answer when the LLM is off or fails.
+ * Answer a question with the optional LLM as a principal analyst, grounded in the exact numbers the
+ * engine computed (plus a whole-dataset brief so open-ended questions work too). Falls back to the
+ * heuristic answer when the LLM is off or fails.
  */
 export async function answerQuestionAI(
   question: string,
@@ -356,9 +446,9 @@ export async function answerQuestionAI(
   domain?: string
 ): Promise<RichAnswer> {
   const base = answerQuestion(question, table, profiles);
-  if (!llmOn() || !base.ok) return { ...base, source: "heuristic" };
+  if (!llmOn()) return { ...base, source: "heuristic" };
   try {
-    const evidence = buildEvidence(question, table, profiles, base.answer, domain);
+    const evidence = buildEvidence(question, table, profiles, base.ok ? base.answer : "", domain);
     const res = await fetch("/api/insights", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -370,7 +460,7 @@ export async function answerQuestionAI(
         return {
           ok: true,
           answer: data.answer.trim(),
-          chart: base.chart,
+          chart: base.chart, // present for specific questions; undefined for open-ended
           source: "llm",
           followups: Array.isArray(data.followups)
             ? data.followups.filter((s) => typeof s === "string" && s.trim()).slice(0, 3)

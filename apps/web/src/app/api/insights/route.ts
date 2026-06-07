@@ -37,10 +37,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const callLLM = (system: string, user: string) =>
+  const callLLM = (system: string, user: string, opts?: CallOpts) =>
     provider === "anthropic"
-      ? callAnthropic(apiKey, model ?? "claude-haiku-4-5", system, user)
-      : callOpenAICompat(provider, apiKey, model ?? "llama-3.3-70b-versatile", system, user);
+      ? callAnthropic(apiKey, model ?? "claude-haiku-4-5", system, user, opts)
+      : callOpenAICompat(provider, apiKey, model ?? "llama-3.3-70b-versatile", system, user, opts);
 
   // Task: humanize — rewrite the deterministic conclusions in a warm, human tone (numbers preserved).
   if (body && typeof body === "object" && (body as { task?: string }).task === "humanize") {
@@ -90,9 +90,10 @@ export async function POST(req: Request) {
     if (!question || typeof question !== "string") {
       return NextResponse.json({ answer: "", provider: "error" });
     }
+    const { overview, intent } = body as { overview?: unknown; intent?: string };
     try {
-      const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts);
-      const raw = await callLLM(system, user);
+      const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent);
+      const raw = await callLLM(system, user, { temperature: 0.45, maxTokens: 1100 });
       const parsed = extractJson(raw) as { answer?: unknown; followups?: unknown };
       const answer = String(parsed.answer ?? "").trim();
       if (!answer) return NextResponse.json({ answer: "", provider: "error" });
@@ -171,21 +172,36 @@ function buildStoryPrompt(
 
 // ── Ask-your-data answer prompt ────────────────────────────────────────────────
 
-function buildAnswerPrompt(question: string, dataset: unknown, grounded: unknown, facts: unknown) {
+function buildAnswerPrompt(
+  question: string,
+  dataset: unknown,
+  grounded: unknown,
+  facts: unknown,
+  overview: unknown,
+  intent: unknown
+) {
   const system = [
-    "You are a senior data analyst answering a specific question about a user's dataset, in writing.",
-    "You are given: the QUESTION, dataset METADATA (column names + roles + types, row count, detected domain), a GROUNDED one-line result already computed by a deterministic engine, and a FACTS object of pre-computed numbers (totals, averages, group breakdowns with shares, correlations, trends, distributions). These numbers are the ONLY ground truth.",
-    "HARD RULES:",
-    "1. Use ONLY numbers that appear in `grounded` or `facts`. NEVER invent, estimate, extrapolate, or re-round a number. If the data needed to answer fully isn't provided, answer what you can and say what would be needed.",
-    "2. You are given NO raw rows — never claim to know individual records or values beyond the provided aggregates.",
-    "3. Lead with a direct, specific answer to the exact question (state the key number and the winner/result).",
-    "4. Then add real analytical depth: comparisons and gaps between groups, shares of the total, ranking, magnitude, and any relevant correlation or trend from the facts. Quote the actual numbers.",
-    "5. Explain what it likely MEANS in practical/business terms for this domain, and suggest one concrete thing the user could check or do next. When citing relationships, note that correlation isn't causation and a pattern could be coincidence.",
-    "6. Professional, confident, and clear — like a great analyst briefing a smart non-statistician. No jargon dumps, no hedging filler. Use 2-4 short paragraphs, 90-170 words total. Separate paragraphs with a blank line (\\n\\n).",
-    "7. Also propose up to 3 sharp follow-up questions the user could ask next, each tailored to this dataset's real columns and phrased the way they'd type them.",
+    "You are a principal data analyst — the kind a company pays for — writing a precise, insightful answer to a question about the user's dataset. Sound like a sharp human expert, not a chatbot.",
+    "INPUTS you are given (all pre-computed; you have NO raw rows):",
+    "• QUESTION — what the user asked.",
+    "• dataset — metadata: column names, roles, types, fill rates, row count, detected domain, and (if provided) the user's own description of their goal in `userContext`.",
+    "• grounded — a one-line result the deterministic engine already computed for this exact question (authoritative; present for specific questions).",
+    "• facts — question-specific numbers (group breakdowns with shares, trends, distributions, the cited correlation).",
+    "• overview — an always-available statistical brief of the WHOLE dataset: every key metric's total/average/median/std-dev/spread (coefficient of variation)/skew/fill-rate, the strongest pairwise correlations, category concentration, and any overall time trend. Use this to answer open-ended questions and to add context.",
+    "GROUNDING RULES (critical):",
+    "1. Every figure you state must come from the inputs — OR be a transparent arithmetic derivation of them (a difference, ratio, multiple, percentage, or share). Deriving '$1.24M is 1.4× the $890K runner-up' from two given numbers is encouraged; inventing a number that isn't derivable is forbidden.",
+    "2. Never fabricate values, individual records, causes you can't see, or external facts. If the data can't fully answer, say precisely what's missing.",
+    "3. Respect data quality: if a relevant column has a low fill rate, the dataset was sampled, a group is tiny, or a correlation is weak — say so plainly. A real analyst flags caveats.",
+    "HOW TO WRITE:",
+    "4. Open with a one-sentence BOTTOM LINE that directly answers the question with the key number(s).",
+    "5. Then give the supporting analysis: the comparison/gap/ranking, the share of total, magnitude, and the most relevant correlation or trend — always with the actual numbers. Quantify everything; no vague filler like 'various factors' or 'it depends'.",
+    "6. Then interpret: what this likely MEANS in the context of the detected domain and the user's stated goal, and one concrete, specific next step or thing to check. Distinguish correlation from causation when relevant.",
+    "7. Voice: confident, concrete, and clear for a smart non-statistician. Explain any stats term in plain words. 2–4 short paragraphs, ~110–200 words. Separate paragraphs with a blank line (\\n\\n).",
+    "8. If `userContext` is present, frame the whole answer around that goal — emphasis, examples, and the recommended next step should serve it.",
+    "9. Propose up to 3 incisive follow-up questions the user would realistically ask next, each tied to this dataset's real columns and phrased the way they'd type it.",
     'Respond with ONLY JSON: {"answer": string, "followups": string[]}',
   ].join("\n");
-  const user = JSON.stringify({ question, dataset, grounded, facts });
+  const user = JSON.stringify({ question, intent: intent ?? "specific", dataset, grounded, facts, overview });
   return { system, user };
 }
 
@@ -226,7 +242,12 @@ function buildPrompt(ctx: InsightContext, validCites: Set<string>) {
 
 // ── Providers ─────────────────────────────────────────────────────────────────
 
-async function callAnthropic(apiKey: string, model: string, system: string, user: string): Promise<string> {
+interface CallOpts {
+  temperature?: number;
+  maxTokens?: number;
+}
+
+async function callAnthropic(apiKey: string, model: string, system: string, user: string, opts?: CallOpts): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -236,7 +257,8 @@ async function callAnthropic(apiKey: string, model: string, system: string, user
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: opts?.maxTokens ?? 1024,
+      ...(opts?.temperature !== undefined ? { temperature: opts.temperature } : {}),
       system,
       // Prefill the assistant turn with "{" to force a JSON object response.
       messages: [
@@ -256,7 +278,8 @@ async function callOpenAICompat(
   apiKey: string,
   model: string,
   system: string,
-  user: string
+  user: string,
+  opts?: CallOpts
 ): Promise<string> {
   const base = process.env.LLM_BASE_URL?.trim() || OPENAI_COMPAT_BASES[provider];
   if (!base) throw new Error(`No base URL for provider "${provider}". Set LLM_BASE_URL.`);
@@ -265,8 +288,8 @@ async function callOpenAICompat(
     headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
     body: JSON.stringify({
       model,
-      temperature: 0.3,
-      max_tokens: 1024,
+      temperature: opts?.temperature ?? 0.3,
+      max_tokens: opts?.maxTokens ?? 1024,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: system },
