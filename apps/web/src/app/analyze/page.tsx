@@ -30,7 +30,7 @@ export default function AnalyzePage() {
   const [table, setTable] = useState<Table | null>(null);
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
-  const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [jobDesc, setJobDesc] = useState("");
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -40,6 +40,13 @@ export default function AnalyzePage() {
     // Work-context lives only in this browser (localStorage) — never sent anywhere.
     setJobDesc(localStorage.getItem(CONTEXT_KEY) ?? "");
   }, []);
+
+  // Transient toasts auto-dismiss; errors linger a little longer than info.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), toast.tone === "error" ? 8000 : 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   function updateContext(v: string) {
     setJobDesc(v);
@@ -54,7 +61,7 @@ export default function AnalyzePage() {
     const loaded = await getAnalysis(id);
     if (!loaded) return;
     setError(null);
-    setShareMsg(null);
+    setToast(null);
     setTable(loaded.table);
     setSpec(loaded.spec);
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
@@ -67,31 +74,34 @@ export default function AnalyzePage() {
 
   async function handleShare() {
     if (!spec) return;
-    setShareMsg("Building link…");
+    setToast({ text: "Building link…", tone: "info" });
     try {
       const payload = await encodeSpec(spec);
       const url = `${window.location.origin}/view#${payload}`;
       if (url.length > MAX_LINK_CHARS) {
-        setShareMsg("Dataset too large for a link — use PNG/PDF export instead.");
+        setToast({ text: "Dataset too large for a link — use PNG/PDF export instead.", tone: "error" });
         return;
       }
       await navigator.clipboard.writeText(url);
-      setShareMsg(`🔗 Read-only link copied (${(url.length / 1024).toFixed(0)} KB) — paste it anywhere.`);
+      setToast({ text: `🔗 Read-only link copied (${(url.length / 1024).toFixed(0)} KB) — paste it anywhere.`, tone: "info" });
     } catch {
-      setShareMsg("Couldn't create the link in this browser.");
+      setToast({ text: "Couldn't create the link in this browser.", tone: "error" });
     }
   }
 
   async function handleExport(kind: "png" | "pdf") {
     if (!dashboardRef.current || !spec || exporting) return;
     setExporting(kind);
-    setError(null);
+    setToast(null);
     try {
       const meta = `${spec.rowCount.toLocaleString()} rows · ${spec.profiles.length} columns · ${spec.domain.domain}`;
       if (kind === "png") await exportPng(dashboardRef.current, spec.datasetName, meta);
       else await exportPdf(dashboardRef.current, spec.datasetName, meta);
+      setToast({ text: `✓ ${kind.toUpperCase()} downloaded.`, tone: "info" });
     } catch {
-      setError("Export failed — the dashboard may be too large. Try again or use PNG.");
+      // The export-error banner was previously routed to `error`, which only renders in the
+      // pre-analysis (no-spec) view — so failures were silent. Surface it in the toast instead.
+      setToast({ text: "Export failed — the dashboard may be too large. Try again or use PNG.", tone: "error" });
     } finally {
       setExporting(null);
     }
@@ -259,9 +269,24 @@ export default function AnalyzePage() {
           </div>
         )}
 
-        {shareMsg && (
-          <div className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm text-blue-200">
-            {shareMsg}
+        {toast && (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`fade-up mb-4 flex items-start justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm ${
+              toast.tone === "error"
+                ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                : "border-blue-500/30 bg-blue-500/10 text-blue-200"
+            }`}
+          >
+            <span>{toast.text}</span>
+            <button
+              onClick={() => setToast(null)}
+              aria-label="Dismiss"
+              className="-mr-1 shrink-0 rounded-md px-1.5 leading-none opacity-60 transition hover:opacity-100"
+            >
+              ✕
+            </button>
           </div>
         )}
 

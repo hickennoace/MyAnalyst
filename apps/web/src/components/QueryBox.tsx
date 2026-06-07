@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ColumnProfile, Table } from "@/lib/types";
 import { answerQuestionAI, type QaTurn, type RichAnswer } from "@/lib/query";
 import { llmEnabled } from "@/lib/insights/humanize";
@@ -31,9 +31,18 @@ export function QueryBox({
   const [turns, setTurns] = useState<Turn[]>([]);
   const [loading, setLoading] = useState(false);
   const idRef = useRef(0);
+  const threadEndRef = useRef<HTMLDivElement>(null);
   const ai = useMemo(() => llmEnabled(), []);
 
   const suggestions = useMemo(() => buildSuggestions(profiles), [profiles]);
+
+  // Keep the newest question/answer in view as the conversation grows. Skip the very first
+  // render (nothing to scroll to) and honor reduced-motion preferences.
+  useEffect(() => {
+    if (turns.length === 0) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    threadEndRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
+  }, [turns, loading]);
 
   async function ask(question: string) {
     const text = question.trim();
@@ -153,6 +162,7 @@ export function QueryBox({
               )}
             </div>
           ))}
+          <div ref={threadEndRef} aria-hidden />
         </div>
       )}
 
