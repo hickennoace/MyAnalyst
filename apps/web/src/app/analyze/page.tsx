@@ -13,6 +13,7 @@ import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEnt
 import { Uploader } from "@/components/Uploader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
+import { PrivacyBadge } from "@/components/PrivacyBadge";
 import { DashboardView } from "@/components/DashboardView";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ColumnControls } from "@/components/ColumnControls";
@@ -274,6 +275,7 @@ export default function AnalyzePage() {
             </div>
           </Link>
           <div className="flex flex-wrap items-center justify-end gap-2">
+          <PrivacyBadge />
           <ThemeToggle />
           {spec ? (
             <div className="flex flex-wrap items-center justify-end gap-2">

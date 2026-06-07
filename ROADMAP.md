@@ -86,13 +86,13 @@ Differentiate on *statistical substance*, not just charts.
 
 ## Phase 5 — Product polish & growth
 
-- **5.1 Onboarding & sample datasets.** "Try it with sample data" (sales, survey, finance) on the landing page so first-run has zero friction.
+- **5.1 Onboarding & sample datasets.** ✅ DONE (2026-06-07) — the landing hero's "Try a live sample" CTA deep-links to `/analyze?demo=1`, which auto-runs a freshly-generated demo dataset (each seeded with realistic mess so cleaning/stats have work to do). Now **nine** generators spanning all detected domains — sales, SaaS, e-commerce, marketing, HR, real-estate, fitness, and new **survey** + **finance** sets so the domain packs are all demoable. 1 test.
 - **5.2 Guided tour** of a generated dashboard the first time.
 - **5.3 Mobile-first dashboard layout** pass (charts, KPI cards, Ask box all thumb-friendly).
 - **5.4 Accessibility to AAA** on the core flow; full keyboard nav for chart builder and Ask box.
 - **5.5 i18n** — start with RTL + Hebrew (the team's context), framework for more.
 - **5.6 Performance budget** — keep TTI low; lazy-load ECharts and heavy libs; measure with Lighthouse in CI.
-- **5.7 Privacy as a feature, loudly.** A visible "your data never left this page" indicator with a network-activity proof; it's a real moat vs. upload-to-server tools.
+- **5.7 Privacy as a feature, loudly.** ✅ DONE (2026-06-07) — a `PrivacyBadge` in the analyzer header: a green "Private" pill with a popover explaining the whole engine runs in your browser (file never uploaded; works offline after load), and that with AI on only anonymous aggregates — never raw rows — are sent. (Follow-up: live network-activity counter as extra proof.)
 
 ---
 

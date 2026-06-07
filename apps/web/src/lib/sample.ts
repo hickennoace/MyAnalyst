@@ -203,7 +203,58 @@ function fitnessData(): Gen {
   return { name: "sample-workouts.csv", columns: ["Date", "Activity", "Duration (min)", "Intensity", "Calories", "Avg Heart Rate"], rows, numericKey: "Calories", catKey: "Activity" };
 }
 
-const GENERATORS = [salesData, saasData, ecommerceData, marketingData, hrData, realEstateData, fitnessData];
+function surveyData(): Gen {
+  const segments = subset(["New", "Returning", "Power User", "Trial", "Enterprise"], 3);
+  const topics = subset(["Onboarding", "Support", "Pricing", "Features", "Performance"], 3);
+  const n = randInt(80, 140);
+  const start = Date.UTC(2024, 0, 1);
+  const rows: Row[] = [];
+  for (let i = 0; i < n; i++) {
+    const seg = pick(segments);
+    const base = 3.4 + segments.indexOf(seg) * 0.2;
+    const rating = Math.min(5, Math.max(1, Math.round(base + gauss(0.9))));
+    const nps = Math.min(10, Math.max(0, Math.round(rating * 1.7 + gauss(1.5))));
+    const satisfaction = Math.min(10, Math.max(1, Math.round(rating * 1.8 + gauss(1.2))));
+    rows.push({
+      Date: maybeMessyDate(isoDate(start, 2, i), i),
+      Segment: seg,
+      Topic: pick(topics),
+      Rating: rating,
+      "NPS Score": nps,
+      Satisfaction: satisfaction,
+    });
+  }
+  return { name: "sample-survey.csv", columns: ["Date", "Segment", "Topic", "Rating", "NPS Score", "Satisfaction"], rows, numericKey: "Satisfaction", catKey: "Segment" };
+}
+
+function financeData(): Gen {
+  const tickers = subset(["ACME", "GLOBEX", "INITECH", "UMBRELLA", "STARK"], 3);
+  const n = randInt(90, 160);
+  const start = Date.UTC(2023, 0, 1);
+  const rows: Row[] = [];
+  let price = randInt(50, 200);
+  for (let i = 0; i < n; i++) {
+    const ticker = tickers[i % tickers.length];
+    const ret = gauss(0.02);
+    price = Math.max(5, price * (1 + ret));
+    const close = +price.toFixed(2);
+    const open = +(price * (1 + gauss(0.005))).toFixed(2);
+    const high = +(Math.max(open, close) * (1 + rand() * 0.01)).toFixed(2);
+    const low = +(Math.min(open, close) * (1 - rand() * 0.01)).toFixed(2);
+    rows.push({
+      Date: maybeMessyDate(isoDate(start, 1, i), i),
+      Ticker: ticker,
+      Open: open,
+      High: high,
+      Low: low,
+      Close: close,
+      Volume: randInt(100000, 5000000),
+    });
+  }
+  return { name: "sample-prices.csv", columns: ["Date", "Ticker", "Open", "High", "Low", "Close", "Volume"], rows, numericKey: "Volume", catKey: "Ticker" };
+}
+
+const GENERATORS = [salesData, saasData, ecommerceData, marketingData, hrData, realEstateData, fitnessData, surveyData, financeData];
 
 // Add the realistic mess every dataset needs so the cleaner has something to report.
 function withMess(gen: Gen): Table {
