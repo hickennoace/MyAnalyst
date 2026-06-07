@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { fetchAsFile } from "@/lib/url-import";
 
 export function Uploader({
   onFile,
@@ -13,6 +14,24 @@ export function Uploader({
 }) {
   const [drag, setDrag] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [url, setUrl] = useState("");
+  const [urlLoading, setUrlLoading] = useState(false);
+  const [urlErr, setUrlErr] = useState<string | null>(null);
+
+  const loadUrl = useCallback(async () => {
+    const u = url.trim();
+    if (!u || busy || urlLoading) return;
+    setUrlErr(null);
+    setUrlLoading(true);
+    try {
+      const file = await fetchAsFile(u);
+      onFile(file);
+    } catch (e) {
+      setUrlErr(e instanceof Error ? e.message : "Couldn't load that URL.");
+    } finally {
+      setUrlLoading(false);
+    }
+  }, [url, busy, urlLoading, onFile]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -67,6 +86,31 @@ export function Uploader({
         >
           Try a sample dataset
         </button>
+      </div>
+
+      {/* Or load from a public URL — reuses the same parser; data is fetched straight to your browser. */}
+      <div className="mt-5 w-full max-w-md">
+        <div className="flex items-center gap-2">
+          <input
+            type="url"
+            inputMode="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && loadUrl()}
+            placeholder="…or paste a public CSV URL"
+            aria-label="Public CSV URL"
+            disabled={busy || urlLoading}
+            className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none disabled:opacity-60"
+          />
+          <button
+            onClick={loadUrl}
+            disabled={busy || urlLoading || !url.trim()}
+            className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
+          >
+            {urlLoading ? "Loading…" : "Load"}
+          </button>
+        </div>
+        {urlErr && <p className="mt-2 text-left text-xs text-rose-300">{urlErr}</p>}
       </div>
 
       <input
