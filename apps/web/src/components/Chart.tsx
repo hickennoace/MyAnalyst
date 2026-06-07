@@ -97,15 +97,18 @@ export function Chart({ spec }: { spec: ChartSpec }) {
           </div>
         )}
       >
-        <ReactECharts
-          option={spec.option}
-          style={{ height: 320, width: "100%" }}
-          opts={{ renderer: "canvas" }}
-          onChartReady={(inst: unknown) => {
-            instance.current = inst as EChartsInstance;
-          }}
-          notMerge
-        />
+        {/* The ECharts canvas is invisible to screen readers; describe it as an image. */}
+        <div role="img" aria-label={`${spec.type} chart: ${spec.title}${spec.subtitle ? ` — ${spec.subtitle}` : ""}`}>
+          <ReactECharts
+            option={spec.option}
+            style={{ height: 320, width: "100%" }}
+            opts={{ renderer: "canvas" }}
+            onChartReady={(inst: unknown) => {
+              instance.current = inst as EChartsInstance;
+            }}
+            notMerge
+          />
+        </div>
       </ErrorBoundary>
     </div>
   );
