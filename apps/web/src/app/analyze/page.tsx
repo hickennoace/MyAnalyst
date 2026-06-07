@@ -283,13 +283,13 @@ export default function AnalyzePage() {
     }
   }
 
-  function startSample() {
+  function startSample(kind?: string) {
     // Samples have no underlying file/sheets — clear any picker state from a prior upload.
     setSourceFile(null);
     setFileSources([]);
     setCurrentSourceId("");
     setSourceKind(undefined);
-    run(sampleTable());
+    run(sampleTable(kind));
   }
 
   // Auto-run the sample when arriving from the landing page's "Try a sample" CTA (/analyze?demo=1).

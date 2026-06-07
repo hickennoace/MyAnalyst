@@ -254,7 +254,23 @@ function financeData(): Gen {
   return { name: "sample-prices.csv", columns: ["Date", "Ticker", "Open", "High", "Low", "Close", "Volume"], rows, numericKey: "Volume", catKey: "Ticker" };
 }
 
-const GENERATORS = [salesData, saasData, ecommerceData, marketingData, hrData, realEstateData, fitnessData, surveyData, financeData];
+// Selectable vertical templates — pick your industry, or get a random one.
+const REGISTRY: { key: string; label: string; gen: () => Gen }[] = [
+  { key: "sales", label: "Retail sales", gen: salesData },
+  { key: "saas", label: "SaaS metrics", gen: saasData },
+  { key: "ecommerce", label: "E-commerce orders", gen: ecommerceData },
+  { key: "marketing", label: "Marketing campaigns", gen: marketingData },
+  { key: "hr", label: "HR / people", gen: hrData },
+  { key: "realestate", label: "Real estate", gen: realEstateData },
+  { key: "fitness", label: "Fitness", gen: fitnessData },
+  { key: "survey", label: "Survey / NPS", gen: surveyData },
+  { key: "finance", label: "Stock prices", gen: financeData },
+];
+
+const GENERATORS = REGISTRY.map((r) => r.gen);
+
+/** The vertical sample templates the UI offers (key + label). */
+export const SAMPLE_KINDS: { key: string; label: string }[] = REGISTRY.map((r) => ({ key: r.key, label: r.label }));
 
 // Add the realistic mess every dataset needs so the cleaner has something to report.
 function withMess(gen: Gen): Table {
@@ -281,7 +297,8 @@ function withMess(gen: Gen): Table {
   return { name: gen.name, columns, rows, rowCount: rows.length };
 }
 
-/** A fresh, randomly-generated demo dataset — different on every call. */
-export function sampleTable(): Table {
-  return withMess(pick(GENERATORS)());
+/** A fresh demo dataset — a specific vertical when `kind` is given, else a random one each call. */
+export function sampleTable(kind?: string): Table {
+  const entry = kind ? REGISTRY.find((r) => r.key === kind) : undefined;
+  return withMess((entry ? entry.gen : pick(GENERATORS))());
 }

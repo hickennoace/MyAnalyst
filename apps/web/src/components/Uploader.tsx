@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { fetchAsFile } from "@/lib/url-import";
+import { SAMPLE_KINDS } from "@/lib/sample";
 
 export function Uploader({
   onFile,
@@ -9,7 +10,7 @@ export function Uploader({
   busy,
 }: {
   onFile: (file: File) => void;
-  onSample: () => void;
+  onSample: (kind?: string) => void;
   busy: boolean;
 }) {
   const [drag, setDrag] = useState(false);
@@ -90,12 +91,27 @@ export function Uploader({
           {busy ? "Analyzing…" : "Choose file"}
         </button>
         <button
-          onClick={onSample}
+          onClick={() => onSample()}
           disabled={busy}
           className="rounded-xl border border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
         >
           Try a sample dataset
         </button>
+      </div>
+
+      {/* Vertical templates — try the tool with data shaped like your industry, zero config. */}
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <span className="text-[11px] uppercase tracking-wide text-slate-500">or by industry:</span>
+        {SAMPLE_KINDS.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => onSample(s.key)}
+            disabled={busy}
+            className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:-translate-y-0.5 hover:border-blue-500/50 hover:text-blue-300 disabled:opacity-50"
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
       {/* Or load from a public URL — reuses the same parser; data is fetched straight to your browser. */}
