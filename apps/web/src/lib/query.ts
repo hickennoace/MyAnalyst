@@ -654,7 +654,7 @@ function buildOverview(table: Table, profiles: ColumnProfile[]) {
 }
 
 /** Question-specific numbers: the focal group breakdown, trend, distribution, and cited correlation. */
-function buildFocalFacts(question: string, table: Table, profiles: ColumnProfile[]) {
+export function buildFocalFacts(question: string, table: Table, profiles: ColumnProfile[]) {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   const dims = profiles.filter((p) => p.role === "dimension");
   const time = profiles.find((p) => p.role === "time");
@@ -710,6 +710,32 @@ function buildFocalFacts(question: string, table: Table, profiles: ColumnProfile
       bottomByTotal: stats.length ? { key: stats[stats.length - 1].key, total: round2(stats[stats.length - 1].sum), average: round2(stats[stats.length - 1].mean) } : null,
       highestAverage: byAvg[0] ? { key: byAvg[0].key, average: round2(byAvg[0].mean), count: byAvg[0].count } : null,
     };
+  }
+
+  // Multi-facet breakdowns: pre-compute the focal metric across up to two relevant dimensions, so the
+  // model can reason over several facets in a single grounded answer — a lightweight stand-in for
+  // multi-step tool use, with no extra round-trips and no raw rows ever leaving the page.
+  if (metric) {
+    const dimsToBreak = (mDims.length ? mDims : dims).slice(0, 2);
+    const breakdowns = dimsToBreak
+      .map((dd) => {
+        const stats = groupStats(table, dd.name, metric.name);
+        const grandTotal = stats.reduce((s, g) => s + g.sum, 0);
+        return {
+          dimension: dd.name,
+          metric: metric.name,
+          groupCount: stats.length,
+          topGroups: stats.slice(0, 6).map((g) => ({
+            key: g.key,
+            total: round2(g.sum),
+            average: round2(g.mean),
+            count: g.count,
+            sharePct: grandTotal ? round2((g.sum / grandTotal) * 100) : null,
+          })),
+        };
+      })
+      .filter((b) => b.groupCount > 0);
+    if (breakdowns.length) facts.breakdowns = breakdowns;
   }
 
   if (mMetrics.length >= 2) {

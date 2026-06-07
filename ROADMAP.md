@@ -46,8 +46,10 @@ A collapsible "How I computed this" under every answer: the exact rows considere
 - **Where:** `QueryBox.tsx` + carry a `method` string on `QueryAnswer`.
 - **Shipped:** every deterministic answer branch (count, frequency, correlation, trend, ranking, aggregate, bare-metric, comparison) now sets a plain-language `method` quoting the aggregation and the exact row basis via a shared `rowsNote()` helper ("N of M rows {scope}"). The AI path carries `base.method` through (the numbers are computed locally, so the account is accurate), and `QueryBox` renders it as a native `<details>` "How I computed this" disclosure under each answer. 3 new tests (68 total) + typecheck + build green.
 
-### 1.5 Multi-step / agentic reasoning (stretch)
+### 1.5 Multi-step / agentic reasoning (stretch)  ◐ PARTIAL (2026-06-07)
 For genuinely hard questions ("which segment should we cut?"), let the LLM request *additional* aggregates from a fixed tool palette (group-by, filter, correlate) over 1–2 rounds before answering — still aggregates-only, still no raw rows. Cap rounds for cost.
+- **Shipped (deterministic enrichment):** `buildFocalFacts` now pre-computes the focal metric across **up to two relevant dimensions** (`facts.breakdowns`), so multi-facet questions are answerable in one grounded shot — a lightweight stand-in for tool use, with zero extra round-trips, no latency/cost, and no raw rows leaving the page. Prompt updated. 1 test.
+- **Deferred (true LLM tool-loop):** an interactive request→compute→re-ask loop would have to run **client-side** (the privacy invariant keeps raw rows in the browser, so aggregates can't be computed on the server) and wouldn't fit the default streaming path; it adds real latency/cost. Deferred pending a product call on that tradeoff. The deterministic enrichment above captures most of the practical value safely.
 
 ---
 

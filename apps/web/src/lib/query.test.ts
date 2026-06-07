@@ -105,6 +105,26 @@ describe("answerQuestion", () => {
   });
 });
 
+describe("multi-facet evidence (Phase 1.5)", () => {
+  it("pre-computes the focal metric across multiple named dimensions", async () => {
+    const { buildFocalFacts } = await import("./query");
+    const rows: Record<string, unknown>[] = [];
+    for (let i = 0; i < 30; i++) {
+      rows.push({ Region: ["North", "South", "East"][i % 3], Product: ["A", "B"][i % 2], Revenue: 100 + i });
+    }
+    const t: Table = { name: "m.csv", columns: ["Region", "Product", "Revenue"], rows, rowCount: rows.length };
+    const p = profileTable(t);
+    const facts = buildFocalFacts("revenue by region and product", t, p) as {
+      breakdowns?: { dimension: string; topGroups: { total: number }[] }[];
+    };
+    expect(facts.breakdowns).toBeDefined();
+    expect(facts.breakdowns!.length).toBe(2);
+    const dims = facts.breakdowns!.map((b) => b.dimension).sort();
+    expect(dims).toEqual(["Product", "Region"]);
+    for (const b of facts.breakdowns!) expect(b.topGroups[0].total).toBeGreaterThan(0);
+  });
+});
+
 describe("comparison questions (Phase 1.2)", () => {
   it("compares a metric across two categorical values", () => {
     const r = answerQuestion("compare revenue for North vs South", table, profiles);
