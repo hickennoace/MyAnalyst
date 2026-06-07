@@ -3,6 +3,25 @@
 // and no MyAnalyst server is involved (the browser fetches directly). Cross-origin URLs that don't send
 // CORS headers will be blocked by the browser; we surface a clear message in that case.
 
+/** Rewrite a Google Sheets URL to its CSV-export endpoint so it can be read directly. (A sheet shared
+ *  "anyone with the link" / "published to web" can be fetched; private sheets will fail with a clear
+ *  message.) Non-Sheets URLs pass through unchanged. */
+export function normalizeSourceUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "docs.google.com" && u.pathname.includes("/spreadsheets/")) {
+      const id = u.pathname.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)?.[1];
+      if (id) {
+        const gid = u.hash.match(/gid=(\d+)/)?.[1] ?? u.searchParams.get("gid") ?? "0";
+        return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+      }
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
 /** Derive a safe, extension-bearing filename from a URL (so the parser can pick the right reader). */
 export function filenameFromUrl(url: string): string {
   try {
@@ -17,11 +36,12 @@ export function filenameFromUrl(url: string): string {
   }
 }
 
-/** Fetch a public URL and wrap the response as a File for the existing parse pipeline. */
+/** Fetch a public URL (incl. Google Sheets) and wrap the response as a File for the existing parser. */
 export async function fetchAsFile(url: string): Promise<File> {
+  const target = normalizeSourceUrl(url);
   let res: Response;
   try {
-    res = await fetch(url, { redirect: "follow" });
+    res = await fetch(target, { redirect: "follow" });
   } catch {
     // A network/CORS failure throws a TypeError with no useful detail in the browser.
     throw new Error("Couldn't fetch that URL — the site may block cross-origin requests. Try downloading the file and uploading it.");

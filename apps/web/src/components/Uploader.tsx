@@ -17,6 +17,16 @@ export function Uploader({
   const [url, setUrl] = useState("");
   const [urlLoading, setUrlLoading] = useState(false);
   const [urlErr, setUrlErr] = useState<string | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+
+  const analyzePaste = useCallback(() => {
+    const text = pasteText.trim();
+    if (!text || busy) return;
+    // Spreadsheet copy-paste is tab-separated; raw CSV is comma-separated — name it so the parser knows.
+    const name = pasteText.includes("\t") ? "pasted.tsv" : "pasted.csv";
+    onFile(new File([pasteText], name, { type: "text/plain" }));
+  }, [pasteText, busy, onFile]);
 
   const loadUrl = useCallback(async () => {
     const u = url.trim();
@@ -97,8 +107,8 @@ export function Uploader({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && loadUrl()}
-            placeholder="…or paste a public CSV URL"
-            aria-label="Public CSV URL"
+            placeholder="…or paste a CSV / Google Sheets URL"
+            aria-label="Public CSV or Google Sheets URL"
             disabled={busy || urlLoading}
             className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none disabled:opacity-60"
           />
@@ -111,6 +121,37 @@ export function Uploader({
           </button>
         </div>
         {urlErr && <p className="mt-2 text-left text-xs text-rose-300">{urlErr}</p>}
+
+        {/* Or paste rows straight from a spreadsheet (tab-separated) or CSV text. */}
+        {!pasteOpen ? (
+          <button onClick={() => setPasteOpen(true)} disabled={busy} className="mt-3 text-xs text-slate-400 underline-offset-2 hover:text-slate-200 hover:underline disabled:opacity-50">
+            …or paste data from a spreadsheet
+          </button>
+        ) : (
+          <div className="mt-3 text-left">
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder={"Paste rows here — copy from Excel/Sheets, or CSV text.\nName, Region, Revenue\nAcme, North, 1200"}
+              aria-label="Paste table data"
+              rows={5}
+              disabled={busy}
+              className="w-full rounded-xl border border-slate-700 bg-slate-900/60 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none disabled:opacity-60"
+            />
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={analyzePaste}
+                disabled={busy || !pasteText.trim()}
+                className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400 disabled:opacity-50"
+              >
+                Analyze pasted data
+              </button>
+              <button onClick={() => { setPasteOpen(false); setPasteText(""); }} disabled={busy} className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-50">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <input

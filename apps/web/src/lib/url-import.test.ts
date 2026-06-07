@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { filenameFromUrl } from "./url-import";
+import { filenameFromUrl, normalizeSourceUrl } from "./url-import";
+
+describe("normalizeSourceUrl", () => {
+  it("rewrites a Google Sheets edit URL to its CSV export endpoint", () => {
+    const out = normalizeSourceUrl("https://docs.google.com/spreadsheets/d/ABC123_xyz/edit#gid=456");
+    expect(out).toBe("https://docs.google.com/spreadsheets/d/ABC123_xyz/export?format=csv&gid=456");
+  });
+
+  it("defaults gid to 0 when absent", () => {
+    expect(normalizeSourceUrl("https://docs.google.com/spreadsheets/d/ID9/edit")).toBe("https://docs.google.com/spreadsheets/d/ID9/export?format=csv&gid=0");
+  });
+
+  it("passes non-Sheets URLs through unchanged", () => {
+    expect(normalizeSourceUrl("https://example.com/data.csv")).toBe("https://example.com/data.csv");
+    expect(normalizeSourceUrl("not a url")).toBe("not a url");
+  });
+});
 
 describe("filenameFromUrl", () => {
   it("takes the last path segment", () => {
