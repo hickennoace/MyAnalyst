@@ -86,5 +86,5 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 
 ---
 
-### Immediate next step
-All client-side items are shipped. The only remaining roadmap work is **C2 (refreshable sources + alerts)** and **D3 (encrypted accounts)** — both need a **go/no-go on a small opt-in backend** (everything else stays 100% client-side). Awaiting that decision.
+### Status: roadmap complete (for the chosen strategy)
+All client-side items are shipped and live. **Decision (2026-06-08): keep MyAnalyst 100% client-side / privacy-first** — so **C2 (refreshable sources + alerts)** and **D3 (encrypted accounts)** stay deferred (they'd require a backend, which crosses the no-upload moat). Revisit only if the privacy/architecture trade-off is reconsidered.
