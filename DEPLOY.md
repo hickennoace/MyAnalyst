@@ -1,4 +1,4 @@
-# Deploying Quantia to Vercel
+# Deploying MyAnalyst to Vercel
 
 This is a **monorepo**. The deployable Next.js app lives in **`apps/web`**, not at the repo root.
 That one fact is the cause of almost every "404: NOT_FOUND" you'll see — Vercel built from the root,

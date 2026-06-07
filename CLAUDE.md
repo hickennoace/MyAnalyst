@@ -1,6 +1,6 @@
 # CLAUDE.md — working in this repo
 
-## What Quantia is
+## What MyAnalyst is
 An AI-assisted data-analysis product: upload a spreadsheet → instant, fully-explained dashboard
 (cleaning report, KPIs, statistics, forecast, charts, plain-language insights), plus an "ask your
 data" Q&A box, a custom chart builder, export (PNG/PDF), and shareable read-only links.

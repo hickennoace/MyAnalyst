@@ -1,4 +1,4 @@
-# Quantia local dev stack. CONFIG STUB — fill image tags, build contexts, and healthchecks
+# MyAnalyst local dev stack. CONFIG STUB — fill image tags, build contexts, and healthchecks
 # before first `docker compose up`. See infra/README.md.
 version: "3.9"
 

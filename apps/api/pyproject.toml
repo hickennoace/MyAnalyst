@@ -1,8 +1,8 @@
-# Quantia API + compute tier. CONFIG STUB — pin/resolve versions before first install.
+# MyAnalyst API + compute tier. CONFIG STUB — pin/resolve versions before first install.
 [project]
 name = "quantia-api"
 version = "0.0.0"
-description = "Quantia API & data-science compute tier"
+description = "MyAnalyst API & data-science compute tier"
 requires-python = ">=3.12"
 dependencies = [
     # --- web/api ---

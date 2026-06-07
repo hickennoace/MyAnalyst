@@ -163,6 +163,28 @@ describe("comparison questions (Phase 1.2)", () => {
   });
 });
 
+describe("show-the-math (Phase 1.4)", () => {
+  it("explains how an aggregate was computed, including the row basis", () => {
+    const r = answerQuestion("total revenue", table, profiles);
+    expect(r.method).toBeDefined();
+    expect(r.method!.toLowerCase()).toContain("revenue");
+    expect(r.method).toContain("6 rows"); // full dataset
+  });
+
+  it("notes the filter and reduced row count in the method", () => {
+    const r = answerQuestion("total revenue for North", table, profiles);
+    expect(r.method).toBeDefined();
+    expect(r.method).toContain("3 of 6 rows");
+    expect(r.method).toContain("North");
+  });
+
+  it("describes a comparison's computation", () => {
+    const r = answerQuestion("compare revenue North vs South", table, profiles);
+    expect(r.method).toBeDefined();
+    expect(r.method!.toLowerCase()).toContain("difference");
+  });
+});
+
 describe("AI chart selection (Phase 1.3)", () => {
   it("accepts a well-formed chart request and keeps only real y columns", async () => {
     const { sanitizeChartRequest } = await import("./query");

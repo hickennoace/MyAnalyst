@@ -127,6 +127,15 @@ export function QueryBox({
                         ✨ AI-written · numbers computed locally from your data
                       </p>
                     )}
+                    {/* Show the math: an auditable account of exactly how the number was computed. */}
+                    {t.result.method && (
+                      <details className="group mt-2">
+                        <summary className="flex cursor-pointer select-none items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-slate-400 transition hover:text-slate-200 [&::-webkit-details-marker]:hidden">
+                          <span className="inline-block transition group-open:rotate-90">▸</span> How I computed this
+                        </summary>
+                        <p className="mt-1.5 text-xs leading-relaxed text-slate-400">{t.result.method}</p>
+                      </details>
+                    )}
                   </div>
 
                   {t.result.chart && (

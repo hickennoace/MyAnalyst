@@ -1,4 +1,4 @@
-# Quantia — Design Documentation
+# MyAnalyst — Design Documentation
 
 This folder is the **blueprint**. Read in order:
 

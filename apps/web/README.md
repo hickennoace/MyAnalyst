@@ -1,6 +1,6 @@
-# Quantia Web (Next.js)
+# MyAnalyst Web (Next.js)
 
-The Quantia frontend **and** — for this Vercel-first MVP — the analysis engine itself.
+The MyAnalyst frontend **and** — for this Vercel-first MVP — the analysis engine itself.
 Upload a spreadsheet → get an instant, fully-explained dashboard (KPIs, charts, plain-language
 insights) and an on-demand chart builder. Everything runs **client-side in the browser**: your
 data never leaves the page.

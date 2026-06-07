@@ -1,4 +1,4 @@
-"""Quantia API — FastAPI application factory.
+"""MyAnalyst API — FastAPI application factory.
 
 Responsibilities (scaffold; not yet implemented):
     * build the app, configure middleware (CORS, security headers, request id),

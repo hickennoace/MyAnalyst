@@ -1,8 +1,6 @@
-# Lumora
+# MyAnalyst
 
 > **Autonomous financial & statistical analysis platform.** An AI-powered, zero-skill-required alternative to Power BI / Tableau. Upload data → get a clean, beautiful, fully-explained analytical dashboard with KPIs, statistics, forecasts, and plain-language insights — automatically.
-
-> ⚠️ **Project name is a placeholder.** Rename `quantia` everywhere if you pick a different brand.
 
 ---
 
@@ -19,7 +17,7 @@
 ## Repository layout
 
 ```
-quantia/
+myanalyst/
 ├── README.md                 ← you are here
 ├── docs/                     ← the blueprint: architecture, tech stack, security, roadmap, features
 │   ├── 01-architecture.md

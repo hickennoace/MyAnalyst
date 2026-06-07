@@ -1,6 +1,6 @@
 # 05 — Feature Catalog
 
-What makes Quantia a *beast* for everyday use. Organized by tier so you can see the MVP line clearly.
+What makes MyAnalyst a *beast* for everyday use. Organized by tier so you can see the MVP line clearly.
 
 ## Tier 0 — MVP (must-have for v1)
 - Upload CSV/Excel; automated clean + normalize with a transparent **cleaning report**.

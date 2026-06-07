@@ -1,4 +1,4 @@
-# Quantia API & Compute Tier (FastAPI + Python workers)
+# MyAnalyst API & Compute Tier (FastAPI + Python workers)
 
 Async API tier + the heavy data-science compute tier. Same codebase; the API enqueues jobs, workers run the analysis pipeline.
 

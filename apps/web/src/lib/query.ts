@@ -28,6 +28,9 @@ export interface QueryAnswer {
   ok: boolean;
   answer: string;
   chart?: ChartSpec;
+  /** Plain-language account of HOW the number was computed — the rows, the aggregation, the filter.
+   *  Surfaced as a collapsible "How I computed this" so users can trust (and audit) every figure. */
+  method?: string;
 }
 
 type Agg = "sum" | "mean" | "max" | "min";
@@ -79,6 +82,11 @@ function groupBy(table: Table, dim: string, metric: string, agg: Agg): [string, 
     .sort((a, b) => b[1] - a[1]);
 }
 
+/** "N of M rows (scope)" or "M rows" — the row basis quoted in every `method` string. */
+function rowsNote(view: Table, table: Table, filter?: DataFilter): string {
+  return filter ? `${view.rowCount.toLocaleString()} of ${table.rowCount.toLocaleString()} rows ${filter.phrase}` : `${table.rowCount.toLocaleString()} rows`;
+}
+
 export function answerQuestion(question: string, table: Table, profiles: ColumnProfile[]): QueryAnswer {
   const text = question.trim();
   if (!text) return { ok: false, answer: 'Ask something like "total revenue by region" or "correlation between spend and revenue".' };
@@ -110,7 +118,11 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
 
   // 1. Row count.
   if (/\b(how many|number of|count of|count)\b/.test(lower) && (/\b(row|record|entr|data point|observation)/.test(lower) || filter)) {
-    return { ok: true, answer: `There are ${view.rowCount.toLocaleString()} records${filter ? scope : " in the dataset"}.` };
+    return {
+      ok: true,
+      answer: `There are ${view.rowCount.toLocaleString()} records${filter ? scope : " in the dataset"}.`,
+      method: `Counted rows — ${rowsNote(view, table, filter)}.`,
+    };
   }
 
   // 1b. Most-common / distribution of a CATEGORICAL column — e.g. "the most common reason for not buying".
@@ -136,6 +148,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
           ok: true,
           answer: `The most common ${col.name} is "${top[0]}" — ${top[1]} of ${total} (${Math.round((top[1] / total) * 100)}%)${tail}${scope}.`,
           chart: buildChart(view, profiles, { type: "bar", x: col.name, y: [], count: true }),
+          method: `Tallied how often each ${col.name} occurs across ${rowsNote(view, table, filter)} — ${counts.length} distinct values.`,
         };
       }
     }
@@ -156,6 +169,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
             Math.abs(r) > 0.4 ? "They tend to move together." : "The link is loose."
           }`,
           chart: buildChart(view, profiles, { type: "scatter", x: a.name, y: [b.name] }),
+          method: `Pearson correlation of ${a.name} and ${b.name} across ${rowsNote(view, table, filter)}.`,
         };
       }
     }
@@ -177,6 +191,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
           ok: true,
           answer: `${m.name} ${dir} ${Math.abs(pct).toFixed(1)}% over the period${scope} (${fmt(first, m)} → ${fmt(last, m)}).`,
           chart: buildChart(view, profiles, { type: "line", x: time.name, y: [m.name] }),
+          method: `Compared first vs last ${m.name} along ${time.name} across ${rowsNote(view, table, filter)} (${series.length} points).`,
         };
       }
     }
@@ -199,6 +214,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
           ok: true,
           answer: `By ${aggLabel} ${metric.name}, ${dim.name} "${top[0]}" is ${wantLowest ? "lowest" : "highest"} at ${fmt(top[1], metric)}${scope}.`,
           chart: agg === "sum" ? buildChart(view, profiles, { type: "bar", x: dim.name, y: [metric.name], aggregate: true }) : undefined,
+          method: `${agg === "mean" ? "Averaged" : "Summed"} ${metric.name} by ${dim.name} across ${rowsNote(view, table, filter)}, then ranked ${wantLowest ? "ascending" : "descending"} (${ranked.length} groups).`,
         };
       }
     }
@@ -218,10 +234,15 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
           ok: true,
           answer: `${cap(aggMatch.label)} ${metric.name} by ${dim.name}${scope}: ${dim.name} "${top[0]}" leads at ${fmt(top[1], metric)} (${ranked.length} groups).`,
           chart: aggMatch.agg === "sum" ? buildChart(view, profiles, { type: "bar", x: dim.name, y: [metric.name], aggregate: true }) : undefined,
+          method: `Took the ${aggMatch.label} of ${metric.name} within each ${dim.name} across ${rowsNote(view, table, filter)} (${ranked.length} groups).`,
         };
       }
       const v = aggregate(numericColumn(view, metric.name), aggMatch.agg);
-      return { ok: true, answer: `The ${aggMatch.label} of ${metric.name}${scope} is ${fmt(v, metric)}.` };
+      return {
+        ok: true,
+        answer: `The ${aggMatch.label} of ${metric.name}${scope} is ${fmt(v, metric)}.`,
+        method: `${cap(aggMatch.label)} of ${metric.name} across ${rowsNote(view, table, filter)}.`,
+      };
     }
   }
 
@@ -232,6 +253,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     return {
       ok: true,
       answer: `${m.name}${scope}: total ${fmt(aggregate(vals, "sum"), m)}, average ${fmt(aggregate(vals, "mean"), m)}, range ${fmt(aggregate(vals, "min"), m)}–${fmt(aggregate(vals, "max"), m)}.`,
+      method: `Summary stats (total, average, min/max) of ${m.name} across ${rowsNote(view, table, filter)}.`,
     };
   }
 
@@ -473,8 +495,9 @@ function answerComparison(c: Comparison, table: Table, profiles: ColumnProfile[]
 
   const chart = buildComparisonChart(c.metric.name, c.agg, [[c.left.label, l], [c.right.label, r]]);
   const head = `${cap(aggLabel)} ${c.metric.name}: ${c.left.label} ${fmt(l, c.metric)} vs ${c.right.label} ${fmt(r, c.metric)}.`;
+  const method = `Computed the ${aggLabel} ${c.metric.name} for each ${c.kind === "time" ? "period" : c.column} slice — "${c.left.label}" and "${c.right.label}" — then took the difference and ratio.`;
 
-  if (l === r) return { ok: true, answer: `${head} They're equal.`, chart };
+  if (l === r) return { ok: true, answer: `${head} They're equal.`, chart, method };
 
   const higher = l > r ? c.left.label : c.right.label;
   const lowerLabel = l > r ? c.right.label : c.left.label;
@@ -488,7 +511,7 @@ function answerComparison(c: Comparison, table: Table, profiles: ColumnProfile[]
     (Number.isFinite(pctAbove) ? ` (${pctAbove.toFixed(1)}% above ${lowerLabel})` : "") +
     (Number.isFinite(ratio) && ratio >= 1.1 ? `, about ${ratio.toFixed(2)}×` : "") +
     ".";
-  return { ok: true, answer: `${head} ${detail}`, chart };
+  return { ok: true, answer: `${head} ${detail}`, chart, method };
 }
 
 // ── AI path ────────────────────────────────────────────────────────────────────
@@ -835,6 +858,7 @@ export async function answerQuestionAI(
             // Streaming carries prose only, so derive the chart locally from the question.
             chart: base.chart ?? buildSuggestedChart(question, table, profiles),
             source: "llm",
+            method: base.method,
             followups: localFollowups(profiles),
           };
         }
@@ -860,6 +884,7 @@ export async function answerQuestionAI(
           // (validated), falling back to a locally-parsed one.
           chart: base.chart ?? buildSuggestedChart(question, table, profiles, data.chart),
           source: "llm",
+          method: base.method,
           followups: Array.isArray(data.followups)
             ? data.followups.filter((s) => typeof s === "string" && s.trim()).slice(0, 3)
             : undefined,
