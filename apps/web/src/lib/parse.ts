@@ -14,6 +14,7 @@ export interface ParseProgress {
 // and expand several-fold while parsing, so we cap them and point users to CSV for anything bigger.
 const MAX_EXCEL_BYTES = 50 * 1024 * 1024; // 50 MB
 const MAX_JSON_BYTES = 120 * 1024 * 1024; // 120 MB
+const MAX_SQLITE_BYTES = 100 * 1024 * 1024; // 100 MB (loaded whole into a WASM SQLite engine)
 
 /** Parse an uploaded File (CSV / TSV / JSON / XLSX / XLS) into a normalized Table. Runs entirely client-side. */
 export async function parseFile(file: File, onProgress?: (p: ParseProgress) => void): Promise<Table> {
@@ -34,7 +35,62 @@ export async function parseFile(file: File, onProgress?: (p: ParseProgress) => v
     }
     return parseJson(file);
   }
+  if (ext === "sqlite" || ext === "sqlite3" || ext === "db" || ext === "db3") {
+    if (file.size > MAX_SQLITE_BYTES) {
+      throw new Error(
+        `This SQLite file is ${(file.size / 1048576).toFixed(0)} MB. It must be loaded whole into the in-browser SQLite engine, so it's capped at ${MAX_SQLITE_BYTES / 1048576} MB. Export the table you need to CSV for larger databases.`
+      );
+    }
+    return parseSqlite(file);
+  }
   return parseDelimited(file, onProgress);
+}
+
+// SQLite (.sqlite/.db/...): read the file into an in-browser WASM SQLite engine (sql.js), then pull
+// the largest user table into a Table. sql.js is dynamically imported so its ~650KB wasm only loads
+// when someone actually opens a database; the wasm is served locally from /sql-wasm.wasm.
+async function parseSqlite(file: File): Promise<Table> {
+  const initSqlJs = (await import("sql.js")).default;
+  const SQL = await initSqlJs({ locateFile: () => "/sql-wasm.wasm" });
+  const db = new SQL.Database(new Uint8Array(await file.arrayBuffer()));
+  try {
+    const tablesRes = db.exec(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    );
+    const names = tablesRes[0]?.values.map((r) => String(r[0])) ?? [];
+    if (names.length === 0) throw new Error("No tables found in this SQLite database.");
+
+    // Pick the table with the most rows — usually the one worth analyzing.
+    let chosen = names[0];
+    let chosenCount = -1;
+    for (const n of names) {
+      const c = db.exec(`SELECT COUNT(*) FROM "${n.replace(/"/g, '""')}"`);
+      const cnt = Number(c[0]?.values[0]?.[0] ?? 0);
+      if (cnt > chosenCount) {
+        chosenCount = cnt;
+        chosen = n;
+      }
+    }
+
+    const safe = chosen.replace(/"/g, '""');
+    const out = db.exec(`SELECT * FROM "${safe}" LIMIT ${SAMPLE_CAP}`);
+    if (!out.length) {
+      return { name: `${file.name} · ${chosen}`, columns: [], rows: [], rowCount: 0 };
+    }
+    const columns = out[0].columns.map((c) => String(c));
+    const rows = out[0].values.map((vals) => {
+      const o: Record<string, unknown> = {};
+      columns.forEach((c, i) => {
+        o[c] = vals[i];
+      });
+      return o;
+    });
+    const table: Table = { name: `${file.name} · ${chosen}`, columns, rows, rowCount: rows.length };
+    if (chosenCount > rows.length) table.sampledFrom = chosenCount; // hit the row cap
+    return table;
+  } finally {
+    db.close();
+  }
 }
 
 async function parseJson(file: File): Promise<Table> {
