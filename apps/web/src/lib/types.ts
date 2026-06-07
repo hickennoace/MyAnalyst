@@ -1,4 +1,4 @@
-// Core contracts for Lumora's analysis engine.
+// Core contracts for MyAnalyst's analysis engine.
 // Everything flows: raw file -> Table -> ColumnProfile[] -> Domain -> KPIs/Stats/Charts -> Insights -> DashboardSpec.
 // These types are the seams between stages; keep them stable so stages can be swapped independently.
 

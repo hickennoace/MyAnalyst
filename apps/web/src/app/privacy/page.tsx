@@ -4,7 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "Privacy",
-  description: "How Lumora handles your data: it doesn't leave your browser.",
+  description: "How MyAnalyst handles your data: it doesn't leave your browser.",
 };
 
 export default function Privacy() {
@@ -13,7 +13,7 @@ export default function Privacy() {
       <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-sm text-slate-400 transition hover:text-slate-200">
-            ← Lumora
+            ← MyAnalyst
           </Link>
           <ThemeToggle />
         </div>
@@ -23,7 +23,7 @@ export default function Privacy() {
         <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-300">
           <Block title="Your files never leave your browser">
             Parsing, cleaning, profiling, KPIs, statistics, forecasting, charts, and the templated
-            insights all run locally in your browser using JavaScript. Lumora has no upload endpoint
+            insights all run locally in your browser using JavaScript. MyAnalyst has no upload endpoint
             and no database for your data. Nothing is transmitted to a server to produce your dashboard.
           </Block>
 
@@ -47,7 +47,7 @@ export default function Privacy() {
           </Block>
 
           <Block title="No tracking">
-            Lumora ships no advertising or third-party analytics trackers.
+            MyAnalyst ships no advertising or third-party analytics trackers.
           </Block>
         </div>
 

@@ -84,7 +84,7 @@ export default function Landing() {
         <nav className="flex items-center justify-between py-5" aria-label="Primary">
           <div className="flex items-center gap-2.5">
             <BrandMark className="h-9 w-9" />
-            <span className="display text-xl text-[var(--ink)]">Lumora</span>
+            <span className="display text-xl text-[var(--ink)]">MyAnalyst</span>
           </div>
           <div className="flex items-center gap-4 sm:gap-6">
             <a href="#features" className="lp-link hidden sm:inline">Features</a>
@@ -102,7 +102,7 @@ export default function Landing() {
               <span className="lp-accent">explained dashboard</span>
             </h1>
             <p className="mt-6 max-w-lg text-[1.05rem] leading-relaxed text-[var(--muted)]">
-              Lumora cleans your data, runs real statistics, and explains what it means —
+              MyAnalyst cleans your data, runs real statistics, and explains what it means —
               automatically. Upload a spreadsheet and get a clear, trustworthy dashboard in
               seconds, with the rigor of a working data scientist.
             </p>
@@ -241,7 +241,7 @@ export default function Landing() {
               <div className="mt-8 flex justify-center">
                 <Magnetic>
                   <Link href="/analyze" className="lp-cta">
-                    Open Lumora
+                    Open MyAnalyst
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </Link>
                 </Magnetic>
@@ -253,7 +253,7 @@ export default function Landing() {
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line)] py-8">
           <div className="flex items-center gap-3">
             <BrandMark className="h-8 w-8" />
-            <span className="text-[0.82rem] text-[var(--faint)]">© 2026 Lumora · autonomous statistical analysis</span>
+            <span className="text-[0.82rem] text-[var(--faint)]">© 2026 MyAnalyst · autonomous statistical analysis</span>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/analyze" className="lp-link">Analyzer</Link>

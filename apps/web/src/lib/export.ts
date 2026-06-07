@@ -7,7 +7,7 @@ import { chartBg } from "./chart-theme";
 // imported on first use so they stay out of the analyzer's initial bundle.
 
 function safeName(name: string): string {
-  return (name.replace(/\.[^.]+$/, "") || "lumora-dashboard").replace(/[^a-z0-9-_]+/gi, "_");
+  return (name.replace(/\.[^.]+$/, "") || "myanalyst-dashboard").replace(/[^a-z0-9-_]+/gi, "_");
 }
 
 async function snapshot(node: HTMLElement): Promise<string> {

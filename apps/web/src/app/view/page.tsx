@@ -49,7 +49,7 @@ export default function ViewPage() {
           <Link href="/" className="flex items-center gap-3">
             <BrandMark className="h-10 w-10" />
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-50">Lumora</h1>
+              <h1 className="text-xl font-bold tracking-tight text-slate-50">MyAnalyst</h1>
               <p className="text-xs text-slate-400">Shared dashboard · read-only</p>
             </div>
           </Link>
@@ -109,7 +109,7 @@ export default function ViewPage() {
         )}
 
         <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-          Lumora · Shared dashboards are encoded in the link itself — nothing is stored on a server.
+          MyAnalyst · Shared dashboards are encoded in the link itself — nothing is stored on a server.
         </footer>
       </div>
     </main>
