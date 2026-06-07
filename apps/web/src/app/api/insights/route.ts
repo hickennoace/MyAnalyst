@@ -17,13 +17,25 @@ const OPENAI_COMPAT_BASES: Record<string, string> = {
   openrouter: "https://openrouter.ai/api/v1",
 };
 
+// Sensible default model per provider, used when LLM_MODEL isn't set. (Previously every
+// OpenAI-compatible provider defaulted to a groq-specific llama model, so switching to e.g. Gemini
+// without also setting LLM_MODEL silently sent an invalid model id.)
+const DEFAULT_MODELS: Record<Provider, string> = {
+  anthropic: "claude-haiku-4-5",
+  groq: "llama-3.3-70b-versatile",
+  openai: "gpt-4o-mini",
+  gemini: "gemini-2.0-flash",
+  openrouter: "meta-llama/llama-3.3-70b-instruct",
+  "openai-compat": "",
+};
+
 const ALLOWED_KIND = new Set<Insight["kind"]>(["summary", "trend", "correlation", "regression", "outlier", "composition"]);
 const ALLOWED_CONF = new Set<Insight["confidence"]>(["high", "medium", "low"]);
 
 export async function POST(req: Request) {
   const provider = (process.env.LLM_PROVIDER ?? "groq") as Provider;
   const apiKey = process.env.LLM_API_KEY?.trim();
-  const model = process.env.LLM_MODEL?.trim();
+  const model = process.env.LLM_MODEL?.trim() || DEFAULT_MODELS[provider] || "";
 
   // No key → signal the client to use its local templated narrator / original conclusions.
   if (!apiKey) {
@@ -39,8 +51,8 @@ export async function POST(req: Request) {
 
   const callLLM = (system: string, user: string, opts?: CallOpts) =>
     provider === "anthropic"
-      ? callAnthropic(apiKey, model ?? "claude-haiku-4-5", system, user, opts)
-      : callOpenAICompat(provider, apiKey, model ?? "llama-3.3-70b-versatile", system, user, opts);
+      ? callAnthropic(apiKey, model || "claude-haiku-4-5", system, user, opts)
+      : callOpenAICompat(provider, apiKey, model || "llama-3.3-70b-versatile", system, user, opts);
 
   // Task: humanize — rewrite the deterministic conclusions in a warm, human tone (numbers preserved).
   if (body && typeof body === "object" && (body as { task?: string }).task === "humanize") {
@@ -251,8 +263,26 @@ interface CallOpts {
   maxTokens?: number;
 }
 
+// Rate limits (429) and transient 5xx are common on free tiers. Retry a couple of times with a short,
+// capped backoff (honoring Retry-After) so a brief per-minute limit doesn't drop us to the templated
+// fallback. Caps keep us well within the serverless function timeout; a hard daily-quota 429 will still
+// exhaust the retries and fall back gracefully.
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+async function fetchWithRetry(url: string, init: RequestInit, retries = 2): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, init);
+    if (res.ok || attempt >= retries || !RETRYABLE.has(res.status)) return res;
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const waitMs =
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, 6000)
+        : Math.min(400 * 2 ** attempt, 4000);
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+}
+
 async function callAnthropic(apiKey: string, model: string, system: string, user: string, opts?: CallOpts): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": apiKey,
@@ -287,7 +317,7 @@ async function callOpenAICompat(
 ): Promise<string> {
   const base = process.env.LLM_BASE_URL?.trim() || OPENAI_COMPAT_BASES[provider];
   if (!base) throw new Error(`No base URL for provider "${provider}". Set LLM_BASE_URL.`);
-  const res = await fetch(`${base}/chat/completions`, {
+  const res = await fetchWithRetry(`${base}/chat/completions`, {
     method: "POST",
     headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
     body: JSON.stringify({
