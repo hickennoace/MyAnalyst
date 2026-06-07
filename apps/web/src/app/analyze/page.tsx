@@ -10,6 +10,9 @@ import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
+import { compareDatasets, type DatasetComparison } from "@/lib/compare-datasets";
+import { profileTable } from "@/lib/profile";
+import { ComparisonCard } from "@/components/ComparisonCard";
 import { Uploader } from "@/components/Uploader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
@@ -43,6 +46,9 @@ export default function AnalyzePage() {
   const [sourceKind, setSourceKind] = useState<"sheet" | "table" | undefined>(undefined);
   const [joinId, setJoinId] = useState<string>("");
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
+  const [comparison, setComparison] = useState<DatasetComparison | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const compareInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [jobDesc, setJobDesc] = useState("");
@@ -116,6 +122,21 @@ export default function AnalyzePage() {
       setToast({ text: `🔗 Read-only link copied (${(url.length / 1024).toFixed(0)} KB) — paste it anywhere.`, tone: "info" });
     } catch {
       setToast({ text: "Couldn't create the link in this browser.", tone: "error" });
+    }
+  }
+
+  // Compare the current dataset with a second uploaded file → ranked "what changed".
+  async function handleCompare(file: File) {
+    if (!table || comparing) return;
+    setComparing(true);
+    try {
+      const result = await parseFile(file);
+      if (!result.table.columns.length || !result.table.rowCount) throw new Error("That file has no usable data to compare.");
+      setComparison(compareDatasets(table, result.table, spec?.profiles, profileTable(result.table)));
+    } catch (e) {
+      setToast({ text: e instanceof Error ? e.message : "Couldn't read that file.", tone: "error" });
+    } finally {
+      setComparing(false);
     }
   }
 
@@ -326,6 +347,25 @@ export default function AnalyzePage() {
                 🔗 Share
               </button>
               <button
+                onClick={() => compareInputRef.current?.click()}
+                disabled={comparing}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
+                title="Compare this dataset with another file (this month vs last, store A vs B…)"
+              >
+                {comparing ? "Comparing…" : "⇄ Compare"}
+              </button>
+              <input
+                ref={compareInputRef}
+                type="file"
+                accept=".csv,.tsv,.txt,.xlsx,.xls,.json,.sqlite,.sqlite3,.db,.db3"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleCompare(f);
+                  e.target.value = "";
+                }}
+              />
+              <button
                 onClick={() => handleExport("png")}
                 disabled={!!exporting}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
@@ -478,6 +518,12 @@ export default function AnalyzePage() {
               busy={busy}
               onApply={handleApplyColumns}
             />
+          </div>
+        )}
+
+        {comparison && (
+          <div className="mb-6">
+            <ComparisonCard comparison={comparison} onClose={() => setComparison(null)} />
           </div>
         )}
 
