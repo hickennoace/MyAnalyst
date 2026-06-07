@@ -15,7 +15,7 @@ export function PipelineProgress({ stages, current }: { stages: string[]; curren
       <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
         <div
           className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-500 to-cyan-400 transition-all duration-300"
-          style={{ width: `${pct}%` }}
+          style={{ width: `${pct}%`, backgroundSize: "200% 100%", animation: "gradientPan 2.4s linear infinite" }}
         />
       </div>
 

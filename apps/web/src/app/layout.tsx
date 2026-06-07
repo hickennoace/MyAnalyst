@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { ScrollProgress } from "@/components/ScrollProgress";
 
 // Type system: one clean, neutral grotesque for everything (headings + body),
 // and a mono for small numerals & data labels. Kept deliberately plain.
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <a href="#main-content" className="skip-link">Skip to content</a>
+        <ScrollProgress />
         {children}
       </body>
     </html>

@@ -149,6 +149,42 @@ body {
   animation: gradientPan 5s linear infinite;
 }
 
+/* Reading-progress bar pinned to the top of the viewport (site-wide). */
+.scroll-progress {
+  position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 70;
+  transform-origin: 0 50%; transform: scaleX(0);
+  background: linear-gradient(90deg, #3d8bff, #5fd2e0, #5a9dff);
+  box-shadow: 0 0 10px rgba(61, 139, 255, 0.5);
+  pointer-events: none; will-change: transform;
+}
+
+/* Staggered "build-in" for direct children (used by the dashboard). Mount-based with fill `both`,
+   so it settles at opacity 1 — safe for the html-to-image PNG/PDF export. */
+.stagger-children > * { animation: fadeUp 0.55s cubic-bezier(0.21, 0.6, 0.35, 1) both; }
+.stagger-children > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.16s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.22s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.28s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.34s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.40s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.46s; }
+.stagger-children > *:nth-child(n + 9) { animation-delay: 0.52s; }
+
+/* Faint drifting aurora behind the app pages (analyzer + shared view). */
+.app-aurora { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.app-aurora span { position: absolute; border-radius: 9999px; filter: blur(90px); opacity: 0.16; animation: auroraMove 26s ease-in-out infinite; }
+.app-aurora .a1 { width: 540px; height: 540px; left: -6%; top: -12%; background: radial-gradient(circle, rgba(61, 139, 255, 0.55), transparent 60%); }
+.app-aurora .a2 { width: 480px; height: 480px; right: -6%; top: 2%; background: radial-gradient(circle, rgba(95, 210, 224, 0.45), transparent 60%); animation-delay: -8s; }
+.app-aurora .a3 { width: 420px; height: 420px; left: 45%; top: 22%; background: radial-gradient(circle, rgba(90, 157, 255, 0.3), transparent 60%); animation-delay: -14s; }
+:root[data-theme="light"] .app-aurora span { opacity: 0.11; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger-children > * { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .app-aurora span { animation: none !important; }
+  .scroll-progress { display: none; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   button:not(:disabled):active { transform: scale(0.97); }
 }

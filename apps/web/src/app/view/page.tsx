@@ -44,7 +44,10 @@ export default function ViewPage() {
 
   return (
     <main id="main-content" className="glow app-bg min-h-screen">
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <div className="app-aurora" aria-hidden>
+        <span className="a1" /><span className="a2" /><span className="a3" />
+      </div>
+      <div className="relative z-10 mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <BrandMark className="h-10 w-10" />

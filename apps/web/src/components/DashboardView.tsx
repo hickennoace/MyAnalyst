@@ -22,7 +22,7 @@ export function DashboardView({
   innerRef?: Ref<HTMLDivElement>;
 }) {
   return (
-    <div className="space-y-8" ref={innerRef}>
+    <div className="space-y-8 stagger-children" ref={innerRef}>
       <div className="card card-hover flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <p className="text-sm font-semibold text-slate-100">{spec.datasetName}</p>
@@ -87,8 +87,8 @@ export function DashboardView({
           }
         >
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {spec.insights.map((ins) => (
-              <InsightCard key={ins.id} insight={ins} />
+            {spec.insights.map((ins, i) => (
+              <InsightCard key={ins.id} insight={ins} index={i} />
             ))}
           </div>
         </Section>

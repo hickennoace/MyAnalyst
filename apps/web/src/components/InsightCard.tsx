@@ -25,9 +25,9 @@ const CONF: Record<Insight["confidence"], string> = {
   low: "bg-slate-500/15 text-slate-300",
 };
 
-export function InsightCard({ insight }: { insight: Insight }) {
+export function InsightCard({ insight, index = 0 }: { insight: Insight; index?: number }) {
   return (
-    <div className="card card-hover flex gap-3 p-4">
+    <div className="card card-hover fade-up flex gap-3 p-4" style={{ animationDelay: `${index * 60}ms` }}>
       <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-500/15 text-blue-300">
         <KindIcon kind={insight.kind} />
       </div>
