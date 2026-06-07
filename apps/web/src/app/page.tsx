@@ -97,10 +97,6 @@ export default function Landing() {
         {/* ── Hero ── */}
         <section className="grid items-center gap-12 pt-12 pb-16 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24">
           <div className="fade-up">
-            <span className="lp-pill mb-6">
-              <span className="lp-dot" aria-hidden />
-              New · AI analyst answers your data questions
-            </span>
             <h1 className="display text-[2.6rem] leading-[1.06] text-[var(--ink)] sm:text-[3.7rem]">
               Turn a spreadsheet into an{" "}
               <span className="lp-accent">explained dashboard</span>
