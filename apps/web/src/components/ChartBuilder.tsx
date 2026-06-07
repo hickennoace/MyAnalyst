@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChartSpec, ChartType, ColumnProfile, Table } from "@/lib/types";
 import { buildChart, type ChartRequest } from "@/lib/charts";
 import { parseChartRequest } from "@/lib/nl-chart";
@@ -28,8 +28,23 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
   const [x, setX] = useState<string>(dimsAndTime[0]?.name ?? profiles[0]?.name ?? "");
   const [y, setY] = useState<string>(metrics[0]?.name ?? COUNT);
 
+  // Keep X/Y valid as the type changes (scatter restricts X to metrics) and as X changes
+  // (Y can't equal X). Without this, a stale selection silently builds an empty chart.
+  useEffect(() => {
+    const xs = type === "scatter" ? metrics : dimsAndTime;
+    if (xs.length && !xs.some((p) => p.name === x)) {
+      setX(xs[0].name);
+      return;
+    }
+    if (y !== COUNT && (y === x || !metrics.some((p) => p.name === y))) {
+      setY(metrics.find((p) => p.name !== x)?.name ?? COUNT);
+    }
+  }, [type, x, y, metrics, dimsAndTime]);
+
+  // Guarantee unique React keys: buildChart ids are time-based and can collide on rapid adds.
+  const seq = useRef(0);
   function addSpec(spec: ChartSpec) {
-    setCustom((c) => [spec, ...c]);
+    setCustom((c) => [{ ...spec, id: `${spec.id}-${seq.current++}` }, ...c]);
   }
 
   function handleAsk() {

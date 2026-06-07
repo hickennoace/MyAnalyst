@@ -39,5 +39,8 @@ export function downloadCsv(table: Table, filename: string): void {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Defer revocation: revoking the object URL synchronously after click can cancel the
+  // download of a large blob (e.g. a cleaned 200k-row table) in some browsers before they've
+  // started reading it. A short delay lets the download begin first.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }

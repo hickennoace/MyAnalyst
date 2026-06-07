@@ -1,6 +1,6 @@
 import type { ChartSpec, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
-import { pearson } from "./stats";
+import { maxOf, minOf, pearson } from "./stats";
 import { aggregateCount, buildChart } from "./charts";
 import { sortByTime } from "./kpi";
 
@@ -58,8 +58,8 @@ function aggregate(values: number[], agg: Agg): number {
   switch (agg) {
     case "sum": return xs.reduce((a, b) => a + b, 0);
     case "mean": return xs.reduce((a, b) => a + b, 0) / xs.length;
-    case "max": return Math.max(...xs);
-    case "min": return Math.min(...xs);
+    case "max": return maxOf(xs);
+    case "min": return minOf(xs);
   }
 }
 
@@ -149,7 +149,8 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     const m = mMetrics[0] ?? metrics[0];
     if (m) {
       const order = sortByTime(table, time.name);
-      const series = order.map((i) => numericColumn(table, m.name)[i]).filter(Number.isFinite);
+      const mCol = numericColumn(table, m.name);
+      const series = order.map((i) => mCol[i]).filter(Number.isFinite);
       if (series.length >= 2) {
         const first = series[0];
         const last = series[series.length - 1];
@@ -356,7 +357,8 @@ function buildOverview(table: Table, profiles: ColumnProfile[]) {
 
   if (time && metrics[0]) {
     const order = sortByTime(table, time.name);
-    const series = order.map((i) => numericColumn(table, metrics[0].name)[i]).filter(Number.isFinite);
+    const m0Col = numericColumn(table, metrics[0].name);
+    const series = order.map((i) => m0Col[i]).filter(Number.isFinite);
     if (series.length >= 2) {
       const first = series[0];
       const last = series[series.length - 1];
@@ -416,12 +418,13 @@ function buildFocalFacts(question: string, table: Table, profiles: ColumnProfile
 
   if (time && metric) {
     const order = sortByTime(table, time.name);
-    const series = order.map((i) => numericColumn(table, metric.name)[i]).filter(Number.isFinite);
+    const metricCol = numericColumn(table, metric.name);
+    const series = order.map((i) => metricCol[i]).filter(Number.isFinite);
     if (series.length >= 2) {
       const first = series[0];
       const last = series[series.length - 1];
       const pct = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : 0;
-      facts.trend = { metric: metric.name, over: time.name, first: round2(first), last: round2(last), changePct: round2(pct), peak: round2(Math.max(...series)), trough: round2(Math.min(...series)), periods: series.length };
+      facts.trend = { metric: metric.name, over: time.name, first: round2(first), last: round2(last), changePct: round2(pct), peak: round2(maxOf(series)), trough: round2(minOf(series)), periods: series.length };
     }
   }
 

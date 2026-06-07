@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cagr, linearRegression, mean, median, pearson, std, zOutliers } from "./stats";
+import { cagr, linearRegression, maxOf, mean, median, minOf, pearson, std, zOutliers } from "./stats";
 
 describe("stats", () => {
   it("mean / median / std", () => {
@@ -35,5 +35,20 @@ describe("stats", () => {
   it("cagr", () => {
     expect(cagr(100, 200, 1)).toBeCloseTo(1, 6); // doubled in one period → 100%
     expect(Number.isNaN(cagr(0, 100, 4))).toBe(true);
+  });
+
+  it("minOf / maxOf: basic + empty", () => {
+    expect(minOf([3, 1, 2])).toBe(1);
+    expect(maxOf([3, 1, 2])).toBe(3);
+    expect(minOf([-5, -2, -9])).toBe(-9);
+    expect(Number.isNaN(minOf([]))).toBe(true);
+    expect(Number.isNaN(maxOf([]))).toBe(true);
+  });
+
+  it("minOf / maxOf: handle row-scale arrays (Math.min(...xs) would overflow the stack)", () => {
+    // The parser keeps up to 200k rows; spreading that into Math.min/max throws RangeError.
+    const big = Array.from({ length: 200_000 }, (_, i) => i);
+    expect(minOf(big)).toBe(0);
+    expect(maxOf(big)).toBe(199_999);
   });
 });

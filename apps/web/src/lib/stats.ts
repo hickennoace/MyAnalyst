@@ -23,6 +23,20 @@ export function sum(xs: number[]): number {
   return xs.reduce((a, b) => a + b, 0);
 }
 
+/** Loop-based min/max. `Math.min(...xs)` / `Math.max(...xs)` overflow the call stack
+ *  once `xs` exceeds the engine's argument limit (~64–125k) — and our tables hold up to
+ *  200k rows — so never spread a row-scale array into Math.min/max. Returns NaN if empty. */
+export function minOf(xs: number[]): number {
+  let m = Infinity;
+  for (const x of xs) if (x < m) m = x;
+  return m === Infinity ? NaN : m;
+}
+export function maxOf(xs: number[]): number {
+  let m = -Infinity;
+  for (const x of xs) if (x > m) m = x;
+  return m === -Infinity ? NaN : m;
+}
+
 /** Pearson correlation coefficient, NaN-safe over the paired finite values. */
 export function pearson(xs: number[], ys: number[]): number {
   const pairs: [number, number][] = [];

@@ -13,7 +13,7 @@ import type {
   TrendFact,
 } from "./types";
 import { numericColumn, profileTable } from "./profile";
-import { cleanTable } from "./clean";
+import { cleanTable, type CleanResult } from "./clean";
 import { detectDomain } from "./domain";
 import { computeKpis, primaryMetric, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
@@ -27,9 +27,14 @@ import { llmEnabled, sharpenStory } from "./insights/humanize";
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
 // but runs locally in the browser for the Vercel-first MVP.
 
-export async function analyze(rawTable: Table, opts: { userContext?: string } = {}): Promise<DashboardSpec> {
+export async function analyze(
+  rawTable: Table,
+  opts: { userContext?: string; cleaned?: CleanResult } = {}
+): Promise<DashboardSpec> {
   // Stage 2: clean & normalize first, then run everything else on the trustworthy, typed table.
-  const { table, report: cleaning, typeHints } = cleanTable(rawTable);
+  // Cleaning is the heaviest preprocessing step (per-row dedup over up to 200k rows); callers that
+  // also need the cleaned table can pass it in via `opts.cleaned` so we don't clean the same file twice.
+  const { table, report: cleaning, typeHints } = opts.cleaned ?? cleanTable(rawTable);
 
   const profiles = profileTable(table, typeHints);
   const domain = detectDomain(profiles, opts.userContext);
@@ -144,7 +149,8 @@ function buildInsightContext(
   if (time) {
     const order = sortByTime(table, time.name);
     for (const m of metrics.slice(0, 3)) {
-      const series = order.map((idx) => numericColumn(table, m.name)[idx]).filter(Number.isFinite);
+      const mCol = numericColumn(table, m.name);
+      const series = order.map((idx) => mCol[idx]).filter(Number.isFinite);
       if (series.length < 2) continue;
       const idx = series.map((_, i) => i);
       const reg = olsSimple(idx, series);
@@ -256,7 +262,8 @@ function buildInsightContext(
   const pm = primaryMetric(profiles);
   if (time && pm) {
     const order = sortByTime(table, time.name);
-    const ser = order.map((i) => numericColumn(table, pm.name)[i]).filter(Number.isFinite);
+    const pmCol = numericColumn(table, pm.name);
+    const ser = order.map((i) => pmCol[i]).filter(Number.isFinite);
     const horizon = defaultHorizon(ser.length);
     const fc = holtForecast(ser, horizon);
     if (fc) {

@@ -1,6 +1,6 @@
 import type { ChartSpec, ChartType, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
-import { pearson } from "./stats";
+import { maxOf, minOf, pearson } from "./stats";
 import { primaryMetric, sortByTime } from "./kpi";
 import { defaultHorizon, holtForecast } from "./forecast";
 import {
@@ -59,9 +59,10 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
     const order = sortByTime(table, time.name);
     const x = axisLabels(table, time.name, order);
     const chosen = metrics.slice(0, 4);
-    const series = chosen.map((m, i) =>
-      lineSeries(m.name, order.map((idx) => numericColumn(table, m.name)[idx]), i, { area: chosen.length === 1 })
-    );
+    const series = chosen.map((m, i) => {
+      const col = numericColumn(table, m.name);
+      return lineSeries(m.name, order.map((idx) => col[idx]), i, { area: chosen.length === 1 });
+    });
     charts.push({
       id: "chart-timeseries",
       type: "line",
@@ -377,7 +378,8 @@ export function buildChart(table: Table, profiles: ColumnProfile[], req: ChartRe
   } else {
     categories = axisLabels(table, req.x, order);
     series = ys.map((y, i) => {
-      const dataArr = order.map((idx) => numericColumn(table, y)[idx]);
+      const col = numericColumn(table, y);
+      const dataArr = order.map((idx) => col[idx]);
       return req.type === "bar"
         ? barSeries(dataArr, i, { name: y })
         : lineSeries(y, dataArr, i, { area: req.type === "area" });
@@ -401,8 +403,8 @@ export function buildChart(table: Table, profiles: ColumnProfile[], req: ChartRe
 
 function histogram(xs: number[], binCount: number): { label: string; count: number }[] {
   if (xs.length === 0) return [];
-  const min = Math.min(...xs);
-  const max = Math.max(...xs);
+  const min = minOf(xs);
+  const max = maxOf(xs);
   if (min === max) return [{ label: min.toFixed(1), count: xs.length }];
   const width = (max - min) / binCount;
   const bins = Array.from({ length: binCount }, (_, i) => ({ label: (min + i * width).toFixed(1), count: 0 }));

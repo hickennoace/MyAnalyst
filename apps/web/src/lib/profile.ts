@@ -1,5 +1,5 @@
 import type { ColumnProfile, NumericSummary, SemanticType, Table } from "./types";
-import { mean, median, std, sum } from "./stats";
+import { maxOf, mean, median, minOf, std, sum } from "./stats";
 
 // Type inference + column profiling. This is where messy real-world cells become typed, usable columns.
 
@@ -80,8 +80,8 @@ export function inferType(name: string, values: unknown[]): SemanticType {
 function numericSummary(values: number[]): NumericSummary {
   const xs = values.filter((x) => Number.isFinite(x));
   return {
-    min: Math.min(...xs),
-    max: Math.max(...xs),
+    min: minOf(xs),
+    max: maxOf(xs),
     mean: mean(xs),
     median: median(xs),
     std: std(xs),

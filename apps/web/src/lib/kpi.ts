@@ -90,7 +90,8 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
   const pm = primaryMetric(profiles);
   if (timeCol && pm) {
     const order = sortByTime(table, timeCol.name);
-    const series = order.map((i) => numericColumn(table, pm.name)[i]).filter(Number.isFinite);
+    const pmCol = numericColumn(table, pm.name);
+    const series = order.map((i) => pmCol[i]).filter(Number.isFinite);
     if (series.length >= 2) {
       const first = series[0];
       const last = series[series.length - 1];
