@@ -1036,12 +1036,22 @@ export function buildFocalFacts(question: string, table: Table, profiles: Column
  * deterministic one-liner, question-specific facts, and a whole-dataset statistical overview. No raw
  * rows ever leave — this mirrors the /api/insights privacy boundary.
  */
-function buildEvidence(question: string, table: Table, profiles: ColumnProfile[], grounded: string, domain?: string, history?: QaTurn[]) {
+/** The deep, pre-computed findings (from the full pipeline) handed to the narrator so "why / what
+ *  should I do / what's driving X" questions are answered from the regression, ANOVA, trend and action
+ *  analysis — not just raw aggregates. This is the multi-step reasoning, done up front. */
+export interface AskAnalysis {
+  actions?: { title: string; impact: string }[];
+  drivers?: { target: string; r2Pct?: number | null; factors: { name: string; beta: number; significant: boolean }[] };
+  trends?: { metric: string; changePct: number | null; direction?: string }[];
+}
+
+function buildEvidence(question: string, table: Table, profiles: ColumnProfile[], grounded: string, domain?: string, history?: QaTurn[], analysis?: AskAnalysis) {
   const conversation = history?.slice(-3).map((h) => ({ q: h.q, a: h.a.slice(0, 320) }));
   // If the question carries a filter, the focal facts are computed on the filtered subset (so the AI
   // narrates the scoped numbers). The overview stays whole-dataset, as broader context.
   const filter = detectFilter(question, table, profiles);
   const view = filter ? applyFilter(table, filter) : table;
+  const hasAnalysis = analysis && ((analysis.actions?.length ?? 0) > 0 || (analysis.drivers?.factors?.length ?? 0) > 0 || (analysis.trends?.length ?? 0) > 0);
   return {
     question,
     intent: grounded ? "specific" : "open-ended",
@@ -1058,6 +1068,7 @@ function buildEvidence(question: string, table: Table, profiles: ColumnProfile[]
     grounded: grounded || undefined,
     facts: buildFocalFacts(question, view, profiles),
     overview: buildOverview(table, profiles),
+    analysis: hasAnalysis ? analysis : undefined,
   };
 }
 
@@ -1145,7 +1156,8 @@ export async function answerQuestionAI(
   profiles: ColumnProfile[],
   domain?: string,
   history?: QaTurn[],
-  onToken?: (delta: string) => void
+  onToken?: (delta: string) => void,
+  analysis?: AskAnalysis
 ): Promise<RichAnswer> {
   let base = answerQuestion(question, table, profiles);
   if (!llmOn()) return { ...base, source: "heuristic" };
@@ -1157,7 +1169,7 @@ export async function answerQuestionAI(
     const planned = await planQuestion(question, table, profiles, domain, history);
     if (planned?.ok) base = planned;
   }
-  const evidence = buildEvidence(question, table, profiles, base.ok ? base.answer : "", domain, history);
+  const evidence = buildEvidence(question, table, profiles, base.ok ? base.answer : "", domain, history, analysis);
 
   // Preferred path: stream the answer prose token-by-token for a live, responsive feel. Follow-ups
   // are generated locally in streaming mode (the stream carries prose only).

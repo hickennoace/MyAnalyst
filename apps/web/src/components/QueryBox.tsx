@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ColumnProfile, Domain, Table } from "@/lib/types";
-import { answerQuestionAI, type QaTurn, type RichAnswer } from "@/lib/query";
+import { answerQuestionAI, type AskAnalysis, type QaTurn, type RichAnswer } from "@/lib/query";
 import { llmEnabled } from "@/lib/insights/humanize";
 import { domainSuggestions } from "@/lib/domain-pack";
 import { Chart } from "./Chart";
@@ -24,10 +24,12 @@ export function QueryBox({
   table,
   profiles,
   domain,
+  analysis,
 }: {
   table: Table;
   profiles: ColumnProfile[];
   domain?: Domain;
+  analysis?: AskAnalysis;
 }) {
   const [q, setQ] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -67,7 +69,7 @@ export function QueryBox({
       // Stream tokens into the turn's `partial` so the answer types out live.
       const res = await answerQuestionAI(text, table, profiles, domain, history, (delta) => {
         setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, partial: (t.partial ?? "") + delta } : t)));
-      });
+      }, analysis);
       setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, result: res, partial: undefined } : t)));
     } finally {
       setLoading(false);

@@ -118,11 +118,12 @@ export async function POST(req: Request) {
     if (!question || typeof question !== "string") {
       return NextResponse.json({ answer: "", provider: "error" });
     }
-    const { overview, intent, conversation, scope, stream } = body as {
+    const { overview, intent, conversation, scope, analysis, stream } = body as {
       overview?: unknown;
       intent?: string;
       conversation?: unknown;
       scope?: unknown;
+      analysis?: unknown;
       stream?: boolean;
     };
 
@@ -131,7 +132,7 @@ export async function POST(req: Request) {
     // falls back to the non-streaming JSON path (and then to the heuristic answer).
     if (stream === true) {
       try {
-        const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, scope, true);
+        const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, scope, analysis, true);
         const streamBody = await streamLLM(provider, apiKey, model, system, user, { temperature: 0.45, maxTokens: 800 });
         return new Response(streamBody, {
           headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
@@ -143,7 +144,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, scope);
+      const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, scope, analysis);
       const raw = await callLLM(system, user, { temperature: 0.45, maxTokens: 800 });
       const parsed = extractJson(raw) as { answer?: unknown; followups?: unknown; chart?: unknown };
       const answer = String(parsed.answer ?? "").trim();
@@ -247,13 +248,14 @@ function buildAnswerPrompt(
   intent: unknown,
   conversation: unknown,
   scope: unknown,
+  analysis: unknown,
   stream = false
 ) {
   // Kept deliberately compact: a long system prompt burns the LLM provider's per-minute token budget
   // and makes the call slow/rate-limited. This says everything essential in a fraction of the tokens.
   const system = [
     "You are a sharp principal data analyst answering a question about the user's dataset. You have NO raw rows — only pre-computed inputs:",
-    "• QUESTION; • dataset (column names/roles/types, row count, detected domain, optional `userContext` goal); • grounded (the engine's authoritative one-line result for this exact question); • facts (question-specific numbers — group `breakdown`/`breakdowns` each with total+average per group, trends, distributions, a correlation, or an 'X vs Y' `comparison` with gap/%/ratio/winner); • overview (whole-dataset stats, for context and open-ended questions); • scope (if present, facts are filtered to a subset — state that); • conversation (prior turns — resolve 'that'/'those'/'why?' from it).",
+    "• QUESTION; • dataset (column names/roles/types, row count, detected domain, optional `userContext` goal); • grounded (the engine's authoritative one-line result for this exact question); • facts (question-specific numbers — group `breakdown`/`breakdowns` each with total+average per group, trends, distributions, a correlation, or an 'X vs Y' `comparison` with gap/%/ratio/winner); • overview (whole-dataset stats, for context and open-ended questions); • analysis (DEEP pre-computed findings: regression `drivers` of a target metric with standardized β, time `trends`, and a ranked `actions` plan — use these to answer 'why / what's driving X / what should I do' diagnostically); • scope (if present, facts are filtered to a subset — state that); • conversation (prior turns — resolve 'that'/'those'/'why?' from it).",
     "RULES: state only numbers from the inputs or transparent arithmetic of them (differences, ratios, %, shares) — never invent values or unseen causes. Flag caveats (low fill rate, tiny group, weak correlation, sampled data). Use a group's TOTAL for 'biggest/most', its AVERAGE for 'highest average/per-unit/most efficient'.",
     "WRITE 2–4 short paragraphs (~90–160 words), separated by a blank line: (1) a one-sentence bottom line that answers the question with the key number; (2) the supporting comparison/gap/share/trend with the actual numbers; (3) what it means in context + one concrete next step. Confident, concrete, plain language; explain any stat term. If `userContext` is set, frame around that goal.",
     ...(stream
@@ -263,7 +265,7 @@ function buildAnswerPrompt(
           'Respond with ONLY JSON: {"answer":string,"followups":string[],"chart":{"type":"line"|"bar"|"scatter"|"area"|"pie"|"histogram","x":string,"y":string[],"aggregate"?:boolean,"count"?:boolean}|null}',
         ]),
   ].join("\n");
-  const user = JSON.stringify({ question, intent: intent ?? "specific", scope, conversation, dataset, grounded, facts, overview });
+  const user = JSON.stringify({ question, intent: intent ?? "specific", scope, conversation, dataset, grounded, facts, overview, analysis });
   return { system, user };
 }
 

@@ -159,7 +159,18 @@ export function DashboardView({
 
       {table && (
         <Section title="Ask your data" subtitle={`${domainFocus(spec.domain.domain)} Ask in plain English — grounded in your real numbers.`} exclude>
-          <QueryBox table={table} profiles={spec.profiles} domain={spec.domain.domain} />
+          <QueryBox
+            table={table}
+            profiles={spec.profiles}
+            domain={spec.domain.domain}
+            analysis={{
+              actions: spec.actions?.slice(0, 5).map((a) => ({ title: a.title, impact: a.impact })),
+              drivers: spec.drivers
+                ? { target: spec.drivers.target, r2Pct: Math.round(spec.drivers.r2 * 100), factors: spec.drivers.drivers.slice(0, 4).map((d) => ({ name: d.name, beta: Math.round(d.beta * 100) / 100, significant: d.significant })) }
+                : undefined,
+              trends: spec.timeAnalysis?.slice(0, 3).map((t) => ({ metric: t.metric, changePct: t.changePct ?? null })),
+            }}
+          />
         </Section>
       )}
 
