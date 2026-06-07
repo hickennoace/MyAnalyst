@@ -1150,7 +1150,39 @@ async function planQuestion(question: string, table: Table, profiles: ColumnProf
   }
 }
 
+// In-memory cache of answered questions (per dataset), so asking the same thing twice is instant and
+// doesn't spend another LLM call — cheaper, and far less likely to hit the provider's rate limit.
+const answerCache = new Map<string, RichAnswer>();
+const ANSWER_CACHE_MAX = 80;
+const cacheKey = (question: string, table: Table): string => `${table.name}|${table.rowCount}|${question.trim().toLowerCase().replace(/\s+/g, " ")}`;
+
+/**
+ * Cached entry point for the AI answer. A repeat of the same question (same dataset) returns the prior
+ * answer instantly without another network/LLM round-trip. Only confident LLM answers are cached.
+ */
 export async function answerQuestionAI(
+  question: string,
+  table: Table,
+  profiles: ColumnProfile[],
+  domain?: string,
+  history?: QaTurn[],
+  onToken?: (delta: string) => void,
+  analysis?: AskAnalysis
+): Promise<RichAnswer> {
+  // Cache hits only apply to fresh questions (no prior conversation), so follow-ups still get context.
+  const key = cacheKey(question, table);
+  if ((!history || history.length === 0) && answerCache.has(key)) return answerCache.get(key)!;
+
+  const result = await runAnswerAI(question, table, profiles, domain, history, onToken, analysis);
+
+  if (result.source === "llm" && result.ok && (!history || history.length === 0)) {
+    if (answerCache.size >= ANSWER_CACHE_MAX) answerCache.delete(answerCache.keys().next().value!);
+    answerCache.set(key, result);
+  }
+  return result;
+}
+
+async function runAnswerAI(
   question: string,
   table: Table,
   profiles: ColumnProfile[],
