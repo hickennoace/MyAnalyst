@@ -51,6 +51,7 @@ export async function analyze(
   stage("Profiling columns");
   const profiles = profileTable(table, typeHints);
   const quality = computeDataQuality(table, profiles, cleaning);
+  const anomalies = detectAnomalies(table, profiles);
   stage("Detecting domain");
   const domain = detectDomain(profiles, opts.userContext);
   stage("Computing KPIs");
@@ -96,7 +97,25 @@ export async function analyze(
     narrator: provider.lastSource ?? "templated",
     story,
     quality,
+    anomalies,
   };
+}
+
+/** Per-metric unusual values (|z| > 3), strongest first — the metadata behind the Anomalies card. */
+export function detectAnomalies(table: Table, profiles: ReturnType<typeof profileTable>): OutlierFact[] {
+  const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const out: OutlierFact[] = [];
+  for (const m of metrics) {
+    const ex = zOutliers(numericColumn(table, m.name), 3);
+    if (ex.length) {
+      out.push({
+        column: m.name,
+        count: ex.length,
+        examples: [...ex].sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 4),
+      });
+    }
+  }
+  return out.sort((a, b) => b.count - a.count).slice(0, 6);
 }
 
 /** Assemble the metadata-only context for insight generation. NEVER includes raw rows. */

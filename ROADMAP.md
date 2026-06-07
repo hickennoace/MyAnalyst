@@ -55,7 +55,7 @@ For genuinely hard questions ("which segment should we cut?"), let the LLM reque
 
 Differentiate on *statistical substance*, not just charts.
 
-- **2.1 Anomaly & outlier surfacing in the UI.** Outliers are computed but barely shown. Add an "Anomalies" card: which rows/values are unusual and why (z-score, IQR), with a one-click "exclude & re-run."
+- **2.1 Anomaly & outlier surfacing in the UI.** ✅ DONE (2026-06-07) — `detectAnomalies()` in `analyze.ts` exposes per-metric unusual values (|z|>3, strongest first) on `DashboardSpec.anomalies`; an `AnomalyCard` shows each with the typical range (mean ± std) and an above/below marker. 2 tests. (Follow-up: one-click "exclude & re-run".)
 - **2.2 Segmentation / clustering.** k-means or simple rule-based segments over numeric columns → "your data splits into 3 natural groups; here's what defines them." Behind a `lib/segment.ts` seam.
 - **2.3 Richer time series.** Trend + **seasonality decomposition**, period-over-period (MoM/YoY) tables, moving averages, and a confidence band on the forecast (today's forecast is naive). Detect cadence (daily/weekly/monthly) automatically.
 - **2.4 Cohort & retention** (when an entity id + time exist) — retention curves and cohort heatmaps; huge for SaaS/marketing datasets.

@@ -6,6 +6,7 @@ import { InsightCard } from "./InsightCard";
 import { ChartBuilder } from "./ChartBuilder";
 import { CleaningReport } from "./CleaningReport";
 import { QualityCard } from "./QualityCard";
+import { AnomalyCard } from "./AnomalyCard";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
 
@@ -98,6 +99,12 @@ export function DashboardView({
               <InsightCard key={ins.id} insight={ins} index={i} />
             ))}
           </div>
+        </Section>
+      )}
+
+      {spec.anomalies && spec.anomalies.length > 0 && (
+        <Section title="Anomalies &amp; outliers" subtitle="Unusual values that can skew averages — flagged so you can verify or exclude them.">
+          <AnomalyCard anomalies={spec.anomalies} profiles={spec.profiles} />
         </Section>
       )}
 

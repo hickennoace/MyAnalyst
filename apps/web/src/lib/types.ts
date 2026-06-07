@@ -332,6 +332,8 @@ export interface DashboardSpec {
   story?: DataStory;
   /** A 0–100 data-quality health score with a per-dimension breakdown and fixes. */
   quality?: DataQuality;
+  /** Per-metric unusual values (|z| > 3), surfaced so users can verify or exclude them. */
+  anomalies?: OutlierFact[];
 }
 
 export interface DataStory {
