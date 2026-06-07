@@ -102,10 +102,11 @@ export async function POST(req: Request) {
     if (!question || typeof question !== "string") {
       return NextResponse.json({ answer: "", provider: "error" });
     }
-    const { overview, intent, conversation, stream } = body as {
+    const { overview, intent, conversation, scope, stream } = body as {
       overview?: unknown;
       intent?: string;
       conversation?: unknown;
+      scope?: unknown;
       stream?: boolean;
     };
 
@@ -114,7 +115,7 @@ export async function POST(req: Request) {
     // falls back to the non-streaming JSON path (and then to the heuristic answer).
     if (stream === true) {
       try {
-        const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, true);
+        const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, scope, true);
         const streamBody = await streamLLM(provider, apiKey, model, system, user, { temperature: 0.45, maxTokens: 1800 });
         return new Response(streamBody, {
           headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
@@ -126,7 +127,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation);
+      const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, scope);
       const raw = await callLLM(system, user, { temperature: 0.45, maxTokens: 1800 });
       const parsed = extractJson(raw) as { answer?: unknown; followups?: unknown };
       const answer = String(parsed.answer ?? "").trim();
@@ -214,6 +215,7 @@ function buildAnswerPrompt(
   overview: unknown,
   intent: unknown,
   conversation: unknown,
+  scope: unknown,
   stream = false
 ) {
   const system = [
@@ -224,6 +226,7 @@ function buildAnswerPrompt(
     "• grounded — a one-line result the deterministic engine already computed for this exact question (authoritative; present for specific questions).",
     "• facts — question-specific numbers (group breakdowns with shares, trends, distributions, the cited correlation).",
     "• overview — an always-available statistical brief of the WHOLE dataset: every key metric's total/average/median/std-dev/spread (coefficient of variation)/skew/fill-rate, the strongest pairwise correlations, category concentration, and any overall time trend. Use this to answer open-ended questions and to add context.",
+    "• scope — if present, the user's question is FILTERED to a subset (e.g. one region, one year, a numeric range). `facts` and `grounded` are already computed on that subset only; `matchedRows`/`ofRows` show how many rows it covers. Make the scope explicit in your answer, and you MAY contrast the subset with the whole-dataset `overview` for context.",
     "• conversation — recent prior questions and your answers in this session, if any.",
     "CONVERSATION: If the question refers back to earlier turns ('that region', 'those', 'compare it to the previous', 'why?'), resolve the reference from `conversation` and answer in continuity — like a real analyst mid-discussion. Don't repeat earlier explanations verbatim; build on them.",
     "Note on group breakdowns: each group carries BOTH a `total` and an `average` (with row `count`). Use the one the question calls for — totals for 'biggest/most revenue', averages for 'highest average / per-order / most efficient'. `highestAverage` names the leader by average, which can differ from the leader by total.",
@@ -244,7 +247,7 @@ function buildAnswerPrompt(
           'Respond with ONLY JSON: {"answer": string, "followups": string[]}',
         ]),
   ].join("\n");
-  const user = JSON.stringify({ question, intent: intent ?? "specific", conversation, dataset, grounded, facts, overview });
+  const user = JSON.stringify({ question, intent: intent ?? "specific", scope, conversation, dataset, grounded, facts, overview });
   return { system, user };
 }
 

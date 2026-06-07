@@ -25,10 +25,11 @@ So the roadmap below is about going from *"a genuinely good free analyst"* to *"
 
 The Q&A box is the soul of the product. Three concrete gaps stand between it and best-in-world:
 
-### 1.1 Filtered & conditional questions  ⭐ top priority
+### 1.1 Filtered & conditional questions  ✅ DONE (2026-06-07)
 Today the engine can aggregate a whole column or group-by, but it **cannot filter**. Real users constantly ask *"total revenue **in 2023**"*, *"average order value **for the North region**"*, *"how many orders **where status is cancelled**"*. 
 - **Where:** `src/lib/query.ts` — add a `detectFilter(text, table, profiles)` that resolves a categorical value (match against each dimension's distinct values) or a time predicate (year/quarter/month, ranges like "after 2022", "between Jan and Mar"). Thread the filtered row-set through every answer branch (count, aggregate, ranking, trend) and into `buildFocalFacts` so the AI path narrates the *filtered* numbers too.
 - **Done when:** unit tests cover value filters, year filters, range filters, and "X vs Y" comparisons; filtered facts appear in the evidence payload.
+- **Shipped:** `detectFilter`/`applyFilter` in `query.ts` (exported) handle three filter kinds — categorical value (matched against each dimension's distinct values, with a stop-word guard), time/year (`in 2023`, `after 2022`, `before 2021`, `between 2021 and 2023`), and numeric comparison on a *named* metric (`over/under/at least/at most/between`). Every answer branch runs on the filtered view and weaves the scope into the prose; charts are built from the filtered view; the AI evidence payload carries a `scope` object and computes `buildFocalFacts` on the filtered subset (overview stays whole-dataset for contrast). A filtered suggestion chip surfaces the feature. 13 query tests (8 new) + full suite (56) green. **Still open for a follow-up:** explicit "X vs Y" comparison primitive (that's item **1.2**), and month/quarter granularity.
 
 ### 1.2 Comparison questions
 *"Compare North vs South revenue"*, *"how does 2023 compare to 2022"*, *"electronics vs furniture margin"*. Build a small comparison primitive (two filtered slices → delta, ratio, % change, winner) and a paired bar/line chart.

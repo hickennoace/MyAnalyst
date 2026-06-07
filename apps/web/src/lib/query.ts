@@ -90,9 +90,20 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
   const mMetrics = resolveCols(text, metrics);
   const mDims = resolveCols(text, dims);
 
+  // Filtered & conditional questions: "total revenue in 2023", "average order value for the North
+  // region", "how many orders where revenue is over 100". We answer over a filtered VIEW of the rows
+  // and weave the scope into the prose. `view` is the (possibly) filtered table; `scope` is the natural
+  // clause appended to answers. Charts are built from `view`, so they reflect the filter too.
+  const filter = detectFilter(text, table, profiles);
+  const view = filter ? applyFilter(table, filter) : table;
+  if (filter && view.rowCount === 0) {
+    return { ok: false, answer: `No records match ${filter.label}. Try a different value or range.` };
+  }
+  const scope = filter ? ` ${filter.phrase}` : "";
+
   // 1. Row count.
-  if (/\b(how many|number of|count of|count)\b/.test(lower) && /\b(row|record|entr|data point|observation)/.test(lower)) {
-    return { ok: true, answer: `There are ${table.rowCount.toLocaleString()} records in the dataset.` };
+  if (/\b(how many|number of|count of|count)\b/.test(lower) && (/\b(row|record|entr|data point|observation)/.test(lower) || filter)) {
+    return { ok: true, answer: `There are ${view.rowCount.toLocaleString()} records${filter ? scope : " in the dataset"}.` };
   }
 
   // 1b. Most-common / distribution of a CATEGORICAL column — e.g. "the most common reason for not buying".
@@ -108,17 +119,16 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
       dims.find((d) => CATEGORY_HINT.test(d.name)) ??
       dims[0];
     if (col) {
-      const counts = aggregateCount(table, col.name);
+      const counts = aggregateCount(view, col.name);
       const total = counts.reduce((s, [, c]) => s + c, 0);
       if (total > 0) {
         const top = counts[0];
         const second = counts[1];
+        const tail = second ? `, then "${second[0]}" (${Math.round((second[1] / total) * 100)}%)` : "";
         return {
           ok: true,
-          answer:
-            `The most common ${col.name} is "${top[0]}" — ${top[1]} of ${total} (${Math.round((top[1] / total) * 100)}%)` +
-            (second ? `, then "${second[0]}" (${Math.round((second[1] / total) * 100)}%).` : "."),
-          chart: buildChart(table, profiles, { type: "bar", x: col.name, y: [], count: true }),
+          answer: `The most common ${col.name} is "${top[0]}" — ${top[1]} of ${total} (${Math.round((top[1] / total) * 100)}%)${tail}${scope}.`,
+          chart: buildChart(view, profiles, { type: "bar", x: col.name, y: [], count: true }),
         };
       }
     }
@@ -129,16 +139,16 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     const ms = mMetrics.length >= 2 ? mMetrics : metrics;
     if (ms.length >= 2) {
       const [a, b] = ms;
-      const r = pearson(numericColumn(table, a.name), numericColumn(table, b.name));
+      const r = pearson(numericColumn(view, a.name), numericColumn(view, b.name));
       if (Number.isFinite(r)) {
         const strength = Math.abs(r) > 0.7 ? "strong" : Math.abs(r) > 0.4 ? "moderate" : "weak";
         const dir = r > 0 ? "positive" : "negative";
         return {
           ok: true,
-          answer: `${a.name} and ${b.name} have a ${strength} ${dir} correlation (r = ${r.toFixed(2)}). ${
+          answer: `${a.name} and ${b.name} have a ${strength} ${dir} correlation (r = ${r.toFixed(2)})${scope}. ${
             Math.abs(r) > 0.4 ? "They tend to move together." : "The link is loose."
           }`,
-          chart: buildChart(table, profiles, { type: "scatter", x: a.name, y: [b.name] }),
+          chart: buildChart(view, profiles, { type: "scatter", x: a.name, y: [b.name] }),
         };
       }
     }
@@ -148,8 +158,8 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
   if (time && /(trend|over time|timeline|change over|grow|growth|increase|decrease|trajectory)/.test(lower)) {
     const m = mMetrics[0] ?? metrics[0];
     if (m) {
-      const order = sortByTime(table, time.name);
-      const mCol = numericColumn(table, m.name);
+      const order = sortByTime(view, time.name);
+      const mCol = numericColumn(view, m.name);
       const series = order.map((i) => mCol[i]).filter(Number.isFinite);
       if (series.length >= 2) {
         const first = series[0];
@@ -158,8 +168,8 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         const dir = pct > 1 ? "increased" : pct < -1 ? "decreased" : "stayed roughly flat";
         return {
           ok: true,
-          answer: `${m.name} ${dir} ${Math.abs(pct).toFixed(1)}% over the period (${fmt(first, m)} → ${fmt(last, m)}).`,
-          chart: buildChart(table, profiles, { type: "line", x: time.name, y: [m.name] }),
+          answer: `${m.name} ${dir} ${Math.abs(pct).toFixed(1)}% over the period${scope} (${fmt(first, m)} → ${fmt(last, m)}).`,
+          chart: buildChart(view, profiles, { type: "line", x: time.name, y: [m.name] }),
         };
       }
     }
@@ -172,7 +182,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     if (dim && metric) {
       const aggMatch = AGG_WORDS.find((w) => w.re.test(lower));
       const agg: Agg = aggMatch?.agg === "mean" ? "mean" : "sum";
-      const ranked = groupBy(table, dim.name, metric.name, agg);
+      const ranked = groupBy(view, dim.name, metric.name, agg);
       if (ranked.length) {
         const wantLowest = /\b(lowest|bottom|worst|smallest|least)\b/.test(lower);
         const ordered = wantLowest ? [...ranked].reverse() : ranked;
@@ -180,8 +190,8 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         const aggLabel = agg === "mean" ? "average" : "total";
         return {
           ok: true,
-          answer: `By ${aggLabel} ${metric.name}, ${dim.name} "${top[0]}" is ${wantLowest ? "lowest" : "highest"} at ${fmt(top[1], metric)}.`,
-          chart: agg === "sum" ? buildChart(table, profiles, { type: "bar", x: dim.name, y: [metric.name], aggregate: true }) : undefined,
+          answer: `By ${aggLabel} ${metric.name}, ${dim.name} "${top[0]}" is ${wantLowest ? "lowest" : "highest"} at ${fmt(top[1], metric)}${scope}.`,
+          chart: agg === "sum" ? buildChart(view, profiles, { type: "bar", x: dim.name, y: [metric.name], aggregate: true }) : undefined,
         };
       }
     }
@@ -195,26 +205,26 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
       const wantsGroup = /\b(by|per|across|for each|grouped)\b/.test(lower);
       const dim = wantsGroup ? mDims[0] ?? dims[0] : undefined;
       if (dim) {
-        const ranked = groupBy(table, dim.name, metric.name, aggMatch.agg);
+        const ranked = groupBy(view, dim.name, metric.name, aggMatch.agg);
         const top = ranked[0];
         return {
           ok: true,
-          answer: `${cap(aggMatch.label)} ${metric.name} by ${dim.name}: ${dim.name} "${top[0]}" leads at ${fmt(top[1], metric)} (${ranked.length} groups).`,
-          chart: aggMatch.agg === "sum" ? buildChart(table, profiles, { type: "bar", x: dim.name, y: [metric.name], aggregate: true }) : undefined,
+          answer: `${cap(aggMatch.label)} ${metric.name} by ${dim.name}${scope}: ${dim.name} "${top[0]}" leads at ${fmt(top[1], metric)} (${ranked.length} groups).`,
+          chart: aggMatch.agg === "sum" ? buildChart(view, profiles, { type: "bar", x: dim.name, y: [metric.name], aggregate: true }) : undefined,
         };
       }
-      const v = aggregate(numericColumn(table, metric.name), aggMatch.agg);
-      return { ok: true, answer: `The ${aggMatch.label} of ${metric.name} is ${fmt(v, metric)}.` };
+      const v = aggregate(numericColumn(view, metric.name), aggMatch.agg);
+      return { ok: true, answer: `The ${aggMatch.label} of ${metric.name}${scope} is ${fmt(v, metric)}.` };
     }
   }
 
   // 6. A bare metric mention → give its headline stats.
   if (mMetrics.length) {
     const m = mMetrics[0];
-    const vals = numericColumn(table, m.name);
+    const vals = numericColumn(view, m.name);
     return {
       ok: true,
-      answer: `${m.name}: total ${fmt(aggregate(vals, "sum"), m)}, average ${fmt(aggregate(vals, "mean"), m)}, range ${fmt(aggregate(vals, "min"), m)}–${fmt(aggregate(vals, "max"), m)}.`,
+      answer: `${m.name}${scope}: total ${fmt(aggregate(vals, "sum"), m)}, average ${fmt(aggregate(vals, "mean"), m)}, range ${fmt(aggregate(vals, "min"), m)}–${fmt(aggregate(vals, "max"), m)}.`,
     };
   }
 
@@ -230,6 +240,134 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// ── Filters ──────────────────────────────────────────────────────────────────
+// Turn a plain-English condition in the question into a row predicate so the engine can answer
+// "total revenue in 2023", "average order value for the North region", or "how many orders where
+// revenue is over 100". Three kinds, tried in order: time/year, numeric comparison on a named metric,
+// and a categorical value of a dimension. Everything downstream runs on the filtered VIEW, so numbers
+// and charts stay consistent with the stated scope.
+
+export interface DataFilter {
+  column: string;
+  /** Natural clause woven into answers, e.g. `in 2023`, `for Region "North"`, `where Revenue is over 100`. */
+  phrase: string;
+  /** Short label for compact UI / error messages, e.g. `2023`, `North`, `Revenue > 100`. */
+  label: string;
+  predicate: (row: Record<string, unknown>) => boolean;
+}
+
+/** Return a filtered copy of the table (same columns, subset of rows). */
+export function applyFilter(table: Table, filter: DataFilter): Table {
+  const rows = table.rows.filter(filter.predicate);
+  return { ...table, rows, rowCount: rows.length };
+}
+
+// Words that can coincide with a category value but are really question grammar — never treat as a filter value.
+const FILTER_STOP = new Set([
+  "total", "sum", "average", "avg", "mean", "median", "count", "number", "max", "min", "maximum", "minimum",
+  "highest", "lowest", "top", "bottom", "most", "least", "data", "value", "values", "record", "records", "row",
+  "rows", "the", "and", "or", "of", "in", "for", "by", "per", "is", "are", "with", "where", "over", "under",
+  "between", "than", "all", "each", "show",
+]);
+
+function coerceNum(v: unknown): number {
+  if (typeof v === "number") return v;
+  return parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, ""));
+}
+
+/** Distinct non-empty values of a column (capped, for matching against the question). */
+function distinctValues(table: Table, col: string, cap = 500): string[] {
+  const seen = new Set<string>();
+  for (const r of table.rows) {
+    const v = r[col];
+    if (v === null || v === undefined || v === "") continue;
+    seen.add(String(v));
+    if (seen.size >= cap) break;
+  }
+  return [...seen];
+}
+
+/** Whole-word/phrase containment (so "north" doesn't match inside "northern" and survives punctuation). */
+function containsPhrase(hayLower: string, needleLower: string): boolean {
+  if (needleLower.length < 2) return false;
+  const esc = needleLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`, "i").test(hayLower);
+}
+
+const NUMRE = "(-?\\d[\\d,]*(?:\\.\\d+)?)";
+const parseNum = (s: string): number => parseFloat(s.replace(/,/g, ""));
+
+export function detectFilter(question: string, table: Table, profiles: ColumnProfile[]): DataFilter | undefined {
+  const lower = question.toLowerCase();
+
+  // 1) Time / year on the time column: "in 2023", "after 2022", "between 2021 and 2023".
+  const time = profiles.find((p) => p.role === "time");
+  if (time) {
+    const yearOf = (row: Record<string, unknown>): number | null => {
+      const d = new Date(String(row[time.name]));
+      return Number.isNaN(d.getTime()) ? null : d.getFullYear();
+    };
+    const between = lower.match(/between\s+((?:19|20)\d{2})\s+(?:and|to|-)\s+((?:19|20)\d{2})/);
+    if (between) {
+      const lo = Math.min(Number(between[1]), Number(between[2]));
+      const hi = Math.max(Number(between[1]), Number(between[2]));
+      return { column: time.name, phrase: `from ${lo} to ${hi}`, label: `${lo}–${hi}`, predicate: (r) => { const y = yearOf(r); return y !== null && y >= lo && y <= hi; } };
+    }
+    const years = [...lower.matchAll(/\b((?:19|20)\d{2})\b/g)].map((m) => Number(m[1]));
+    if (years.length) {
+      const y = years[0];
+      if (/\b(after|since|from)\b/.test(lower)) return { column: time.name, phrase: `after ${y}`, label: `after ${y}`, predicate: (r) => { const yr = yearOf(r); return yr !== null && yr > y; } };
+      if (/\b(before|until|up to|up until)\b/.test(lower)) return { column: time.name, phrase: `before ${y}`, label: `before ${y}`, predicate: (r) => { const yr = yearOf(r); return yr !== null && yr < y; } };
+      return { column: time.name, phrase: `in ${y}`, label: `${y}`, predicate: (r) => yearOf(r) === y };
+    }
+  }
+
+  // 2) Numeric comparison on a NAMED metric: "revenue over 100", "units between 10 and 20".
+  const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const namedMetric = resolveCols(question, metrics)[0];
+  if (namedMetric) {
+    const m = namedMetric.name;
+    const btw = lower.match(new RegExp(`${NUMRE}\\s+(?:and|to)\\s+${NUMRE}`));
+    if (/\bbetween\b/.test(lower) && btw) {
+      const lo = Math.min(parseNum(btw[1]), parseNum(btw[2]));
+      const hi = Math.max(parseNum(btw[1]), parseNum(btw[2]));
+      return { column: m, phrase: `where ${m} is between ${lo} and ${hi}`, label: `${m} ${lo}–${hi}`, predicate: (r) => { const v = coerceNum(r[m]); return Number.isFinite(v) && v >= lo && v <= hi; } };
+    }
+    const cmp = lower.match(new RegExp(`(>=|<=|>|<|over|above|greater than|more than|at least|under|below|less than|fewer than|at most)\\s*${NUMRE}`));
+    if (cmp) {
+      const op = cmp[1];
+      const n = parseNum(cmp[2]);
+      const gte = /^(>=|at least)$/.test(op);
+      const lte = /^(<=|at most)$/.test(op);
+      const gt = /^(>|over|above|greater than|more than)$/.test(op);
+      const pred = gte ? (v: number) => v >= n : lte ? (v: number) => v <= n : gt ? (v: number) => v > n : (v: number) => v < n;
+      const sym = gte ? "≥" : lte ? "≤" : gt ? ">" : "<";
+      const word = gte ? "at least" : lte ? "at most" : gt ? "over" : "under";
+      return { column: m, phrase: `where ${m} is ${word} ${n}`, label: `${m} ${sym} ${n}`, predicate: (r) => { const v = coerceNum(r[m]); return Number.isFinite(v) && pred(v); } };
+    }
+  }
+
+  // 3) Categorical value of a dimension named in the question: "for the North region", "status cancelled".
+  const dims = profiles.filter((p) => p.role === "dimension");
+  let best: { col: string; value: string } | undefined;
+  for (const d of dims) {
+    for (const v of distinctValues(table, d.name)) {
+      const vl = v.toLowerCase();
+      if (vl.length < 2 || FILTER_STOP.has(vl)) continue;
+      if (/^-?\d+(\.\d+)?$/.test(vl)) continue; // pure numbers are handled by the numeric filter
+      if (vl === d.name.toLowerCase()) continue;
+      if (containsPhrase(lower, vl) && (!best || vl.length > best.value.length)) best = { col: d.name, value: v };
+    }
+  }
+  if (best) {
+    const target = best.value.toLowerCase();
+    const col = best.col;
+    return { column: col, phrase: `for ${col} "${best.value}"`, label: best.value, predicate: (r) => String(r[col] ?? "").toLowerCase() === target };
+  }
+
+  return undefined;
 }
 
 // ── AI path ────────────────────────────────────────────────────────────────────
@@ -451,10 +589,15 @@ function buildFocalFacts(question: string, table: Table, profiles: ColumnProfile
  */
 function buildEvidence(question: string, table: Table, profiles: ColumnProfile[], grounded: string, domain?: string, history?: QaTurn[]) {
   const conversation = history?.slice(-3).map((h) => ({ q: h.q, a: h.a.slice(0, 320) }));
+  // If the question carries a filter, the focal facts are computed on the filtered subset (so the AI
+  // narrates the scoped numbers). The overview stays whole-dataset, as broader context.
+  const filter = detectFilter(question, table, profiles);
+  const view = filter ? applyFilter(table, filter) : table;
   return {
     question,
     intent: grounded ? "specific" : "open-ended",
     conversation: conversation && conversation.length ? conversation : undefined,
+    scope: filter ? { clause: filter.phrase, column: filter.column, matchedRows: view.rowCount, ofRows: table.rowCount } : undefined,
     dataset: {
       name: table.name,
       rowCount: table.rowCount,
@@ -464,7 +607,7 @@ function buildEvidence(question: string, table: Table, profiles: ColumnProfile[]
       columns: profiles.map((p) => ({ name: p.name, role: p.role, type: p.type, fillRatePct: round2(p.fillRate * 100) })),
     },
     grounded: grounded || undefined,
-    facts: buildFocalFacts(question, table, profiles),
+    facts: buildFocalFacts(question, view, profiles),
     overview: buildOverview(table, profiles),
   };
 }
