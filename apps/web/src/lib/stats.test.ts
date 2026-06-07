@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cagr, linearRegression, maxOf, mean, median, minOf, pearson, std, zOutliers } from "./stats";
+import { cagr, isRedundantCorrelation, linearRegression, maxOf, mean, median, minOf, pearson, std, zOutliers } from "./stats";
 
 describe("stats", () => {
   it("mean / median / std", () => {
@@ -35,6 +35,17 @@ describe("stats", () => {
   it("cagr", () => {
     expect(cagr(100, 200, 1)).toBeCloseTo(1, 6); // doubled in one period → 100%
     expect(Number.isNaN(cagr(0, 100, 4))).toBe(true);
+  });
+
+  it("isRedundantCorrelation: flags tautological / derived pairs, keeps genuine ones", () => {
+    // Near-perfect r → one column is derived from the other (e.g. tax computed from sales).
+    expect(isRedundantCorrelation("SalesAmount", "TaxAmt", 1.0)).toBe(true);
+    expect(isRedundantCorrelation("SalesAmount", "TaxAmt", -0.991)).toBe(true);
+    // Name-subset columns are derived/duplicates regardless of r.
+    expect(isRedundantCorrelation("Revenue", "Total Revenue", 0.6)).toBe(true);
+    // Genuine, non-obvious correlations are kept.
+    expect(isRedundantCorrelation("Spend", "Impressions", 0.78)).toBe(false);
+    expect(isRedundantCorrelation("Tenure", "Salary", 0.55)).toBe(false);
   });
 
   it("minOf / maxOf: basic + empty", () => {

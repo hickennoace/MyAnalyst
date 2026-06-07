@@ -276,6 +276,7 @@ function buildPrompt(ctx: InsightContext, validCites: Set<string>) {
     "4. Make it useful: say what it likely MEANS and what the reader could DO about it. Gently note when something could just be coincidence, and that things moving together doesn't prove one causes the other.",
     "5. If the context includes `userContext` (the user's job/goal), tailor your wording, emphasis, and examples to that goal.",
     "6. Return 4 to 6 insights, most important first.",
+    "7. NO OBVIOUS OR TAUTOLOGICAL INSIGHTS. Skip anything a reader already knows by definition: a metric correlating with a column derived from it (tax↔sales, total↔price×quantity, a unit conversion, a near-perfect r≈1.0 link), or merely restating a KPI's value as if it were a finding. If a 'relationship' is true by construction, it is not an insight — drop it and surface something non-obvious instead. Prefer fewer, genuinely informative insights over filler.",
     'Respond with ONLY a JSON object: {"insights":[{"text":string,"confidence":"high"|"medium"|"low","kind":"summary"|"trend"|"correlation"|"regression"|"outlier"|"composition","cites":string[]}]}',
   ].join("\n");
 

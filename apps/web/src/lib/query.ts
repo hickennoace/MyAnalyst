@@ -1,6 +1,6 @@
 import type { ChartSpec, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
-import { maxOf, minOf, pearson } from "./stats";
+import { maxOf, minOf, pearson, isRedundantCorrelation } from "./stats";
 import { aggregateCount, buildChart } from "./charts";
 import { sortByTime } from "./kpi";
 
@@ -316,7 +316,8 @@ function topCorrelations(table: Table, metrics: ColumnProfile[], limit: number) 
   for (let i = 0; i < metrics.length; i++) {
     for (let j = i + 1; j < metrics.length; j++) {
       const r = pearson(numericColumn(table, metrics[i].name), numericColumn(table, metrics[j].name));
-      if (Number.isFinite(r)) {
+      // Skip tautological pairs (a column derived from another) so the AI doesn't volunteer the obvious.
+      if (Number.isFinite(r) && !isRedundantCorrelation(metrics[i].name, metrics[j].name, r)) {
         out.push({
           a: metrics[i].name,
           b: metrics[j].name,

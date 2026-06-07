@@ -17,7 +17,7 @@ import { cleanTable, type CleanResult } from "./clean";
 import { detectDomain } from "./domain";
 import { computeKpis, primaryMetric, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
-import { zOutliers } from "./stats";
+import { isRedundantCorrelation, zOutliers } from "./stats";
 import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAnova, olsSimple, pearsonTest } from "./inference";
 import { defaultHorizon, holtForecast } from "./forecast";
 import { buildDataStory } from "./story";
@@ -126,6 +126,15 @@ function buildInsightContext(
         n: test.n,
       });
     }
+  }
+  // Drop trivially-redundant pairs before they become "insights": a near-perfect correlation almost
+  // always means one column is derived from the other (tax from sales, total from price×qty, a unit
+  // conversion, a duplicate column) — that's a tautology, not a finding. Same for name-subset pairs
+  // like "Revenue" vs "Total Revenue". (The correlation heatmap still shows the full matrix.)
+  {
+    const kept = correlations.filter((c) => !isRedundantCorrelation(c.a, c.b, c.r));
+    correlations.length = 0;
+    correlations.push(...kept);
   }
   // Benjamini-Hochberg FDR correction across all pairwise correlation tests — guards against
   // false positives when many pairs are tested (a key accuracy fix vs. naive per-test p < 0.05).

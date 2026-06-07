@@ -107,6 +107,17 @@ export function zOutliers(xs: number[], threshold = 3): { index: number; value: 
   return out.sort((a, b) => Math.abs(b.z) - Math.abs(a.z));
 }
 
+/** A correlation so strong (or between name-subset columns) that it's almost certainly a derived /
+ *  duplicate relationship rather than an insight — e.g. tax↔sales (r≈1), "Revenue"↔"Total Revenue".
+ *  Used to hide tautological "findings" from the narrated insights so the AI doesn't state the obvious. */
+export function isRedundantCorrelation(a: string, b: string, r: number): boolean {
+  if (Math.abs(r) >= 0.98) return true; // near-perfect → one column is computed from the other
+  const na = a.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const nb = b.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (na && nb && na !== nb && (na.includes(nb) || nb.includes(na))) return true;
+  return false;
+}
+
 /** Compound annual growth rate given first/last values and number of periods. */
 export function cagr(first: number, last: number, periods: number): number {
   if (first <= 0 || periods <= 0) return NaN;
