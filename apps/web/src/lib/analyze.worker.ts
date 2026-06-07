@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import type { DashboardSpec, Table } from "./types";
+import type { DashboardSpec, SemanticType, Table } from "./types";
 import { analyze } from "./analyze";
 import { cleanTable } from "./clean";
 
@@ -11,6 +11,8 @@ import { cleanTable } from "./clean";
 export interface AnalyzeRequest {
   table: Table;
   userContext?: string;
+  /** User-pinned column types from the column controls (overrides auto-detection). */
+  typeOverrides?: Record<string, SemanticType>;
 }
 
 export type AnalyzeMessage =
@@ -21,11 +23,11 @@ export type AnalyzeMessage =
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
 ctx.onmessage = async (e: MessageEvent<AnalyzeRequest>) => {
-  const { table, userContext } = e.data;
+  const { table, userContext, typeOverrides } = e.data;
   const post = (m: AnalyzeMessage) => ctx.postMessage(m);
   try {
     post({ type: "progress", stage: "Cleaning & normalizing" });
-    const cleaned = cleanTable(table);
+    const cleaned = cleanTable(table, typeOverrides);
     const spec = await analyze(table, {
       userContext,
       cleaned,

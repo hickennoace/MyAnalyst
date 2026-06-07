@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { DashboardSpec, Table } from "@/lib/types";
+import type { DashboardSpec, SemanticType, Table } from "@/lib/types";
 import { parseFile } from "@/lib/parse";
 import { runAnalysis } from "@/lib/analyze-client";
 import { downloadCsv } from "@/lib/csv";
@@ -15,6 +15,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { DashboardView } from "@/components/DashboardView";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ColumnControls } from "@/components/ColumnControls";
 import { HistoryList } from "@/components/HistoryList";
 import { PipelineProgress } from "@/components/PipelineProgress";
 
@@ -29,6 +30,11 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string | null>(null);
   const [table, setTable] = useState<Table | null>(null);
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
+  // The full parsed source (all columns) + the user's column choices, so "Apply & re-run" can
+  // re-analyze from scratch with exclusions/type overrides applied.
+  const [sourceTable, setSourceTable] = useState<Table | null>(null);
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [typeOverrides, setTypeOverrides] = useState<Record<string, SemanticType>>({});
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
   const [toast, setToast] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -64,6 +70,10 @@ export default function AnalyzePage() {
     setToast(null);
     setTable(loaded.table);
     setSpec(loaded.spec);
+    // Re-runnable from the loaded table; the stored spec already reflects its prior column choices.
+    setSourceTable(loaded.table);
+    setExcluded(new Set());
+    setTypeOverrides({});
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   }
 
@@ -107,18 +117,33 @@ export default function AnalyzePage() {
     }
   }
 
-  async function run(tbl: Table) {
+  async function run(
+    sourceTbl: Table,
+    opts?: { excluded?: Set<string>; overrides?: Record<string, SemanticType> }
+  ) {
+    const excl = opts?.excluded ?? new Set<string>();
+    const ov = opts?.overrides ?? {};
     setError(null);
     setBusy(true);
-    setSpec(null);
+    // Fresh run (from upload/sample) returns to the uploader+progress view; a re-run from the
+    // column controls keeps the current dashboard on screen (dimmed) so it doesn't flash away.
+    if (!opts) setSpec(null);
+    setSourceTable(sourceTbl);
     try {
+      // Apply column exclusions (the pipeline reads `columns`, so filtering it is enough — rows can
+      // keep the extra keys, they're ignored). Type overrides flow into cleaning via runAnalysis.
+      const analyzedTbl = excl.size
+        ? { ...sourceTbl, columns: sourceTbl.columns.filter((c) => !excl.has(c)) }
+        : sourceTbl;
       // The whole pipeline (clean → profile → stats → charts → insights) runs in a Web Worker,
       // so the UI never freezes even on a 200k-row file — and the progress here reflects the
       // worker's REAL stage transitions instead of a timed animation.
       setStage("Cleaning & normalizing");
-      const { spec: result, table: cleaned } = await runAnalysis(tbl, jobDesc, (s) => setStage(s));
+      const { spec: result, table: cleaned } = await runAnalysis(analyzedTbl, jobDesc, (s) => setStage(s), ov);
       setTable(cleaned);
       setSpec(result);
+      setExcluded(excl);
+      setTypeOverrides(ov);
       try {
         await saveAnalysis(result, cleaned);
         setHistory(listHistory());
@@ -131,6 +156,11 @@ export default function AnalyzePage() {
       setBusy(false);
       setStage(null);
     }
+  }
+
+  function handleApplyColumns(nextExcluded: Set<string>, nextOverrides: Record<string, SemanticType>) {
+    if (!sourceTable) return;
+    run(sourceTable, { excluded: nextExcluded, overrides: nextOverrides });
   }
 
   async function handleFile(file: File) {
@@ -167,6 +197,9 @@ export default function AnalyzePage() {
     setSpec(null);
     setTable(null);
     setError(null);
+    setSourceTable(null);
+    setExcluded(new Set());
+    setTypeOverrides({});
   }
 
   return (
@@ -290,9 +323,30 @@ export default function AnalyzePage() {
           </div>
         )}
 
+        {spec && busy && stage && (
+          <div className="mb-4">
+            <PipelineProgress stages={STAGES} current={stage} detail="Re-running with your column changes…" />
+          </div>
+        )}
+
+        {spec && sourceTable && (
+          <div className="mb-4">
+            <ColumnControls
+              profiles={spec.profiles}
+              allColumns={sourceTable.columns}
+              excluded={excluded}
+              overrides={typeOverrides}
+              busy={busy}
+              onApply={handleApplyColumns}
+            />
+          </div>
+        )}
+
         {spec && table && (
           <ErrorBoundary label="dashboard">
-            <DashboardView spec={spec} table={table} innerRef={dashboardRef} />
+            <div className={busy ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
+              <DashboardView spec={spec} table={table} innerRef={dashboardRef} />
+            </div>
           </ErrorBoundary>
         )}
 

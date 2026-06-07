@@ -94,13 +94,14 @@ function displayCell(v: unknown): string {
   return String(v);
 }
 
-export function cleanTable(raw: Table): CleanResult {
+export function cleanTable(raw: Table, typeOverrides?: Record<string, SemanticType>): CleanResult {
   const columns = raw.columns;
 
-  // 1. Detect each column's type once, from the raw values.
+  // 1. Detect each column's type once, from the raw values — unless the user pinned a type
+  //    via the column controls, in which case we honor their choice and normalize to it.
   const typeHints: Record<string, SemanticType> = {};
   for (const col of columns) {
-    typeHints[col] = inferType(col, raw.rows.map((r) => r[col]));
+    typeHints[col] = typeOverrides?.[col] ?? inferType(col, raw.rows.map((r) => r[col]));
   }
 
   const colStats: Record<string, ColumnCleaning> = {};

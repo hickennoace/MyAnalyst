@@ -1,4 +1,4 @@
-import type { DashboardSpec, Table } from "./types";
+import type { DashboardSpec, SemanticType, Table } from "./types";
 import type { AnalyzeMessage } from "./analyze.worker";
 
 // Drives the analysis off the main thread via a Web Worker, reporting real per-stage progress.
@@ -12,14 +12,15 @@ export interface AnalysisResult {
 export function runAnalysis(
   table: Table,
   userContext: string | undefined,
-  onStage?: (stage: string) => void
+  onStage?: (stage: string) => void,
+  typeOverrides?: Record<string, SemanticType>
 ): Promise<AnalysisResult> {
   return new Promise((resolve, reject) => {
     let worker: Worker;
     try {
       worker = new Worker(new URL("./analyze.worker.ts", import.meta.url), { type: "module" });
     } catch {
-      runOnMainThread(table, userContext, onStage).then(resolve, reject);
+      runOnMainThread(table, userContext, onStage, typeOverrides).then(resolve, reject);
       return;
     }
 
@@ -47,22 +48,23 @@ export function runAnalysis(
       if (settled) return;
       // The worker failed to even start/run — fall back to the main thread so analysis still works.
       cleanup();
-      runOnMainThread(table, userContext, onStage).then(resolve, reject);
+      runOnMainThread(table, userContext, onStage, typeOverrides).then(resolve, reject);
       e.preventDefault?.();
     };
 
-    worker.postMessage({ table, userContext });
+    worker.postMessage({ table, userContext, typeOverrides });
   });
 }
 
 async function runOnMainThread(
   table: Table,
   userContext: string | undefined,
-  onStage?: (stage: string) => void
+  onStage?: (stage: string) => void,
+  typeOverrides?: Record<string, SemanticType>
 ): Promise<AnalysisResult> {
   const [{ analyze }, { cleanTable }] = await Promise.all([import("./analyze"), import("./clean")]);
   onStage?.("Cleaning & normalizing");
-  const cleaned = cleanTable(table);
+  const cleaned = cleanTable(table, typeOverrides);
   const spec = await analyze(table, { userContext, cleaned, onStage });
   if (table.sampledFrom) cleaned.table.sampledFrom = table.sampledFrom;
   return { spec, table: cleaned.table };

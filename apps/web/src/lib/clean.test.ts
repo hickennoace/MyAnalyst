@@ -43,4 +43,12 @@ describe("cleanTable", () => {
     expect(report.preview.rows.length).toBeGreaterThan(0);
     expect(report.preview.rows[0].changed.some(Boolean)).toBe(true);
   });
+
+  it("honors user type overrides instead of auto-detection", () => {
+    // Force "Units" (auto-detected integer) to be treated as plain text — the column controls path.
+    const r = cleanTable(messyTable(), { Units: "text" });
+    expect(r.typeHints.Units).toBe("text");
+    expect(typeof r.table.rows[0].Units).toBe("string"); // not coerced to a number
+    expect(r.typeHints.Revenue).toBe("currency"); // un-overridden columns still auto-detect
+  });
 });
