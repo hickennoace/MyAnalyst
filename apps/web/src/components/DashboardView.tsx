@@ -7,6 +7,7 @@ import { ChartBuilder } from "./ChartBuilder";
 import { CleaningReport } from "./CleaningReport";
 import { QualityCard } from "./QualityCard";
 import { AnomalyCard } from "./AnomalyCard";
+import { TimeTrendCard } from "./TimeTrendCard";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
 
@@ -99,6 +100,12 @@ export function DashboardView({
               <InsightCard key={ins.id} insight={ins} index={i} />
             ))}
           </div>
+        </Section>
+      )}
+
+      {spec.timeAnalysis && spec.timeAnalysis.length > 0 && (
+        <Section title="Trends over time" subtitle="Period-over-period change with a moving-average trend line.">
+          <TimeTrendCard analyses={spec.timeAnalysis} profiles={spec.profiles} />
         </Section>
       )}
 

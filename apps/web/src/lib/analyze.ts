@@ -22,6 +22,7 @@ import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAno
 import { defaultHorizon, holtForecast } from "./forecast";
 import { buildDataStory } from "./story";
 import { computeDataQuality } from "./quality";
+import { analyzeTimeSeries } from "./timeseries";
 import { getInsightProvider } from "./insights";
 import { llmEnabled, sharpenStory } from "./insights/humanize";
 
@@ -56,6 +57,16 @@ export async function analyze(
   const domain = detectDomain(profiles, opts.userContext);
   stage("Computing KPIs");
   const kpis = computeKpis(table, profiles, domain.domain);
+
+  // Period-over-period (MoM/YoY) for the top metrics, when there's a usable time column.
+  const timeCol = profiles.find((p) => p.role === "time");
+  const timeAnalysis = timeCol
+    ? profiles
+        .filter((p) => p.role === "metric" && p.numeric)
+        .slice(0, 3)
+        .map((m) => analyzeTimeSeries(table, timeCol.name, m.name))
+        .filter((a): a is NonNullable<typeof a> => a !== undefined)
+    : [];
   stage("Running statistics");
   const charts = opts.skipCharts ? [] : recommendCharts(table, profiles);
 
@@ -98,6 +109,7 @@ export async function analyze(
     story,
     quality,
     anomalies,
+    timeAnalysis: timeAnalysis.length ? timeAnalysis : undefined,
   };
 }
 

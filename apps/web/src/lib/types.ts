@@ -286,6 +286,33 @@ export interface CleaningReport {
   preview: CleaningPreview;
 }
 
+// ── Time-series analysis ──────────────────────────────────────────────────────
+
+export type Cadence = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
+
+export interface PeriodPoint {
+  label: string;
+  value: number;
+}
+
+/** A metric aggregated into its natural periods, with period-over-period change + a moving average. */
+export interface TimeSeriesAnalysis {
+  metric: string;
+  cadence: Cadence;
+  /** the metric summed within each period, in chronological order. */
+  periods: PeriodPoint[];
+  latest: PeriodPoint;
+  previous?: PeriodPoint;
+  /** latest vs the immediately preceding period, as a fraction (0.2 = +20%). */
+  changePct?: number;
+  /** latest vs the same period one season (e.g. year) ago, when available. */
+  yoyChangePct?: number;
+  /** trailing moving average aligned to `periods` (null until the window fills). */
+  movingAvg: (number | null)[];
+  best: PeriodPoint;
+  worst: PeriodPoint;
+}
+
 // ── Data-quality scorecard ────────────────────────────────────────────────────
 
 /** One dimension of the data-quality score (completeness, uniqueness, …). */
@@ -334,6 +361,8 @@ export interface DashboardSpec {
   quality?: DataQuality;
   /** Per-metric unusual values (|z| > 3), surfaced so users can verify or exclude them. */
   anomalies?: OutlierFact[];
+  /** Period-over-period analysis (cadence, MoM/YoY change, moving average) for the top metrics. */
+  timeAnalysis?: TimeSeriesAnalysis[];
 }
 
 export interface DataStory {
