@@ -116,7 +116,7 @@ export async function POST(req: Request) {
     if (stream === true) {
       try {
         const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, scope, true);
-        const streamBody = await streamLLM(provider, apiKey, model, system, user, { temperature: 0.45, maxTokens: 1800 });
+        const streamBody = await streamLLM(provider, apiKey, model, system, user, { temperature: 0.45, maxTokens: 800 });
         return new Response(streamBody, {
           headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
         });
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
 
     try {
       const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, scope);
-      const raw = await callLLM(system, user, { temperature: 0.45, maxTokens: 1800 });
+      const raw = await callLLM(system, user, { temperature: 0.45, maxTokens: 800 });
       const parsed = extractJson(raw) as { answer?: unknown; followups?: unknown; chart?: unknown };
       const answer = String(parsed.answer ?? "").trim();
       if (!answer) return NextResponse.json({ answer: "", provider: "error" });
@@ -221,34 +221,18 @@ function buildAnswerPrompt(
   scope: unknown,
   stream = false
 ) {
+  // Kept deliberately compact: a long system prompt burns the LLM provider's per-minute token budget
+  // and makes the call slow/rate-limited. This says everything essential in a fraction of the tokens.
   const system = [
-    "You are a principal data analyst — the kind a company pays for — writing a precise, insightful answer to a question about the user's dataset. Sound like a sharp human expert, not a chatbot.",
-    "INPUTS you are given (all pre-computed; you have NO raw rows):",
-    "• QUESTION — what the user asked.",
-    "• dataset — metadata: column names, roles, types, fill rates, row count, detected domain, and (if provided) the user's own description of their goal in `userContext`.",
-    "• grounded — a one-line result the deterministic engine already computed for this exact question (authoritative; present for specific questions).",
-    "• facts — question-specific numbers: the focal `breakdown`, plus `breakdowns` (the focal metric across up to two dimensions, so you can reason over multiple facets in one answer), trends, distributions, the cited correlation, and for an 'X vs Y' question a `comparison` block with each side's value, the gap, % difference, ratio, and which side is higher.",
-    "• overview — an always-available statistical brief of the WHOLE dataset: every key metric's total/average/median/std-dev/spread (coefficient of variation)/skew/fill-rate, the strongest pairwise correlations, category concentration, and any overall time trend. Use this to answer open-ended questions and to add context.",
-    "• scope — if present, the user's question is FILTERED to a subset (e.g. one region, one year, a numeric range). `facts` and `grounded` are already computed on that subset only; `matchedRows`/`ofRows` show how many rows it covers. Make the scope explicit in your answer, and you MAY contrast the subset with the whole-dataset `overview` for context.",
-    "• conversation — recent prior questions and your answers in this session, if any.",
-    "CONVERSATION: If the question refers back to earlier turns ('that region', 'those', 'compare it to the previous', 'why?'), resolve the reference from `conversation` and answer in continuity — like a real analyst mid-discussion. Don't repeat earlier explanations verbatim; build on them.",
-    "Note on group breakdowns: each group carries BOTH a `total` and an `average` (with row `count`). Use the one the question calls for — totals for 'biggest/most revenue', averages for 'highest average / per-order / most efficient'. `highestAverage` names the leader by average, which can differ from the leader by total.",
-    "GROUNDING RULES (critical):",
-    "1. Every figure you state must come from the inputs — OR be a transparent arithmetic derivation of them (a difference, ratio, multiple, percentage, or share). Deriving '$1.24M is 1.4× the $890K runner-up' from two given numbers is encouraged; inventing a number that isn't derivable is forbidden.",
-    "2. Never fabricate values, individual records, causes you can't see, or external facts. If the data can't fully answer, say precisely what's missing.",
-    "3. Respect data quality: if a relevant column has a low fill rate, the dataset was sampled, a group is tiny, or a correlation is weak — say so plainly. A real analyst flags caveats.",
-    "HOW TO WRITE:",
-    "4. Open with a one-sentence BOTTOM LINE that directly answers the question with the key number(s).",
-    "5. Then give the supporting analysis: the comparison/gap/ranking, the share of total, magnitude, and the most relevant correlation or trend — always with the actual numbers. Quantify everything; no vague filler like 'various factors' or 'it depends'.",
-    "6. Then interpret: what this likely MEANS in the context of the detected domain and the user's stated goal, and one concrete, specific next step or thing to check. Distinguish correlation from causation when relevant.",
-    "7. Voice: confident, concrete, and clear for a smart non-statistician. Explain any stats term in plain words. 2–4 short paragraphs, ~110–200 words. Separate paragraphs with a blank line (\\n\\n).",
-    "8. If `userContext` is present, frame the whole answer around that goal — emphasis, examples, and the recommended next step should serve it.",
+    "You are a sharp principal data analyst answering a question about the user's dataset. You have NO raw rows — only pre-computed inputs:",
+    "• QUESTION; • dataset (column names/roles/types, row count, detected domain, optional `userContext` goal); • grounded (the engine's authoritative one-line result for this exact question); • facts (question-specific numbers — group `breakdown`/`breakdowns` each with total+average per group, trends, distributions, a correlation, or an 'X vs Y' `comparison` with gap/%/ratio/winner); • overview (whole-dataset stats, for context and open-ended questions); • scope (if present, facts are filtered to a subset — state that); • conversation (prior turns — resolve 'that'/'those'/'why?' from it).",
+    "RULES: state only numbers from the inputs or transparent arithmetic of them (differences, ratios, %, shares) — never invent values or unseen causes. Flag caveats (low fill rate, tiny group, weak correlation, sampled data). Use a group's TOTAL for 'biggest/most', its AVERAGE for 'highest average/per-unit/most efficient'.",
+    "WRITE 2–4 short paragraphs (~90–160 words), separated by a blank line: (1) a one-sentence bottom line that answers the question with the key number; (2) the supporting comparison/gap/share/trend with the actual numbers; (3) what it means in context + one concrete next step. Confident, concrete, plain language; explain any stat term. If `userContext` is set, frame around that goal.",
     ...(stream
-      ? ["Write the answer as plain prose only — no JSON, no preamble, no headings. Separate paragraphs with a blank line."]
+      ? ["Output plain prose only — no JSON, no preamble, no headings."]
       : [
-          "9. Propose up to 3 incisive follow-up questions the user would realistically ask next, each tied to this dataset's real columns and phrased the way they'd type it.",
-          "10. Pick the SINGLE most illuminating chart to accompany your answer, using ONLY exact column names from `dataset.columns`. Conventions: line = a metric over the time column; bar with `aggregate:true` = a metric summed by a dimension (x = the dimension, y = [the metric]); bar with `count:true` and `y:[]` = how often each value of a category occurs; scatter = two metrics (x and y = [the other]); histogram = one metric's distribution (x = y[0] = the metric); pie = share of a category (x = the category, `count:true`). If no chart genuinely helps, set chart to null.",
-          'Respond with ONLY JSON: {"answer": string, "followups": string[], "chart": {"type":"line"|"bar"|"scatter"|"area"|"pie"|"histogram","x":string,"y":string[],"aggregate"?:boolean,"count"?:boolean} | null}',
+          "Also propose up to 3 realistic follow-up questions using this dataset's real columns, and pick the single most useful chart using ONLY exact `dataset.columns` names (bar with aggregate:true = a metric by a dimension; bar with count:true & y:[] = category frequency; line = a metric over time; scatter = two metrics; histogram = one metric's distribution; pie = category share) — or null if none helps.",
+          'Respond with ONLY JSON: {"answer":string,"followups":string[],"chart":{"type":"line"|"bar"|"scatter"|"area"|"pie"|"histogram","x":string,"y":string[],"aggregate"?:boolean,"count"?:boolean}|null}',
         ]),
   ].join("\n");
   const user = JSON.stringify({ question, intent: intent ?? "specific", scope, conversation, dataset, grounded, facts, overview });
