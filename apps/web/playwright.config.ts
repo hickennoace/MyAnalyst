@@ -23,5 +23,9 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,
+    // Build the test server with the LLM disabled so E2E is deterministic and fast — it exercises the
+    // real engine/UI without depending on a live provider's availability or rate limits. (Real env
+    // vars take precedence over .env.local, and NEXT_PUBLIC_* is inlined at build time.)
+    env: { NEXT_PUBLIC_LLM_ENABLED: "0" },
   },
 });

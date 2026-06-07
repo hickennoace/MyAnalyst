@@ -16,6 +16,7 @@ interface Turn {
   id: number;
   q: string;
   result: RichAnswer | null; // null while the answer is in flight
+  partial?: string; // streamed prose so far, shown live before `result` lands
 }
 
 export function QueryBox({
@@ -58,8 +59,11 @@ export function QueryBox({
     setLoading(true);
     setTurns((t) => [...t, { id, q: text, result: null }]);
     try {
-      const res = await answerQuestionAI(text, table, profiles, domain, history);
-      setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, result: res } : t)));
+      // Stream tokens into the turn's `partial` so the answer types out live.
+      const res = await answerQuestionAI(text, table, profiles, domain, history, (delta) => {
+        setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, partial: (t.partial ?? "") + delta } : t)));
+      });
+      setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, result: res, partial: undefined } : t)));
     } finally {
       setLoading(false);
     }
@@ -151,8 +155,18 @@ export function QueryBox({
                     </div>
                   )}
                 </div>
+              ) : t.partial ? (
+                // Streaming: the answer types out live as tokens arrive.
+                <div aria-live="polite">
+                  <div className="rounded-2xl rounded-bl-sm border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm leading-relaxed text-slate-100">
+                    <div className="whitespace-pre-line">
+                      💡 {t.partial}
+                      <span className="type-caret">▋</span>
+                    </div>
+                  </div>
+                </div>
               ) : (
-                // Thinking state
+                // Thinking state (before the first token arrives)
                 <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-sm border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-blue-300/80">
                   <span className="think-dot" />
                   <span className="think-dot" />

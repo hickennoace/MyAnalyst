@@ -478,12 +478,51 @@ export async function answerQuestionAI(
   table: Table,
   profiles: ColumnProfile[],
   domain?: string,
-  history?: QaTurn[]
+  history?: QaTurn[],
+  onToken?: (delta: string) => void
 ): Promise<RichAnswer> {
   const base = answerQuestion(question, table, profiles);
   if (!llmOn()) return { ...base, source: "heuristic" };
+  const evidence = buildEvidence(question, table, profiles, base.ok ? base.answer : "", domain, history);
+
+  // Preferred path: stream the answer prose token-by-token for a live, responsive feel. Follow-ups
+  // are generated locally in streaming mode (the stream carries prose only).
+  if (onToken) {
+    try {
+      const res = await fetch("/api/insights", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ task: "answer", stream: true, ...evidence }),
+      });
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let text = "";
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          if (chunk) {
+            text += chunk;
+            onToken(chunk);
+          }
+        }
+        if (text.trim()) {
+          return {
+            ok: true,
+            answer: text.trim(),
+            chart: base.chart,
+            source: "llm",
+            followups: localFollowups(profiles),
+          };
+        }
+      }
+    } catch {
+      // streaming failed — fall through to the non-streaming JSON call below
+    }
+  }
+
   try {
-    const evidence = buildEvidence(question, table, profiles, base.ok ? base.answer : "", domain, history);
     const res = await fetch("/api/insights", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -507,4 +546,17 @@ export async function answerQuestionAI(
     // fall through to the heuristic answer
   }
   return { ...base, source: "heuristic" };
+}
+
+/** Relevant next questions, derived locally from the column roles (used for streamed answers). */
+function localFollowups(profiles: ColumnProfile[]): string[] {
+  const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const dims = profiles.filter((p) => p.role === "dimension");
+  const time = profiles.find((p) => p.role === "time");
+  const out: string[] = [];
+  if (metrics[0] && dims[0]) out.push(`average ${metrics[0].name} by ${dims[0].name}`);
+  if (metrics.length >= 2) out.push(`correlation between ${metrics[0].name} and ${metrics[1].name}`);
+  if (time && metrics[0]) out.push(`how did ${metrics[0].name} change over time`);
+  if (out.length < 3 && dims[0] && metrics[0]) out.push(`which ${dims[0].name} has the highest ${metrics[0].name}`);
+  return out.slice(0, 3);
 }

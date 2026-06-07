@@ -24,7 +24,7 @@ const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: "claude-haiku-4-5",
   groq: "llama-3.3-70b-versatile",
   openai: "gpt-4o-mini",
-  gemini: "gemini-2.0-flash",
+  gemini: "gemini-2.5-flash",
   openrouter: "meta-llama/llama-3.3-70b-instruct",
   "openai-compat": "",
 };
@@ -102,10 +102,32 @@ export async function POST(req: Request) {
     if (!question || typeof question !== "string") {
       return NextResponse.json({ answer: "", provider: "error" });
     }
-    const { overview, intent, conversation } = body as { overview?: unknown; intent?: string; conversation?: unknown };
+    const { overview, intent, conversation, stream } = body as {
+      overview?: unknown;
+      intent?: string;
+      conversation?: unknown;
+      stream?: boolean;
+    };
+
+    // Streaming mode: emit the answer prose token-by-token as plain text. Followups are generated
+    // locally on the client in this mode. On any upstream failure we return a non-2xx so the client
+    // falls back to the non-streaming JSON path (and then to the heuristic answer).
+    if (stream === true) {
+      try {
+        const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, true);
+        const streamBody = await streamLLM(provider, apiKey, model, system, user, { temperature: 0.45, maxTokens: 1800 });
+        return new Response(streamBody, {
+          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+        });
+      } catch (err) {
+        console.error("[insights] answer (stream) failed:", err instanceof Error ? err.message : err);
+        return new Response("", { status: 502 });
+      }
+    }
+
     try {
       const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation);
-      const raw = await callLLM(system, user, { temperature: 0.45, maxTokens: 1100 });
+      const raw = await callLLM(system, user, { temperature: 0.45, maxTokens: 1800 });
       const parsed = extractJson(raw) as { answer?: unknown; followups?: unknown };
       const answer = String(parsed.answer ?? "").trim();
       if (!answer) return NextResponse.json({ answer: "", provider: "error" });
@@ -191,7 +213,8 @@ function buildAnswerPrompt(
   facts: unknown,
   overview: unknown,
   intent: unknown,
-  conversation: unknown
+  conversation: unknown,
+  stream = false
 ) {
   const system = [
     "You are a principal data analyst — the kind a company pays for — writing a precise, insightful answer to a question about the user's dataset. Sound like a sharp human expert, not a chatbot.",
@@ -214,8 +237,12 @@ function buildAnswerPrompt(
     "6. Then interpret: what this likely MEANS in the context of the detected domain and the user's stated goal, and one concrete, specific next step or thing to check. Distinguish correlation from causation when relevant.",
     "7. Voice: confident, concrete, and clear for a smart non-statistician. Explain any stats term in plain words. 2–4 short paragraphs, ~110–200 words. Separate paragraphs with a blank line (\\n\\n).",
     "8. If `userContext` is present, frame the whole answer around that goal — emphasis, examples, and the recommended next step should serve it.",
-    "9. Propose up to 3 incisive follow-up questions the user would realistically ask next, each tied to this dataset's real columns and phrased the way they'd type it.",
-    'Respond with ONLY JSON: {"answer": string, "followups": string[]}',
+    ...(stream
+      ? ["Write the answer as plain prose only — no JSON, no preamble, no headings. Separate paragraphs with a blank line."]
+      : [
+          "9. Propose up to 3 incisive follow-up questions the user would realistically ask next, each tied to this dataset's real columns and phrased the way they'd type it.",
+          'Respond with ONLY JSON: {"answer": string, "followups": string[]}',
+        ]),
   ].join("\n");
   const user = JSON.stringify({ question, intent: intent ?? "specific", conversation, dataset, grounded, facts, overview });
   return { system, user };
@@ -268,15 +295,16 @@ interface CallOpts {
 // fallback. Caps keep us well within the serverless function timeout; a hard daily-quota 429 will still
 // exhaust the retries and fall back gracefully.
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
-async function fetchWithRetry(url: string, init: RequestInit, retries = 2): Promise<Response> {
+async function fetchWithRetry(url: string, init: RequestInit, retries = 1): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, init);
     if (res.ok || attempt >= retries || !RETRYABLE.has(res.status)) return res;
     const retryAfter = Number(res.headers.get("retry-after"));
+    // A long retry-after means an hourly/daily quota that won't clear within this request — fail fast
+    // to the templated/heuristic fallback instead of stalling. Only short (per-minute) limits retry.
+    if (Number.isFinite(retryAfter) && retryAfter > 8) return res;
     const waitMs =
-      Number.isFinite(retryAfter) && retryAfter > 0
-        ? Math.min(retryAfter * 1000, 6000)
-        : Math.min(400 * 2 ** attempt, 4000);
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : Math.min(400 * 2 ** attempt, 2000);
     await new Promise((r) => setTimeout(r, waitMs));
   }
 }
@@ -291,7 +319,7 @@ async function callAnthropic(apiKey: string, model: string, system: string, user
     },
     body: JSON.stringify({
       model,
-      max_tokens: opts?.maxTokens ?? 1024,
+      max_tokens: opts?.maxTokens ?? 2048,
       ...(opts?.temperature !== undefined ? { temperature: opts.temperature } : {}),
       system,
       // Prefill the assistant turn with "{" to force a JSON object response.
@@ -323,7 +351,7 @@ async function callOpenAICompat(
     body: JSON.stringify({
       model,
       temperature: opts?.temperature ?? 0.3,
-      max_tokens: opts?.maxTokens ?? 1024,
+      max_tokens: opts?.maxTokens ?? 2048,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: system },
@@ -334,6 +362,101 @@ async function callOpenAICompat(
   if (!res.ok) throw new Error(`${provider} ${res.status}: ${await res.text()}`);
   const data = await res.json();
   return data?.choices?.[0]?.message?.content ?? "";
+}
+
+// ── Streaming (Ask-your-data) ─────────────────────────────────────────────────
+// Returns a ReadableStream of plain-text answer deltas, decoded from the provider's SSE stream.
+
+async function streamLLM(
+  provider: Provider,
+  apiKey: string,
+  model: string,
+  system: string,
+  user: string,
+  opts?: CallOpts
+): Promise<ReadableStream<Uint8Array>> {
+  if (provider === "anthropic") {
+    const upstream = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model,
+        max_tokens: opts?.maxTokens ?? 2048,
+        ...(opts?.temperature !== undefined ? { temperature: opts.temperature } : {}),
+        system,
+        stream: true,
+        messages: [{ role: "user", content: user }],
+      }),
+    });
+    if (!upstream.ok || !upstream.body) throw new Error(`Anthropic ${upstream.status}: ${await upstream.text()}`);
+    return sseToText(upstream.body, (j) => {
+      const o = j as { type?: string; delta?: { text?: string } };
+      return o.type === "content_block_delta" ? o.delta?.text ?? "" : "";
+    });
+  }
+
+  const baseUrl = process.env.LLM_BASE_URL?.trim() || OPENAI_COMPAT_BASES[provider];
+  if (!baseUrl) throw new Error(`No base URL for provider "${provider}". Set LLM_BASE_URL.`);
+  const upstream = await fetchWithRetry(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model,
+      temperature: opts?.temperature ?? 0.3,
+      max_tokens: opts?.maxTokens ?? 2048,
+      stream: true,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    }),
+  });
+  if (!upstream.ok || !upstream.body) throw new Error(`${provider} ${upstream.status}: ${await upstream.text()}`);
+  return sseToText(upstream.body, (j) => {
+    const o = j as { choices?: { delta?: { content?: string } }[] };
+    return o.choices?.[0]?.delta?.content ?? "";
+  });
+}
+
+/** Transform an upstream SSE byte stream into a plain-text stream via a per-event extractor. */
+function sseToText(
+  body: ReadableStream<Uint8Array>,
+  extract: (json: unknown) => string
+): ReadableStream<Uint8Array> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let buf = "";
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const { value, done } = await reader.read();
+      if (done) {
+        controller.close();
+        return;
+      }
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() ?? "";
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith("data:")) continue;
+        const data = t.slice(5).trim();
+        if (data === "[DONE]") {
+          controller.close();
+          return;
+        }
+        try {
+          const piece = extract(JSON.parse(data));
+          if (piece) controller.enqueue(encoder.encode(piece));
+        } catch {
+          /* ignore keep-alive pings / non-JSON lines */
+        }
+      }
+    },
+    cancel() {
+      void reader.cancel();
+    },
+  });
 }
 
 // ── Parsing & grounding guard ─────────────────────────────────────────────────
