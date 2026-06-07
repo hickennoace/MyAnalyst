@@ -1,7 +1,8 @@
-import type { ChartSpec, ColumnProfile, Table } from "./types";
+import type { ChartSpec, ChartType, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
 import { maxOf, minOf, pearson, isRedundantCorrelation } from "./stats";
-import { aggregateCount, buildChart, buildComparisonChart } from "./charts";
+import { aggregateCount, buildChart, buildComparisonChart, type ChartRequest } from "./charts";
+import { parseChartRequest } from "./nl-chart";
 import { sortByTime } from "./kpi";
 
 // ── AI-enhanced answers ────────────────────────────────────────────────────────
@@ -753,6 +754,41 @@ function buildEvidence(question: string, table: Table, profiles: ColumnProfile[]
   };
 }
 
+// ── Chart selection for AI answers ───────────────────────────────────────────
+// Specific questions already attach a chart from the deterministic engine. Open-ended (and streamed)
+// AI answers didn't get one. Here we give every AI answer a relevant chart: the LLM may emit a
+// CONSTRAINED chart request (validated against real columns — it only chooses a type + columns, never
+// raw ECharts), and when it doesn't (e.g. the streaming path carries prose only) we derive one locally
+// from the question via the same NL→chart parser the chart builder uses. Privacy is untouched.
+
+const CHART_TYPES: ChartType[] = ["line", "bar", "scatter", "area", "pie", "histogram"];
+
+/** Validate an LLM-proposed chart request against the real columns; reject anything off-spec. */
+export function sanitizeChartRequest(req: unknown, profiles: ColumnProfile[]): ChartRequest | undefined {
+  if (!req || typeof req !== "object") return undefined;
+  const r = req as Record<string, unknown>;
+  if (!CHART_TYPES.includes(r.type as ChartType)) return undefined;
+  const names = new Set(profiles.map((p) => p.name));
+  if (typeof r.x !== "string" || !names.has(r.x)) return undefined;
+  const y = Array.isArray(r.y) ? (r.y as unknown[]).filter((c): c is string => typeof c === "string" && names.has(c)) : [];
+  return { type: r.type as ChartType, x: r.x, y, count: r.count === true, aggregate: r.aggregate === true };
+}
+
+/** Build a chart for an AI answer: the validated LLM choice if any, else a locally-parsed one from the
+ *  question. Honors any filter in the question so the chart matches the scope. Never throws. */
+function buildSuggestedChart(question: string, table: Table, profiles: ColumnProfile[], llmReq?: unknown): ChartSpec | undefined {
+  const req = sanitizeChartRequest(llmReq, profiles) ?? parseChartRequest(question, profiles).request;
+  if (!req) return undefined;
+  const filter = detectFilter(question, table, profiles);
+  const view = filter ? applyFilter(table, filter) : table;
+  if (filter && view.rowCount === 0) return undefined;
+  try {
+    return buildChart(view, profiles, req);
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Answer a question with the optional LLM as a principal analyst, grounded in the exact numbers the
  * engine computed (plus a whole-dataset brief so open-ended questions work too). Falls back to the
@@ -796,7 +832,8 @@ export async function answerQuestionAI(
           return {
             ok: true,
             answer: text.trim(),
-            chart: base.chart,
+            // Streaming carries prose only, so derive the chart locally from the question.
+            chart: base.chart ?? buildSuggestedChart(question, table, profiles),
             source: "llm",
             followups: localFollowups(profiles),
           };
@@ -814,12 +851,14 @@ export async function answerQuestionAI(
       body: JSON.stringify({ task: "answer", ...evidence }),
     });
     if (res.ok) {
-      const data = (await res.json()) as { answer?: string; followups?: string[] };
+      const data = (await res.json()) as { answer?: string; followups?: string[]; chart?: unknown };
       if (data.answer && data.answer.trim()) {
         return {
           ok: true,
           answer: data.answer.trim(),
-          chart: base.chart, // present for specific questions; undefined for open-ended
+          // Specific questions keep the engine's chart; open-ended ones use the AI's chosen chart
+          // (validated), falling back to a locally-parsed one.
+          chart: base.chart ?? buildSuggestedChart(question, table, profiles, data.chart),
           source: "llm",
           followups: Array.isArray(data.followups)
             ? data.followups.filter((s) => typeof s === "string" && s.trim()).slice(0, 3)

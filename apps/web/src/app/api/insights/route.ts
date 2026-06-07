@@ -129,13 +129,16 @@ export async function POST(req: Request) {
     try {
       const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation, scope);
       const raw = await callLLM(system, user, { temperature: 0.45, maxTokens: 1800 });
-      const parsed = extractJson(raw) as { answer?: unknown; followups?: unknown };
+      const parsed = extractJson(raw) as { answer?: unknown; followups?: unknown; chart?: unknown };
       const answer = String(parsed.answer ?? "").trim();
       if (!answer) return NextResponse.json({ answer: "", provider: "error" });
       const followups = Array.isArray(parsed.followups)
         ? (parsed.followups as unknown[]).map((s) => String(s).trim()).filter(Boolean).slice(0, 3)
         : [];
-      return NextResponse.json({ answer, followups, provider });
+      // Pass the model's chart choice through untouched; the client validates it against real columns
+      // (it only chooses a type + column names — never raw chart config).
+      const chart = parsed.chart && typeof parsed.chart === "object" ? parsed.chart : null;
+      return NextResponse.json({ answer, followups, chart, provider });
     } catch (err) {
       console.error("[insights] answer failed:", err instanceof Error ? err.message : err);
       return NextResponse.json({ answer: "", provider: "error" });
@@ -244,7 +247,8 @@ function buildAnswerPrompt(
       ? ["Write the answer as plain prose only — no JSON, no preamble, no headings. Separate paragraphs with a blank line."]
       : [
           "9. Propose up to 3 incisive follow-up questions the user would realistically ask next, each tied to this dataset's real columns and phrased the way they'd type it.",
-          'Respond with ONLY JSON: {"answer": string, "followups": string[]}',
+          "10. Pick the SINGLE most illuminating chart to accompany your answer, using ONLY exact column names from `dataset.columns`. Conventions: line = a metric over the time column; bar with `aggregate:true` = a metric summed by a dimension (x = the dimension, y = [the metric]); bar with `count:true` and `y:[]` = how often each value of a category occurs; scatter = two metrics (x and y = [the other]); histogram = one metric's distribution (x = y[0] = the metric); pie = share of a category (x = the category, `count:true`). If no chart genuinely helps, set chart to null.",
+          'Respond with ONLY JSON: {"answer": string, "followups": string[], "chart": {"type":"line"|"bar"|"scatter"|"area"|"pie"|"histogram","x":string,"y":string[],"aggregate"?:boolean,"count"?:boolean} | null}',
         ]),
   ].join("\n");
   const user = JSON.stringify({ question, intent: intent ?? "specific", scope, conversation, dataset, grounded, facts, overview });

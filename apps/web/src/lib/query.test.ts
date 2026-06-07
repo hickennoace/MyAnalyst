@@ -163,6 +163,37 @@ describe("comparison questions (Phase 1.2)", () => {
   });
 });
 
+describe("AI chart selection (Phase 1.3)", () => {
+  it("accepts a well-formed chart request and keeps only real y columns", async () => {
+    const { sanitizeChartRequest } = await import("./query");
+    const req = sanitizeChartRequest(
+      { type: "bar", x: "Region", y: ["Revenue", "Nonexistent"], aggregate: true },
+      profiles
+    );
+    expect(req).toBeDefined();
+    expect(req!.type).toBe("bar");
+    expect(req!.x).toBe("Region");
+    expect(req!.y).toEqual(["Revenue"]); // unknown column dropped
+    expect(req!.aggregate).toBe(true);
+  });
+
+  it("rejects an unknown chart type", async () => {
+    const { sanitizeChartRequest } = await import("./query");
+    expect(sanitizeChartRequest({ type: "sankey", x: "Region", y: [] }, profiles)).toBeUndefined();
+  });
+
+  it("rejects an x column that isn't in the data", async () => {
+    const { sanitizeChartRequest } = await import("./query");
+    expect(sanitizeChartRequest({ type: "bar", x: "Made Up", y: ["Revenue"] }, profiles)).toBeUndefined();
+  });
+
+  it("rejects non-object input", async () => {
+    const { sanitizeChartRequest } = await import("./query");
+    expect(sanitizeChartRequest(null, profiles)).toBeUndefined();
+    expect(sanitizeChartRequest("bar chart please", profiles)).toBeUndefined();
+  });
+});
+
 describe("detectFilter", () => {
   it("returns undefined when there is no condition", async () => {
     const { detectFilter } = await import("./query");
