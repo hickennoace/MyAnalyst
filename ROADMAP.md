@@ -113,7 +113,7 @@ Differentiate on *statistical substance*, not just charts.
 - **6.2 Team workspaces** & comments on insights.
 - **6.3 Model routing & failover** via Vercel AI Gateway (already on the stack) — cost tracking, provider fallback, so the AI layer is robust and cheap.
 - **6.4 Public API / CLI** for the analysis engine (it's pure TS — could ship as an npm package).
-- **6.5 Evals & guardrails for the AI** — a regression suite of (dataset, question, expected-grounded-number) cases so the LLM narrator can never silently drift off the real numbers.
+- **6.5 Evals & guardrails for the AI** — ✅ DONE (2026-06-07) — `lib/evals/answer-evals.ts` holds a canonical (dataset, question, expected-number) suite run by `evals.test.ts` through the deterministic answer engine (the same numbers the LLM is grounded in). 10 cases covering totals, grouped averages, ranking, correlation, count, most-common, filters (categorical/year/numeric) and comparison — so a refactor that changes a computed figure fails loudly. Cases are plain data, reusable by a future LLM-judge.
 
 ---
 
