@@ -4,6 +4,7 @@ import { useRef } from "react";
 import dynamic from "next/dynamic";
 import type { ChartSpec } from "@/lib/types";
 import { chartBg } from "@/lib/chart-theme";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 // ECharts is client-only and heavy; load it lazily so it never runs during SSR.
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
@@ -88,15 +89,24 @@ export function Chart({ spec }: { spec: ChartSpec }) {
           </span>
         </div>
       </div>
-      <ReactECharts
-        option={spec.option}
-        style={{ height: 320, width: "100%" }}
-        opts={{ renderer: "canvas" }}
-        onChartReady={(inst: unknown) => {
-          instance.current = inst as EChartsInstance;
-        }}
-        notMerge
-      />
+      <ErrorBoundary
+        label="chart"
+        fallback={() => (
+          <div className="grid h-[320px] place-items-center rounded-lg border border-slate-800 bg-slate-900/40 text-center text-xs text-slate-500">
+            This chart couldn&apos;t be rendered.
+          </div>
+        )}
+      >
+        <ReactECharts
+          option={spec.option}
+          style={{ height: 320, width: "100%" }}
+          opts={{ renderer: "canvas" }}
+          onChartReady={(inst: unknown) => {
+            instance.current = inst as EChartsInstance;
+          }}
+          notMerge
+        />
+      </ErrorBoundary>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { DashboardSpec } from "@/lib/types";
 import { decodeSpec } from "@/lib/share";
 import { DashboardView } from "@/components/DashboardView";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { exportPdf, exportPng } from "@/lib/export";
@@ -108,7 +109,9 @@ export default function ViewPage() {
               👁️ You're viewing a read-only shared dashboard. It was reconstructed entirely in your browser —
               no data was sent to any server.
             </div>
-            <DashboardView spec={spec} innerRef={dashboardRef} />
+            <ErrorBoundary label="dashboard">
+              <DashboardView spec={spec} innerRef={dashboardRef} />
+            </ErrorBoundary>
           </>
         )}
 

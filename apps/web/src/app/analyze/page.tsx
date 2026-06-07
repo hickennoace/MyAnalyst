@@ -15,6 +15,7 @@ import { Uploader } from "@/components/Uploader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { DashboardView } from "@/components/DashboardView";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { HistoryList } from "@/components/HistoryList";
 import { PipelineProgress } from "@/components/PipelineProgress";
 
@@ -302,7 +303,11 @@ export default function AnalyzePage() {
           </div>
         )}
 
-        {spec && table && <DashboardView spec={spec} table={table} innerRef={dashboardRef} />}
+        {spec && table && (
+          <ErrorBoundary label="dashboard">
+            <DashboardView spec={spec} table={table} innerRef={dashboardRef} />
+          </ErrorBoundary>
+        )}
 
         <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
           MyAnalyst · Analysis runs locally in your browser. Insight narration is pluggable.
