@@ -259,6 +259,30 @@ function strengthLabel(r: number): string {
   return a > 0.7 ? "strong" : a > 0.4 ? "moderate" : a > 0.2 ? "weak" : "negligible";
 }
 
+/** One pass over the rows → per-group total, count and mean of a metric, sorted by total desc. */
+function groupStats(table: Table, dim: string, metric: string) {
+  const vals = numericColumn(table, metric);
+  const m = new Map<string, { sum: number; count: number }>();
+  table.rows.forEach((r, i) => {
+    const v = vals[i];
+    if (!Number.isFinite(v)) return;
+    const k = String(r[dim] ?? "—");
+    const e = m.get(k) ?? { sum: 0, count: 0 };
+    e.sum += v;
+    e.count++;
+    m.set(k, e);
+  });
+  return [...m.entries()]
+    .map(([key, e]) => ({ key, sum: e.sum, count: e.count, mean: e.count ? e.sum / e.count : NaN }))
+    .sort((a, b) => b.sum - a.sum);
+}
+
+/** A prior turn in the Ask-your-data conversation (question + the answer the model gave). */
+export interface QaTurn {
+  q: string;
+  a: string;
+}
+
 /** A rich, plain-number brief for one metric, reusing the already-computed NumericSummary. */
 function metricBrief(p: ColumnProfile) {
   const n = p.numeric!;
@@ -357,23 +381,28 @@ function buildFocalFacts(question: string, table: Table, profiles: ColumnProfile
   const facts: Record<string, unknown> = {};
 
   if (metric && dim) {
-    const ranked = groupBy(table, dim.name, metric.name, "sum");
-    const grandTotal = ranked.reduce((s, [, v]) => s + v, 0);
-    const top3 = ranked.slice(0, 3).reduce((s, [, v]) => s + v, 0);
+    const stats = groupStats(table, dim.name, metric.name); // sorted by total desc
+    const grandTotal = stats.reduce((s, g) => s + g.sum, 0);
+    const top3 = stats.slice(0, 3).reduce((s, g) => s + g.sum, 0);
+    const byAvg = [...stats].sort((a, b) => b.mean - a.mean);
     facts.breakdown = {
       dimension: dim.name,
       metric: metric.name,
-      aggregate: "sum",
-      groupCount: ranked.length,
+      groupCount: stats.length,
       total: round2(grandTotal),
-      topGroupSharePct: grandTotal && ranked[0] ? round2((ranked[0][1] / grandTotal) * 100) : null,
+      topGroupSharePct: grandTotal && stats[0] ? round2((stats[0].sum / grandTotal) * 100) : null,
       top3SharePct: grandTotal ? round2((top3 / grandTotal) * 100) : null,
-      topGroups: ranked.slice(0, 8).map(([key, value]) => ({
-        key,
-        value: round2(value),
-        sharePct: grandTotal ? round2((value / grandTotal) * 100) : null,
+      // Each group with BOTH its total and its average (+ row count) — so questions about per-unit
+      // value ("highest average order", "most efficient channel") are answerable, not just totals.
+      topGroups: stats.slice(0, 8).map((g) => ({
+        key: g.key,
+        total: round2(g.sum),
+        average: round2(g.mean),
+        count: g.count,
+        sharePct: grandTotal ? round2((g.sum / grandTotal) * 100) : null,
       })),
-      bottomGroup: ranked.length ? { key: ranked[ranked.length - 1][0], value: round2(ranked[ranked.length - 1][1]) } : null,
+      bottomByTotal: stats.length ? { key: stats[stats.length - 1].key, total: round2(stats[stats.length - 1].sum), average: round2(stats[stats.length - 1].mean) } : null,
+      highestAverage: byAvg[0] ? { key: byAvg[0].key, average: round2(byAvg[0].mean), count: byAvg[0].count } : null,
     };
   }
 
@@ -416,10 +445,12 @@ function buildFocalFacts(question: string, table: Table, profiles: ColumnProfile
  * deterministic one-liner, question-specific facts, and a whole-dataset statistical overview. No raw
  * rows ever leave — this mirrors the /api/insights privacy boundary.
  */
-function buildEvidence(question: string, table: Table, profiles: ColumnProfile[], grounded: string, domain?: string) {
+function buildEvidence(question: string, table: Table, profiles: ColumnProfile[], grounded: string, domain?: string, history?: QaTurn[]) {
+  const conversation = history?.slice(-3).map((h) => ({ q: h.q, a: h.a.slice(0, 320) }));
   return {
     question,
     intent: grounded ? "specific" : "open-ended",
+    conversation: conversation && conversation.length ? conversation : undefined,
     dataset: {
       name: table.name,
       rowCount: table.rowCount,
@@ -443,12 +474,13 @@ export async function answerQuestionAI(
   question: string,
   table: Table,
   profiles: ColumnProfile[],
-  domain?: string
+  domain?: string,
+  history?: QaTurn[]
 ): Promise<RichAnswer> {
   const base = answerQuestion(question, table, profiles);
   if (!llmOn()) return { ...base, source: "heuristic" };
   try {
-    const evidence = buildEvidence(question, table, profiles, base.ok ? base.answer : "", domain);
+    const evidence = buildEvidence(question, table, profiles, base.ok ? base.answer : "", domain, history);
     const res = await fetch("/api/insights", {
       method: "POST",
       headers: { "content-type": "application/json" },

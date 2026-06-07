@@ -90,9 +90,9 @@ export async function POST(req: Request) {
     if (!question || typeof question !== "string") {
       return NextResponse.json({ answer: "", provider: "error" });
     }
-    const { overview, intent } = body as { overview?: unknown; intent?: string };
+    const { overview, intent, conversation } = body as { overview?: unknown; intent?: string; conversation?: unknown };
     try {
-      const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent);
+      const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts, overview, intent, conversation);
       const raw = await callLLM(system, user, { temperature: 0.45, maxTokens: 1100 });
       const parsed = extractJson(raw) as { answer?: unknown; followups?: unknown };
       const answer = String(parsed.answer ?? "").trim();
@@ -178,7 +178,8 @@ function buildAnswerPrompt(
   grounded: unknown,
   facts: unknown,
   overview: unknown,
-  intent: unknown
+  intent: unknown,
+  conversation: unknown
 ) {
   const system = [
     "You are a principal data analyst — the kind a company pays for — writing a precise, insightful answer to a question about the user's dataset. Sound like a sharp human expert, not a chatbot.",
@@ -188,6 +189,9 @@ function buildAnswerPrompt(
     "• grounded — a one-line result the deterministic engine already computed for this exact question (authoritative; present for specific questions).",
     "• facts — question-specific numbers (group breakdowns with shares, trends, distributions, the cited correlation).",
     "• overview — an always-available statistical brief of the WHOLE dataset: every key metric's total/average/median/std-dev/spread (coefficient of variation)/skew/fill-rate, the strongest pairwise correlations, category concentration, and any overall time trend. Use this to answer open-ended questions and to add context.",
+    "• conversation — recent prior questions and your answers in this session, if any.",
+    "CONVERSATION: If the question refers back to earlier turns ('that region', 'those', 'compare it to the previous', 'why?'), resolve the reference from `conversation` and answer in continuity — like a real analyst mid-discussion. Don't repeat earlier explanations verbatim; build on them.",
+    "Note on group breakdowns: each group carries BOTH a `total` and an `average` (with row `count`). Use the one the question calls for — totals for 'biggest/most revenue', averages for 'highest average / per-order / most efficient'. `highestAverage` names the leader by average, which can differ from the leader by total.",
     "GROUNDING RULES (critical):",
     "1. Every figure you state must come from the inputs — OR be a transparent arithmetic derivation of them (a difference, ratio, multiple, percentage, or share). Deriving '$1.24M is 1.4× the $890K runner-up' from two given numbers is encouraged; inventing a number that isn't derivable is forbidden.",
     "2. Never fabricate values, individual records, causes you can't see, or external facts. If the data can't fully answer, say precisely what's missing.",
@@ -201,7 +205,7 @@ function buildAnswerPrompt(
     "9. Propose up to 3 incisive follow-up questions the user would realistically ask next, each tied to this dataset's real columns and phrased the way they'd type it.",
     'Respond with ONLY JSON: {"answer": string, "followups": string[]}',
   ].join("\n");
-  const user = JSON.stringify({ question, intent: intent ?? "specific", dataset, grounded, facts, overview });
+  const user = JSON.stringify({ question, intent: intent ?? "specific", conversation, dataset, grounded, facts, overview });
   return { system, user };
 }
 

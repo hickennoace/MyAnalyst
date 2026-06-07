@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ColumnProfile, Table } from "@/lib/types";
-import { answerQuestionAI, type RichAnswer } from "@/lib/query";
+import { answerQuestionAI, type QaTurn, type RichAnswer } from "@/lib/query";
 import { llmEnabled } from "@/lib/insights/humanize";
 import { Chart } from "./Chart";
 
@@ -24,6 +24,8 @@ export function QueryBox({
   const [result, setResult] = useState<RichAnswer | null>(null);
   const [loading, setLoading] = useState(false);
   const ai = useMemo(() => llmEnabled(), []);
+  // Recent Q&A turns, so follow-ups ("compare that to…", "why?") read as a real conversation.
+  const history = useRef<QaTurn[]>([]);
 
   const suggestions = useMemo(() => buildSuggestions(profiles), [profiles]);
 
@@ -33,7 +35,11 @@ export function QueryBox({
     setQ(question);
     setLoading(true);
     try {
-      setResult(await answerQuestionAI(text, table, profiles, domain));
+      const res = await answerQuestionAI(text, table, profiles, domain, history.current);
+      setResult(res);
+      if (res.source === "llm" && res.ok) {
+        history.current = [...history.current, { q: text, a: res.answer }].slice(-4);
+      }
     } finally {
       setLoading(false);
     }

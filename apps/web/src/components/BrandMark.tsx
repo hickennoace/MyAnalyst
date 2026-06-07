@@ -1,6 +1,6 @@
-// MyAnalyst logomark — a rounded gradient tile with three ascending data bars and a
-// spark, fusing "analytics" with the brand's light/clarity theme. Self-contained
-// (own gradient + colors), so it looks right on both light and dark surfaces.
+// MyAnalyst logomark — an "A" (for Analyst) whose left side is a rising data line that climbs through
+// its data points to a glowing insight node at the apex; a faint threshold crossbar ties the legs.
+// Self-contained (own gradient + colors), so it looks right on both light and dark surfaces.
 export function BrandMark({ className = "h-10 w-10" }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} role="img" aria-label="MyAnalyst logo">
@@ -12,12 +12,22 @@ export function BrandMark({ className = "h-10 w-10" }: { className?: string }) {
         </linearGradient>
       </defs>
       <rect x="1" y="1" width="30" height="30" rx="8.5" fill="url(#myanalyst-grad)" />
+      <g fill="none" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+        {/* right leg of the A */}
+        <path d="M16 6 L24 25.5" />
+        {/* left side: a rising data line that climbs to the apex */}
+        <path d="M8 25.5 L11.5 19 L14 21 L16 6" />
+        {/* threshold crossbar */}
+        <path d="M11.6 18.6 H20.6" strokeWidth="1.8" opacity="0.55" />
+      </g>
       <g fill="#ffffff">
-        <rect x="7.6" y="18" width="3.4" height="6.6" rx="1.3" opacity="0.85" />
-        <rect x="13" y="13.4" width="3.4" height="11.2" rx="1.3" opacity="0.93" />
-        <rect x="18.4" y="9.4" width="3.4" height="15.2" rx="1.3" />
-        {/* insight spark above the tallest bar */}
-        <path d="M24 5.4 L24.9 7.5 L27 8.4 L24.9 9.3 L24 11.4 L23.1 9.3 L21 8.4 L23.1 7.5 Z" />
+        {/* insight node at the apex */}
+        <circle cx="16" cy="6" r="4" opacity="0.18" />
+        <circle cx="16" cy="6" r="2" />
+        {/* data points along the rising line */}
+        <circle cx="8" cy="25.5" r="1" opacity="0.9" />
+        <circle cx="11.5" cy="19" r="1.15" opacity="0.9" />
+        <circle cx="14" cy="21" r="1" opacity="0.9" />
       </g>
     </svg>
   );

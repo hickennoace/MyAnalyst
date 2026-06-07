@@ -66,7 +66,7 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { n: "01", title: "Upload", body: "Drop a CSV, TSV, Excel or JSON file. Nothing is sent to a server — it's parsed entirely in your browser." },
+  { n: "01", title: "Upload", body: "Drop a CSV, TSV, Excel or JSON file — big CSVs stream up to ~1GB. Nothing is sent to a server; it's parsed entirely in your browser." },
   { n: "02", title: "We analyze", body: "Clean → profile → detect domain → KPIs → statistics → forecast → conclusions, in seconds." },
   { n: "03", title: "Explore", body: "Read your dashboard, ask questions, generate charts, export & share — no skills required." },
 ];

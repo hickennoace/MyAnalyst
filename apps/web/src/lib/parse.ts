@@ -2,12 +2,39 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import type { Table } from "./types";
 
+/** Live progress while streaming a large delimited file. */
+export interface ParseProgress {
+  rows: number; // data rows scanned so far
+  bytes: number; // bytes read so far
+  totalBytes: number; // file size
+}
+
+// Browser memory limits for the formats we must load whole (no streaming parser exists for them here).
+// CSV/TSV stream off disk and are effectively unbounded (handles ~1GB); Excel/JSON are read into memory
+// and expand several-fold while parsing, so we cap them and point users to CSV for anything bigger.
+const MAX_EXCEL_BYTES = 50 * 1024 * 1024; // 50 MB
+const MAX_JSON_BYTES = 120 * 1024 * 1024; // 120 MB
+
 /** Parse an uploaded File (CSV / TSV / JSON / XLSX / XLS) into a normalized Table. Runs entirely client-side. */
-export async function parseFile(file: File): Promise<Table> {
+export async function parseFile(file: File, onProgress?: (p: ParseProgress) => void): Promise<Table> {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  if (ext === "xlsx" || ext === "xls") return parseExcel(file);
-  if (ext === "json") return parseJson(file);
-  return parseDelimited(file);
+  if (ext === "xlsx" || ext === "xls") {
+    if (file.size > MAX_EXCEL_BYTES) {
+      throw new Error(
+        `This Excel file is ${(file.size / 1048576).toFixed(0)} MB. Excel can't be streamed in the browser, so it's capped at ${MAX_EXCEL_BYTES / 1048576} MB. Export it to CSV and upload that — CSV streams up to ~1 GB.`
+      );
+    }
+    return parseExcel(file);
+  }
+  if (ext === "json") {
+    if (file.size > MAX_JSON_BYTES) {
+      throw new Error(
+        `This JSON file is ${(file.size / 1048576).toFixed(0)} MB. JSON must be loaded whole, so it's capped at ${MAX_JSON_BYTES / 1048576} MB. Convert it to CSV for larger datasets — CSV streams up to ~1 GB.`
+      );
+    }
+    return parseJson(file);
+  }
+  return parseDelimited(file, onProgress);
 }
 
 async function parseJson(file: File): Promise<Table> {
@@ -63,7 +90,7 @@ function isEmptyRow(r: Record<string, unknown>): boolean {
   return true;
 }
 
-async function parseDelimited(file: File): Promise<Table> {
+async function parseDelimited(file: File, onProgress?: (p: ParseProgress) => void): Promise<Table> {
   // Small/medium files: parse the whole thing in one pass (exact, simplest).
   if (file.size <= STREAM_THRESHOLD) {
     const text = await file.text();
@@ -124,8 +151,10 @@ async function parseDelimited(file: File): Promise<Table> {
         for (const row of results.data as Record<string, unknown>[]) {
           if (row && !isEmptyRow(row)) consider(row);
         }
+        onProgress?.({ rows: total, bytes: results.meta.cursor ?? 0, totalBytes: file.size });
       },
       complete: () => {
+        onProgress?.({ rows: total, bytes: file.size, totalBytes: file.size });
         if (!columns.length && sample.length) columns = Object.keys(sample[0]);
         resolve({
           name: file.name,

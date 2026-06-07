@@ -25,6 +25,7 @@ const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "
 export default function AnalyzePage() {
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
+  const [readInfo, setReadInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [table, setTable] = useState<Table | null>(null);
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
@@ -134,7 +135,12 @@ export default function AnalyzePage() {
     try {
       setBusy(true);
       setStage("Reading file");
-      const tbl = await parseFile(file);
+      setReadInfo(file.size > 24 * 1024 * 1024 ? `Reading ${(file.size / 1048576).toFixed(0)} MB…` : null);
+      const tbl = await parseFile(file, (p) => {
+        const pct = p.totalBytes ? Math.min(100, Math.round((p.bytes / p.totalBytes) * 100)) : 0;
+        setReadInfo(`Read ${p.rows.toLocaleString()} rows · ${pct}%`);
+      });
+      setReadInfo(null);
       if (!tbl.columns.length || !tbl.rowCount) {
         throw new Error("No tabular data found. Make sure the first row contains column headers.");
       }
@@ -143,6 +149,7 @@ export default function AnalyzePage() {
       setError(e instanceof Error ? e.message : "Could not read that file.");
       setBusy(false);
       setStage(null);
+      setReadInfo(null);
     }
   }
 
@@ -226,7 +233,7 @@ export default function AnalyzePage() {
         {!spec && (
           <div className="space-y-4">
             <Uploader onFile={handleFile} onSample={() => run(sampleTable())} busy={busy} />
-            {busy && stage && <PipelineProgress stages={STAGES} current={stage} />}
+            {busy && stage && <PipelineProgress stages={STAGES} current={stage} detail={readInfo ?? undefined} />}
             {error && <div className="card border-rose-500/40 bg-rose-500/5 p-4 text-sm text-rose-300">{error}</div>}
 
             <details className="card p-4 text-sm">
