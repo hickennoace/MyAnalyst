@@ -78,7 +78,7 @@ Differentiate on *statistical substance*, not just charts.
 
 ## Phase 3 — Data in: meet users where their data is
 
-- **3.1 Multi-table joins.** SQLite already exposes multiple tables; let users join them (auto-suggest keys by name/overlap) and analyze the result. Foundation for relational analysis.
+- **3.1 Multi-table joins.** ✅ DONE (2026-06-07) — `lib/join.ts`: `suggestJoinKeys()` ranks candidate key pairs by name match + value overlap (preferring a unique right key), and `joinTables()` does a left/inner lookup join (every left row kept, right columns appended from the first match, colliding names suffixed). Wired into the analyzer's multi-source picker as a "Join with: …" control that auto-detects the key, builds the combined table, and re-runs the full pipeline on it. 3 tests.
 - **3.2 More formats:** Parquet, TSV, Google Sheets URL, clipboard paste, and a "connect a public CSV URL." ◐ PARTIAL (2026-06-07) — **public CSV/TSV URL import** shipped: `lib/url-import.ts` fetches the URL straight into a `File` and reuses the whole parser; an "…or paste a public CSV URL" input in the `Uploader` with graceful CORS-failure messaging. (TSV already supported; Parquet/Sheets/clipboard still open — Parquet needs a new dep, see deferred.) 4 tests on the filename helper.
 - **3.3 Bigger-than-RAM, gracefully.** Current sampling is good; add column-store/streaming aggregation (e.g. via DuckDB-WASM, evaluate cost/bundle) so 10M-row files get *exact* answers, not sampled ones — still 100% client-side.
 - **3.4 Schema memory.** Recognize a re-uploaded file shape and restore the user's column overrides, excluded columns, and saved questions.

@@ -41,6 +41,7 @@ export default function AnalyzePage() {
   const [fileSources, setFileSources] = useState<SourceInfo[]>([]);
   const [currentSourceId, setCurrentSourceId] = useState<string>("");
   const [sourceKind, setSourceKind] = useState<"sheet" | "table" | undefined>(undefined);
+  const [joinId, setJoinId] = useState<string>("");
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
   const [toast, setToast] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -230,6 +231,37 @@ export default function AnalyzePage() {
     }
   }
 
+  // Enrich the current table by joining another table/sheet from the same file on an auto-detected key.
+  async function handleJoin() {
+    if (!sourceFile || !sourceTable || !joinId || busy) return;
+    setError(null);
+    setBusy(true);
+    setStage("Reading file");
+    try {
+      const result = await parseFile(sourceFile, undefined, joinId);
+      const right = result.table;
+      if (!right.columns.length || !right.rowCount) throw new Error("That table has no usable data to join.");
+      const { suggestJoinKeys, joinTables } = await import("@/lib/join");
+      const keys = suggestJoinKeys(sourceTable, right);
+      if (!keys.length) {
+        throw new Error(`No shared key found between “${sourceTable.name}” and “${right.name}”. Tables need a common column (e.g. an id) to join.`);
+      }
+      const k = keys[0];
+      const joined = joinTables(sourceTable, right, k.leftKey, k.rightKey, "left");
+      // The result is a new combined dataset — clear the single-source picker to avoid confusion.
+      setFileSources([]);
+      setCurrentSourceId("");
+      setSourceKind(undefined);
+      setJoinId("");
+      setToast({ text: `Joined on ${k.leftKey} = ${k.rightKey} · ${joined.rowCount.toLocaleString()} rows`, tone: "info" });
+      await run(joined);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't join those tables.");
+      setBusy(false);
+      setStage(null);
+    }
+  }
+
   function startSample() {
     // Samples have no underlying file/sheets — clear any picker state from a prior upload.
     setSourceFile(null);
@@ -407,6 +439,32 @@ export default function AnalyzePage() {
             <span className="text-xs text-slate-500">
               {fileSources.length} {sourceKind === "table" ? "tables" : "sheets"} in this file
             </span>
+
+            {/* Join the current table with another from the same file (auto-detected key). */}
+            <span className="ml-1 border-l border-slate-700 pl-3 font-medium text-slate-300">Join with:</span>
+            <select
+              value={joinId}
+              onChange={(e) => setJoinId(e.target.value)}
+              disabled={busy}
+              aria-label="Choose a table to join with the current one"
+              className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+            >
+              <option value="">{sourceKind === "table" ? "another table…" : "another sheet…"}</option>
+              {fileSources
+                .filter((s) => s.id !== currentSourceId)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+            </select>
+            <button
+              onClick={handleJoin}
+              disabled={busy || !joinId}
+              className="rounded-lg bg-blue-500/90 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-400 disabled:opacity-50"
+            >
+              Join
+            </button>
           </div>
         )}
 
