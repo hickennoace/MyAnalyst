@@ -2,7 +2,7 @@
 // Usage: node scripts/verify-live.mjs [url]
 import { chromium } from "playwright";
 
-const URL = process.argv[2] || "https://quantia-blond.vercel.app/analyze?demo=1";
+const URL = process.argv[2] || "https://myanalyst.net/analyze?demo=1";
 const browser = await chromium.launch();
 const page = await browser.newPage();
 const errors = [];
