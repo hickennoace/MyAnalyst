@@ -9,6 +9,26 @@ export interface ParseProgress {
   totalBytes: number; // file size
 }
 
+/** One analyzable part of a file: a sheet (Excel) or a table (SQLite). Single for CSV/JSON. */
+export interface SourceInfo {
+  id: string;
+  label: string;
+  rowCount: number;
+}
+
+/** Result of parsing a file: the chosen source's Table plus the list of all sources so the UI can
+ *  offer a picker for multi-sheet workbooks / multi-table databases. */
+export interface ParseResult {
+  table: Table;
+  sources: SourceInfo[];
+  sourceId: string;
+  sourceKind?: "sheet" | "table";
+}
+
+function single(table: Table): ParseResult {
+  return { table, sources: [{ id: "default", label: table.name, rowCount: table.rowCount }], sourceId: "default" };
+}
+
 // Browser memory limits for the formats we must load whole (no streaming parser exists for them here).
 // CSV/TSV stream off disk and are effectively unbounded (handles ~1GB); Excel/JSON are read into memory
 // and expand several-fold while parsing, so we cap them and point users to CSV for anything bigger.
@@ -16,8 +36,14 @@ const MAX_EXCEL_BYTES = 50 * 1024 * 1024; // 50 MB
 const MAX_JSON_BYTES = 120 * 1024 * 1024; // 120 MB
 const MAX_SQLITE_BYTES = 100 * 1024 * 1024; // 100 MB (loaded whole into a WASM SQLite engine)
 
-/** Parse an uploaded File (CSV / TSV / JSON / XLSX / XLS) into a normalized Table. Runs entirely client-side. */
-export async function parseFile(file: File, onProgress?: (p: ParseProgress) => void): Promise<Table> {
+/** Parse an uploaded File (CSV / TSV / TXT / JSON / XLSX / XLS / SQLite) into a normalized Table plus
+ *  the list of its analyzable sources. `sourceId` targets a specific sheet/table (else a sensible
+ *  default — first sheet / largest table). Runs entirely client-side. */
+export async function parseFile(
+  file: File,
+  onProgress?: (p: ParseProgress) => void,
+  sourceId?: string
+): Promise<ParseResult> {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "xlsx" || ext === "xls") {
     if (file.size > MAX_EXCEL_BYTES) {
@@ -25,7 +51,7 @@ export async function parseFile(file: File, onProgress?: (p: ParseProgress) => v
         `This Excel file is ${(file.size / 1048576).toFixed(0)} MB. Excel can't be streamed in the browser, so it's capped at ${MAX_EXCEL_BYTES / 1048576} MB. Export it to CSV and upload that — CSV streams up to ~1 GB.`
       );
     }
-    return parseExcel(file);
+    return parseExcel(file, sourceId);
   }
   if (ext === "json") {
     if (file.size > MAX_JSON_BYTES) {
@@ -33,7 +59,7 @@ export async function parseFile(file: File, onProgress?: (p: ParseProgress) => v
         `This JSON file is ${(file.size / 1048576).toFixed(0)} MB. JSON must be loaded whole, so it's capped at ${MAX_JSON_BYTES / 1048576} MB. Convert it to CSV for larger datasets — CSV streams up to ~1 GB.`
       );
     }
-    return parseJson(file);
+    return single(await parseJson(file));
   }
   if (ext === "sqlite" || ext === "sqlite3" || ext === "db" || ext === "db3") {
     if (file.size > MAX_SQLITE_BYTES) {
@@ -41,15 +67,15 @@ export async function parseFile(file: File, onProgress?: (p: ParseProgress) => v
         `This SQLite file is ${(file.size / 1048576).toFixed(0)} MB. It must be loaded whole into the in-browser SQLite engine, so it's capped at ${MAX_SQLITE_BYTES / 1048576} MB. Export the table you need to CSV for larger databases.`
       );
     }
-    return parseSqlite(file);
+    return parseSqlite(file, sourceId);
   }
-  return parseDelimited(file, onProgress);
+  return single(await parseDelimited(file, onProgress));
 }
 
 // SQLite (.sqlite/.db/...): read the file into an in-browser WASM SQLite engine (sql.js), then pull
 // the largest user table into a Table. sql.js is dynamically imported so its ~650KB wasm only loads
 // when someone actually opens a database; the wasm is served locally from /sql-wasm.wasm.
-async function parseSqlite(file: File): Promise<Table> {
+async function parseSqlite(file: File, tableId?: string): Promise<ParseResult> {
   const initSqlJs = (await import("sql.js")).default;
   const SQL = await initSqlJs({ locateFile: () => "/sql-wasm.wasm" });
   const db = new SQL.Database(new Uint8Array(await file.arrayBuffer()));
@@ -60,34 +86,36 @@ async function parseSqlite(file: File): Promise<Table> {
     const names = tablesRes[0]?.values.map((r) => String(r[0])) ?? [];
     if (names.length === 0) throw new Error("No tables found in this SQLite database.");
 
-    // Pick the table with the most rows — usually the one worth analyzing.
-    let chosen = names[0];
-    let chosenCount = -1;
-    for (const n of names) {
+    const sources: SourceInfo[] = names.map((n) => {
       const c = db.exec(`SELECT COUNT(*) FROM "${n.replace(/"/g, '""')}"`);
-      const cnt = Number(c[0]?.values[0]?.[0] ?? 0);
-      if (cnt > chosenCount) {
-        chosenCount = cnt;
-        chosen = n;
-      }
-    }
-
-    const safe = chosen.replace(/"/g, '""');
-    const out = db.exec(`SELECT * FROM "${safe}" LIMIT ${SAMPLE_CAP}`);
-    if (!out.length) {
-      return { name: `${file.name} · ${chosen}`, columns: [], rows: [], rowCount: 0 };
-    }
-    const columns = out[0].columns.map((c) => String(c));
-    const rows = out[0].values.map((vals) => {
-      const o: Record<string, unknown> = {};
-      columns.forEach((c, i) => {
-        o[c] = vals[i];
-      });
-      return o;
+      return { id: n, label: n, rowCount: Number(c[0]?.values[0]?.[0] ?? 0) };
     });
-    const table: Table = { name: `${file.name} · ${chosen}`, columns, rows, rowCount: rows.length };
-    if (chosenCount > rows.length) table.sampledFrom = chosenCount; // hit the row cap
-    return table;
+
+    // Default to the largest table (usually the one worth analyzing) unless a specific one is asked for.
+    const chosen =
+      tableId && names.includes(tableId)
+        ? tableId
+        : [...sources].sort((a, b) => b.rowCount - a.rowCount)[0].id;
+    const chosenCount = sources.find((s) => s.id === chosen)?.rowCount ?? 0;
+
+    const out = db.exec(`SELECT * FROM "${chosen.replace(/"/g, '""')}" LIMIT ${SAMPLE_CAP}`);
+    const name = `${file.name} · ${chosen}`;
+    let table: Table;
+    if (!out.length) {
+      table = { name, columns: [], rows: [], rowCount: 0 };
+    } else {
+      const columns = out[0].columns.map((c) => String(c));
+      const rows = out[0].values.map((vals) => {
+        const o: Record<string, unknown> = {};
+        columns.forEach((c, i) => {
+          o[c] = vals[i];
+        });
+        return o;
+      });
+      table = { name, columns, rows, rowCount: rows.length };
+      if (chosenCount > rows.length) table.sampledFrom = chosenCount; // hit the row cap
+    }
+    return { table, sources, sourceId: chosen, sourceKind: "table" };
   } finally {
     db.close();
   }
@@ -225,18 +253,35 @@ async function parseDelimited(file: File, onProgress?: (p: ParseProgress) => voi
   });
 }
 
-async function parseExcel(file: File): Promise<Table> {
+async function parseExcel(file: File, sheetId?: string): Promise<ParseResult> {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array", cellDates: true });
-  const sheetName = wb.SheetNames[0];
-  const sheet = wb.Sheets[sheetName];
-  const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+  const sheetNames = wb.SheetNames.filter((n) => wb.Sheets[n]);
+  if (sheetNames.length === 0) throw new Error("No sheets found in this Excel file.");
+
+  // Approximate row count per sheet from its dimension range (cheap — avoids converting every sheet).
+  const sources: SourceInfo[] = sheetNames.map((name) => {
+    const ref = wb.Sheets[name]["!ref"];
+    let rowCount = 0;
+    if (ref) {
+      const r = XLSX.utils.decode_range(ref);
+      rowCount = Math.max(0, r.e.r - r.s.r); // minus the header row
+    }
+    return { id: name, label: name, rowCount };
+  });
+
+  const chosen = sheetId && sheetNames.includes(sheetId) ? sheetId : sheetNames[0];
+  const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[chosen], {
     defval: null,
     raw: false, // formatted strings, consistent with CSV path
   });
   const columns = json.length ? Object.keys(json[0]).map((c) => c.trim()) : [];
-  const rows = json.filter(
-    (r) => r && Object.values(r).some((v) => v !== null && v !== "")
-  );
-  return { name: file.name, columns, rows, rowCount: rows.length };
+  const rows = json.filter((r) => r && Object.values(r).some((v) => v !== null && v !== ""));
+  const name = sheetNames.length > 1 ? `${file.name} · ${chosen}` : file.name;
+  return {
+    table: { name, columns, rows, rowCount: rows.length },
+    sources,
+    sourceId: chosen,
+    sourceKind: "sheet",
+  };
 }

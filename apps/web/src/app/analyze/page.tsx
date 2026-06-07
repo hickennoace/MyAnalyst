@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { DashboardSpec, SemanticType, Table } from "@/lib/types";
-import { parseFile } from "@/lib/parse";
+import { parseFile, type SourceInfo } from "@/lib/parse";
 import { runAnalysis } from "@/lib/analyze-client";
 import { downloadCsv } from "@/lib/csv";
 import { sampleTable } from "@/lib/sample";
@@ -35,6 +35,11 @@ export default function AnalyzePage() {
   const [sourceTable, setSourceTable] = useState<Table | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [typeOverrides, setTypeOverrides] = useState<Record<string, SemanticType>>({});
+  // Multi-sheet (Excel) / multi-table (SQLite) support: the uploaded file + its selectable sources.
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [fileSources, setFileSources] = useState<SourceInfo[]>([]);
+  const [currentSourceId, setCurrentSourceId] = useState<string>("");
+  const [sourceKind, setSourceKind] = useState<"sheet" | "table" | undefined>(undefined);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
   const [toast, setToast] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -82,6 +87,11 @@ export default function AnalyzePage() {
     setSourceTable(loaded.table);
     setExcluded(new Set());
     setTypeOverrides({});
+    // History entries have no underlying file, so there's no sheet/table picker.
+    setSourceFile(null);
+    setFileSources([]);
+    setCurrentSourceId("");
+    setSourceKind(undefined);
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   }
 
@@ -176,15 +186,20 @@ export default function AnalyzePage() {
       setBusy(true);
       setStage("Reading file");
       setReadInfo(file.size > 24 * 1024 * 1024 ? `Reading ${(file.size / 1048576).toFixed(0)} MB…` : null);
-      const tbl = await parseFile(file, (p) => {
+      const result = await parseFile(file, (p) => {
         const pct = p.totalBytes ? Math.min(100, Math.round((p.bytes / p.totalBytes) * 100)) : 0;
         setReadInfo(`Read ${p.rows.toLocaleString()} rows · ${pct}%`);
       });
       setReadInfo(null);
-      if (!tbl.columns.length || !tbl.rowCount) {
+      if (!result.table.columns.length || !result.table.rowCount) {
         throw new Error("No tabular data found. Make sure the first row contains column headers.");
       }
-      await run(tbl);
+      // Remember the file + its sheets/tables so the user can switch between them later.
+      setSourceFile(file);
+      setFileSources(result.sources);
+      setCurrentSourceId(result.sourceId);
+      setSourceKind(result.sourceKind);
+      await run(result.table);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not read that file.");
       setBusy(false);
@@ -193,10 +208,40 @@ export default function AnalyzePage() {
     }
   }
 
+  // Re-parse a different sheet/table from the same file and analyze it.
+  async function handleSelectSource(id: string) {
+    if (!sourceFile || id === currentSourceId || busy) return;
+    setError(null);
+    setBusy(true);
+    setStage("Reading file");
+    try {
+      const result = await parseFile(sourceFile, undefined, id);
+      if (!result.table.columns.length || !result.table.rowCount) {
+        throw new Error("That selection has no usable tabular data.");
+      }
+      setCurrentSourceId(id);
+      setSourceKind(result.sourceKind);
+      await run(result.table); // resets column choices and manages busy/stage
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't read that selection.");
+      setBusy(false);
+      setStage(null);
+    }
+  }
+
+  function startSample() {
+    // Samples have no underlying file/sheets — clear any picker state from a prior upload.
+    setSourceFile(null);
+    setFileSources([]);
+    setCurrentSourceId("");
+    setSourceKind(undefined);
+    run(sampleTable());
+  }
+
   // Auto-run the sample when arriving from the landing page's "Try a sample" CTA (/analyze?demo=1).
   useEffect(() => {
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1") {
-      run(sampleTable());
+      startSample();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -208,6 +253,10 @@ export default function AnalyzePage() {
     setSourceTable(null);
     setExcluded(new Set());
     setTypeOverrides({});
+    setSourceFile(null);
+    setFileSources([]);
+    setCurrentSourceId("");
+    setSourceKind(undefined);
   }
 
   return (
@@ -275,7 +324,7 @@ export default function AnalyzePage() {
 
         {!spec && (
           <div className="space-y-4">
-            <Uploader onFile={handleFile} onSample={() => run(sampleTable())} busy={busy} />
+            <Uploader onFile={handleFile} onSample={startSample} busy={busy} />
             {busy && stage && <PipelineProgress stages={STAGES} current={stage} detail={readInfo ?? undefined} />}
             {error && <div className="card border-rose-500/40 bg-rose-500/5 p-4 text-sm text-rose-300">{error}</div>}
 
@@ -333,7 +382,29 @@ export default function AnalyzePage() {
 
         {spec && busy && stage && (
           <div className="mb-4">
-            <PipelineProgress stages={STAGES} current={stage} detail="Re-running with your column changes…" />
+            <PipelineProgress stages={STAGES} current={stage} detail="Re-analyzing…" />
+          </div>
+        )}
+
+        {spec && fileSources.length > 1 && (
+          <div className="mb-4 card flex flex-wrap items-center gap-2 p-3 text-sm">
+            <span className="font-medium text-slate-300">{sourceKind === "table" ? "Table" : "Sheet"}:</span>
+            <select
+              value={currentSourceId}
+              onChange={(e) => handleSelectSource(e.target.value)}
+              disabled={busy}
+              aria-label={`Choose which ${sourceKind === "table" ? "table" : "sheet"} to analyze`}
+              className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+            >
+              {fileSources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label} ({s.rowCount.toLocaleString()} rows)
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-slate-500">
+              {fileSources.length} {sourceKind === "table" ? "tables" : "sheets"} in this file
+            </span>
           </div>
         )}
 
