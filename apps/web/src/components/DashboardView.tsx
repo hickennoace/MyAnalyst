@@ -23,7 +23,7 @@ export function DashboardView({
 }) {
   return (
     <div className="space-y-8" ref={innerRef}>
-      <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
+      <div className="card card-hover flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <p className="text-sm font-semibold text-slate-100">{spec.datasetName}</p>
           <p className="text-xs text-slate-400">
@@ -39,7 +39,7 @@ export function DashboardView({
       </div>
 
       {spec.story && (
-        <div className="card flex gap-3 p-5">
+        <div className="card card-hover flex gap-3 p-5">
           <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
               <circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" />
@@ -105,8 +105,8 @@ export function DashboardView({
       )}
 
       {table && (
-        <Section title="Ask your data" subtitle="Plain-English questions, answered with your real numbers — no AI key needed.">
-          <QueryBox table={table} profiles={spec.profiles} />
+        <Section title="Ask your data" subtitle="Plain-English questions, answered like an analyst — grounded in your real numbers.">
+          <QueryBox table={table} profiles={spec.profiles} domain={spec.domain.domain} />
         </Section>
       )}
 

@@ -78,6 +78,34 @@ export async function POST(req: Request) {
     }
   }
 
+  // Task: answer — answer a plain-English "Ask your data" question as a thorough, professional analyst,
+  // grounded strictly in pre-computed numbers (aggregates only; never raw rows). Returns prose + follow-ups.
+  if (body && typeof body === "object" && (body as { task?: string }).task === "answer") {
+    const { question, dataset, grounded, facts } = body as {
+      question?: string;
+      dataset?: unknown;
+      grounded?: string;
+      facts?: unknown;
+    };
+    if (!question || typeof question !== "string") {
+      return NextResponse.json({ answer: "", provider: "error" });
+    }
+    try {
+      const { system, user } = buildAnswerPrompt(question, dataset, grounded, facts);
+      const raw = await callLLM(system, user);
+      const parsed = extractJson(raw) as { answer?: unknown; followups?: unknown };
+      const answer = String(parsed.answer ?? "").trim();
+      if (!answer) return NextResponse.json({ answer: "", provider: "error" });
+      const followups = Array.isArray(parsed.followups)
+        ? (parsed.followups as unknown[]).map((s) => String(s).trim()).filter(Boolean).slice(0, 3)
+        : [];
+      return NextResponse.json({ answer, followups, provider });
+    } catch (err) {
+      console.error("[insights] answer failed:", err instanceof Error ? err.message : err);
+      return NextResponse.json({ answer: "", provider: "error" });
+    }
+  }
+
   // Default task: generate grounded insights from an InsightContext.
   const ctx = body as InsightContext;
   if (!ctx || typeof ctx !== "object" || !Array.isArray(ctx.kpis)) {
@@ -138,6 +166,26 @@ function buildStoryPrompt(
     'Respond with ONLY JSON: {"story":{"industry":string,"summary":string}}',
   ].join("\n");
   const user = JSON.stringify({ draft, meta });
+  return { system, user };
+}
+
+// ── Ask-your-data answer prompt ────────────────────────────────────────────────
+
+function buildAnswerPrompt(question: string, dataset: unknown, grounded: unknown, facts: unknown) {
+  const system = [
+    "You are a senior data analyst answering a specific question about a user's dataset, in writing.",
+    "You are given: the QUESTION, dataset METADATA (column names + roles + types, row count, detected domain), a GROUNDED one-line result already computed by a deterministic engine, and a FACTS object of pre-computed numbers (totals, averages, group breakdowns with shares, correlations, trends, distributions). These numbers are the ONLY ground truth.",
+    "HARD RULES:",
+    "1. Use ONLY numbers that appear in `grounded` or `facts`. NEVER invent, estimate, extrapolate, or re-round a number. If the data needed to answer fully isn't provided, answer what you can and say what would be needed.",
+    "2. You are given NO raw rows — never claim to know individual records or values beyond the provided aggregates.",
+    "3. Lead with a direct, specific answer to the exact question (state the key number and the winner/result).",
+    "4. Then add real analytical depth: comparisons and gaps between groups, shares of the total, ranking, magnitude, and any relevant correlation or trend from the facts. Quote the actual numbers.",
+    "5. Explain what it likely MEANS in practical/business terms for this domain, and suggest one concrete thing the user could check or do next. When citing relationships, note that correlation isn't causation and a pattern could be coincidence.",
+    "6. Professional, confident, and clear — like a great analyst briefing a smart non-statistician. No jargon dumps, no hedging filler. Use 2-4 short paragraphs, 90-170 words total. Separate paragraphs with a blank line (\\n\\n).",
+    "7. Also propose up to 3 sharp follow-up questions the user could ask next, each tailored to this dataset's real columns and phrased the way they'd type them.",
+    'Respond with ONLY JSON: {"answer": string, "followups": string[]}',
+  ].join("\n");
+  const user = JSON.stringify({ question, dataset, grounded, facts });
   return { system, user };
 }
 

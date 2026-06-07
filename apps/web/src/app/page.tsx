@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Reveal } from "@/components/Reveal";
 import { HeroChart } from "@/components/HeroChart";
+import { HeroField } from "@/components/HeroField";
+import { Magnetic } from "@/components/Magnetic";
+import { Tilt } from "@/components/Tilt";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 
@@ -59,7 +62,7 @@ const FEATURES = [
   { icon: I.bars, title: "Instant KPIs & charts", body: "Ranked KPIs and precise charts for your data shape: trends, comparisons, correlations, distributions." },
   { icon: I.sigma, title: "Real statistics", body: "Significance tests, OLS & multiple regression, ANOVA, chi-square, forecasting — statsmodels-grade rigor, in your browser." },
   { icon: I.quote, title: "Understands your data", body: "Reads the rows, columns and subject behind your file to explain what the dataset actually is — so every finding stays tied to your real-world context." },
-  { icon: I.spark, title: "Ask your data", body: "Type “which reason is most common” or “revenue by region as a bar chart” and get an answer — in plain English." },
+  { icon: I.spark, title: "Ask your data", body: "Ask “which region sells best” or “what drives churn” and get a thorough, analyst-grade answer — grounded in your real numbers, with follow-ups to dig deeper." },
 ];
 
 const STEPS = [
@@ -74,6 +77,7 @@ export default function Landing() {
   return (
     <main id="main-content" className="lp">
       <div className="lp-aurora" aria-hidden />
+      <HeroField className="lp-field" />
 
       <div className="relative z-10 mx-auto max-w-6xl px-5 sm:px-6">
         {/* Nav */}
@@ -93,8 +97,11 @@ export default function Landing() {
         {/* ── Hero ── */}
         <section className="grid items-center gap-12 pt-12 pb-16 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24">
           <div className="fade-up">
-            <span className="lp-pill"><i className="lp-dot" /> AI-assisted · runs in your browser · no setup</span>
-            <h1 className="display mt-6 text-[2.6rem] leading-[1.06] text-[var(--ink)] sm:text-[3.7rem]">
+            <span className="lp-pill mb-6">
+              <span className="lp-dot" aria-hidden />
+              New · AI analyst answers your data questions
+            </span>
+            <h1 className="display text-[2.6rem] leading-[1.06] text-[var(--ink)] sm:text-[3.7rem]">
               Turn a spreadsheet into an{" "}
               <span className="lp-accent">explained dashboard</span>
             </h1>
@@ -104,21 +111,25 @@ export default function Landing() {
               seconds, with the rigor of a working data scientist.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/analyze" className="lp-cta">
-                Analyze your data
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </Link>
-              <Link href="/analyze?demo=1" className="lp-ghost">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5"><path d="M7 5v14l11-7z" /></svg>
-                Try a live sample
-              </Link>
+              <Magnetic>
+                <Link href="/analyze" className="lp-cta">
+                  Analyze your data
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </Link>
+              </Magnetic>
+              <Magnetic>
+                <Link href="/analyze?demo=1" className="lp-ghost">
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5"><path d="M7 5v14l11-7z" /></svg>
+                  Try a live sample
+                </Link>
+              </Magnetic>
             </div>
             <p className="mt-5 text-[0.82rem] text-[var(--faint)]">No account · no upload · your data never leaves this page.</p>
           </div>
 
           {/* Chart panel */}
-          <div>
-            <div className="lp-panel overflow-hidden p-4">
+          <Tilt>
+            <div className="lp-panel lp-panel-glow overflow-hidden p-4">
               <div className="flex items-center justify-between border-b border-[var(--line)] px-1 pb-3">
                 <span className="lp-tape text-[var(--muted)]">revenue.csv · 12 periods</span>
                 <span className="lp-tape lp-up">▲ +23.4%</span>
@@ -135,7 +146,7 @@ export default function Landing() {
                 ))}
               </div>
             </div>
-          </div>
+          </Tilt>
         </section>
       </div>
 
@@ -232,10 +243,12 @@ export default function Landing() {
               </h2>
               <p className="mx-auto mt-4 max-w-md text-[var(--muted)]">No setup, no spreadsheet skills, no waiting. Just answers.</p>
               <div className="mt-8 flex justify-center">
-                <Link href="/analyze" className="lp-cta">
-                  Open Lumora
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </Link>
+                <Magnetic>
+                  <Link href="/analyze" className="lp-cta">
+                    Open Lumora
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </Link>
+                </Magnetic>
               </div>
             </div>
           </Reveal>

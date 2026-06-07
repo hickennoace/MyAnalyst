@@ -263,8 +263,29 @@ body {
 .lp-link { font-size: 0.88rem; font-weight: 500; color: var(--muted); transition: color 0.16s ease; }
 .lp-link:hover { color: var(--ink); }
 
+/* ── Animated data-network canvas behind the hero ── */
+.lp-field {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 760px;
+  width: 100%;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
+}
+
 /* ── Cards / panels ── */
 .lp-panel { position: relative; border-radius: 14px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+
+/* Cursor-follow highlight on the tilting hero panel (reads --mx/--my set by <Tilt>). */
+.lp-panel-glow::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(79, 70, 229, 0.12), transparent 60%);
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.lp-panel-glow:hover::before { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .lp-panel-glow::before { display: none; } }
 .lp-feature {
   position: relative; height: 100%; padding: 1.5rem; border-radius: 12px;
   background: var(--card); border: 1px solid var(--line);

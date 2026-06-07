@@ -4,6 +4,19 @@ import { pearson } from "./stats";
 import { aggregateCount, buildChart } from "./charts";
 import { sortByTime } from "./kpi";
 
+// ── AI-enhanced answers ────────────────────────────────────────────────────────
+// When the optional LLM is enabled (NEXT_PUBLIC_LLM_ENABLED=1), `answerQuestionAI` keeps the exact
+// numbers from the deterministic heuristic below but lets the model narrate a thorough, professional
+// analyst answer grounded in pre-computed aggregates. Privacy: only aggregates/metadata cross the wire
+// (the same boundary as /api/insights) — never raw rows. Any failure falls back to the heuristic answer.
+
+export interface RichAnswer extends QueryAnswer {
+  /** Which narrator produced the prose. */
+  source: "llm" | "heuristic";
+  /** Suggested next questions (LLM only). */
+  followups?: string[];
+}
+
 const CATEGORY_HINT = /(reason|category|type|status|segment|group|class|gender|channel|source|outcome|result|stage|priority|label|tag|product|region|country|state|city|department)/i;
 
 // "Ask your data" — a heuristic natural-language Q&A engine. No LLM, no key. It maps plain-English
@@ -216,4 +229,157 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// ── AI path ────────────────────────────────────────────────────────────────────
+
+const round2 = (n: number): number | null => (Number.isFinite(n) ? Math.round(n * 100) / 100 : null);
+
+/** Whether the optional server-side LLM narrator is switched on (the key itself stays server-side). */
+function llmOn(): boolean {
+  return typeof process !== "undefined" && process.env.NEXT_PUBLIC_LLM_ENABLED === "1";
+}
+
+/**
+ * Gather an aggregates-only "evidence" payload for a question: dataset metadata plus the relevant
+ * pre-computed numbers (metric summary, group breakdown with shares, correlation, trend, distribution).
+ * No raw rows ever leave — this mirrors the /api/insights privacy boundary.
+ */
+function buildEvidence(
+  question: string,
+  table: Table,
+  profiles: ColumnProfile[],
+  grounded: string,
+  domain?: string
+) {
+  const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const dims = profiles.filter((p) => p.role === "dimension");
+  const time = profiles.find((p) => p.role === "time");
+  const mMetrics = resolveCols(question, metrics);
+  const mDims = resolveCols(question, dims);
+  const metric = mMetrics[0] ?? metrics[0];
+  const dim = mDims[0] ?? dims[0];
+
+  const facts: Record<string, unknown> = {};
+
+  if (metric) {
+    const vals = numericColumn(table, metric.name);
+    facts.metricSummary = {
+      name: metric.name,
+      total: round2(aggregate(vals, "sum")),
+      average: round2(aggregate(vals, "mean")),
+      min: round2(aggregate(vals, "min")),
+      max: round2(aggregate(vals, "max")),
+      count: vals.filter(Number.isFinite).length,
+    };
+  }
+
+  if (metric && dim) {
+    const ranked = groupBy(table, dim.name, metric.name, "sum");
+    const grandTotal = ranked.reduce((s, [, v]) => s + v, 0);
+    facts.breakdown = {
+      dimension: dim.name,
+      metric: metric.name,
+      aggregate: "sum",
+      groupCount: ranked.length,
+      total: round2(grandTotal),
+      topGroups: ranked.slice(0, 8).map(([key, value]) => ({
+        key,
+        value: round2(value),
+        sharePct: grandTotal ? round2((value / grandTotal) * 100) : null,
+      })),
+    };
+  }
+
+  const ms = mMetrics.length >= 2 ? mMetrics : metrics;
+  if (ms.length >= 2) {
+    const [a, b] = ms;
+    const r = pearson(numericColumn(table, a.name), numericColumn(table, b.name));
+    if (Number.isFinite(r)) facts.correlation = { a: a.name, b: b.name, r: round2(r) };
+  }
+
+  if (time && metric) {
+    const order = sortByTime(table, time.name);
+    const series = order.map((i) => numericColumn(table, metric.name)[i]).filter(Number.isFinite);
+    if (series.length >= 2) {
+      const first = series[0];
+      const last = series[series.length - 1];
+      const pct = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : 0;
+      facts.trend = {
+        metric: metric.name,
+        over: time.name,
+        first: round2(first),
+        last: round2(last),
+        changePct: round2(pct),
+        periods: series.length,
+      };
+    }
+  }
+
+  if (dim) {
+    const counts = aggregateCount(table, dim.name);
+    const totalC = counts.reduce((s, [, c]) => s + c, 0);
+    if (totalC > 0) {
+      facts.distribution = {
+        column: dim.name,
+        distinct: counts.length,
+        top: counts.slice(0, 8).map(([value, count]) => ({
+          value,
+          count,
+          pct: round2((count / totalC) * 100),
+        })),
+      };
+    }
+  }
+
+  return {
+    question,
+    dataset: {
+      name: table.name,
+      rowCount: table.rowCount,
+      domain: domain || undefined,
+      columns: profiles.map((p) => ({ name: p.name, role: p.role, type: p.type })),
+    },
+    grounded,
+    facts,
+  };
+}
+
+/**
+ * Answer a question with the optional LLM as a thorough analyst, grounded in the exact numbers the
+ * deterministic engine computed. Falls back to the heuristic answer when the LLM is off or fails.
+ */
+export async function answerQuestionAI(
+  question: string,
+  table: Table,
+  profiles: ColumnProfile[],
+  domain?: string
+): Promise<RichAnswer> {
+  const base = answerQuestion(question, table, profiles);
+  if (!llmOn() || !base.ok) return { ...base, source: "heuristic" };
+  try {
+    const evidence = buildEvidence(question, table, profiles, base.answer, domain);
+    const res = await fetch("/api/insights", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ task: "answer", ...evidence }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { answer?: string; followups?: string[] };
+      if (data.answer && data.answer.trim()) {
+        return {
+          ok: true,
+          answer: data.answer.trim(),
+          chart: base.chart,
+          source: "llm",
+          followups: Array.isArray(data.followups)
+            ? data.followups.filter((s) => typeof s === "string" && s.trim()).slice(0, 3)
+            : undefined,
+        };
+      }
+    }
+  } catch {
+    // fall through to the heuristic answer
+  }
+  return { ...base, source: "heuristic" };
 }
