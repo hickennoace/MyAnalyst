@@ -1,0 +1,120 @@
+# ROADMAP — MyAnalyst
+
+> The goal: **the best data-analysis website in the world** — the place anyone can drop a spreadsheet and walk away with the analysis a senior analyst would have given them, in seconds, for free, with their raw data never leaving the browser.
+
+This is a living document. It is ordered by **value × leverage**, grouped into phases. Each item lists *why it matters*, *where it lands in the codebase*, and a *done-when* bar. Keep the privacy invariant sacred throughout: **raw rows never leave the page; only metadata/aggregates may reach `/api/insights`.**
+
+---
+
+## Where we are today (baseline)
+
+The shippable app (`apps/web`, Next.js 15) already does a lot, and does it well:
+
+- **Pipeline:** `parse → clean → profile → detect domain → KPIs → stats → forecast → charts → insights → DashboardSpec → render`, pure-TS under `src/lib`, run in a Web Worker with real progress.
+- **Ingestion:** CSV (streamed in a worker, ~1 GB via reservoir sampling), Excel (multi-sheet picker), JSON, SQLite/`.db` (multi-table picker), `.txt`.
+- **Statistics:** descriptive stats, Pearson correlation with significance + CIs, OLS regression, multiple-regression driver analysis, one-way ANOVA, chi-square association, outlier (z-score) detection, naive forecast.
+- **Ask-your-data:** a deterministic NL→computation engine (count, frequency, correlation, trend, ranking, aggregate, group-by) + an optional LLM "principal analyst" narrator that is **grounded in pre-computed numbers**, has **conversation memory**, **streams** token-by-token, and proposes **follow-ups**.
+- **Output:** KPI cards, a chart library + custom chart builder, an "About this data" story, plain-language insights, PNG/PDF export, shareable read-only links, dark/light theme, error boundaries, a11y + SEO.
+- **Quality bar:** `npm run typecheck`, `npm test` (vitest, 48 tests), `npm run build`, Playwright E2E, `scripts/smoke.mts`.
+
+So the roadmap below is about going from *"a genuinely good free analyst"* to *"the one people tell their friends about."*
+
+---
+
+## Phase 1 — Make "Ask your data" unbeatable (highest leverage)
+
+The Q&A box is the soul of the product. Three concrete gaps stand between it and best-in-world:
+
+### 1.1 Filtered & conditional questions  ⭐ top priority
+Today the engine can aggregate a whole column or group-by, but it **cannot filter**. Real users constantly ask *"total revenue **in 2023**"*, *"average order value **for the North region**"*, *"how many orders **where status is cancelled**"*. 
+- **Where:** `src/lib/query.ts` — add a `detectFilter(text, table, profiles)` that resolves a categorical value (match against each dimension's distinct values) or a time predicate (year/quarter/month, ranges like "after 2022", "between Jan and Mar"). Thread the filtered row-set through every answer branch (count, aggregate, ranking, trend) and into `buildFocalFacts` so the AI path narrates the *filtered* numbers too.
+- **Done when:** unit tests cover value filters, year filters, range filters, and "X vs Y" comparisons; filtered facts appear in the evidence payload.
+
+### 1.2 Comparison questions
+*"Compare North vs South revenue"*, *"how does 2023 compare to 2022"*, *"electronics vs furniture margin"*. Build a small comparison primitive (two filtered slices → delta, ratio, % change, winner) and a paired bar/line chart.
+- **Where:** `src/lib/query.ts` + `charts.ts`. **Done when:** the deterministic engine returns a two-series chart and a "$X vs $Y (+Z%)" sentence.
+
+### 1.3 The AI picks the chart
+Open-ended AI answers currently render **no chart** (charts only attach when the deterministic branch made one). Let the model emit a *constrained* chart request — `{type, x, y[], agg, filter?}` from a whitelist — which the server validates and the client builds with `buildChart`. Never let the model emit arbitrary ECharts; it only *chooses among* legal specs.
+- **Where:** `route.ts` answer task (add a `chart` field to the JSON contract) + `query.ts` to validate & build. **Done when:** "what's driving revenue?" returns prose **and** a relevant, engine-built chart.
+
+### 1.4 Show the math (trust)
+A collapsible "How I computed this" under every answer: the exact rows considered, the aggregation, the filter. This is the trust differentiator vs. ChatGPT-with-a-file (which hallucinates numbers). 
+- **Where:** `QueryBox.tsx` + carry a `method` string on `QueryAnswer`.
+
+### 1.5 Multi-step / agentic reasoning (stretch)
+For genuinely hard questions ("which segment should we cut?"), let the LLM request *additional* aggregates from a fixed tool palette (group-by, filter, correlate) over 1–2 rounds before answering — still aggregates-only, still no raw rows. Cap rounds for cost.
+
+---
+
+## Phase 2 — Deeper analysis engine
+
+Differentiate on *statistical substance*, not just charts.
+
+- **2.1 Anomaly & outlier surfacing in the UI.** Outliers are computed but barely shown. Add an "Anomalies" card: which rows/values are unusual and why (z-score, IQR), with a one-click "exclude & re-run."
+- **2.2 Segmentation / clustering.** k-means or simple rule-based segments over numeric columns → "your data splits into 3 natural groups; here's what defines them." Behind a `lib/segment.ts` seam.
+- **2.3 Richer time series.** Trend + **seasonality decomposition**, period-over-period (MoM/YoY) tables, moving averages, and a confidence band on the forecast (today's forecast is naive). Detect cadence (daily/weekly/monthly) automatically.
+- **2.4 Cohort & retention** (when an entity id + time exist) — retention curves and cohort heatmaps; huge for SaaS/marketing datasets.
+- **2.5 Driver analysis, explained.** The multiple-regression driver model exists; turn it into a plain-language "what moves the needle" ranked list with effect sizes and the correlation-≠-causation caveat.
+- **2.6 Data-quality scorecard.** A single 0–100 "health score" (fill rates, duplicates, type consistency, outliers, leakage/constant columns) with prioritized fixes. Reuses the cleaning report.
+- **2.7 Smarter domain packs.** Per-domain (sales / finance / marketing / survey) KPI + insight templates so the dashboard feels purpose-built, not generic.
+
+---
+
+## Phase 3 — Data in: meet users where their data is
+
+- **3.1 Multi-table joins.** SQLite already exposes multiple tables; let users join them (auto-suggest keys by name/overlap) and analyze the result. Foundation for relational analysis.
+- **3.2 More formats:** Parquet, TSV, Google Sheets URL, clipboard paste, and a "connect a public CSV URL."
+- **3.3 Bigger-than-RAM, gracefully.** Current sampling is good; add column-store/streaming aggregation (e.g. via DuckDB-WASM, evaluate cost/bundle) so 10M-row files get *exact* answers, not sampled ones — still 100% client-side.
+- **3.4 Schema memory.** Recognize a re-uploaded file shape and restore the user's column overrides, excluded columns, and saved questions.
+
+---
+
+## Phase 4 — Output & sharing that spreads the product
+
+- **4.1 Live, interactive shared dashboards** (not just static read-only): the `/view` link keeps filters and the Ask box (read-only engine, no raw data in the URL — store the dataset in a user-chosen way, never server-side by default).
+- **4.2 Narrative report export.** One-click "Analyst report" → a polished multi-page PDF/Notion-style doc: story, KPIs, key charts, insights, recommendations. This is what people actually hand to their boss.
+- **4.3 Scheduled / refreshable analysis** for connected URLs (opt-in).
+- **4.4 Embeddable charts** (iframe/snippet) with the MyAnalyst credit — organic distribution.
+- **4.5 Presenter mode** — full-screen, swipeable insight cards for meetings.
+
+---
+
+## Phase 5 — Product polish & growth
+
+- **5.1 Onboarding & sample datasets.** "Try it with sample data" (sales, survey, finance) on the landing page so first-run has zero friction.
+- **5.2 Guided tour** of a generated dashboard the first time.
+- **5.3 Mobile-first dashboard layout** pass (charts, KPI cards, Ask box all thumb-friendly).
+- **5.4 Accessibility to AAA** on the core flow; full keyboard nav for chart builder and Ask box.
+- **5.5 i18n** — start with RTL + Hebrew (the team's context), framework for more.
+- **5.6 Performance budget** — keep TTI low; lazy-load ECharts and heavy libs; measure with Lighthouse in CI.
+- **5.7 Privacy as a feature, loudly.** A visible "your data never left this page" indicator with a network-activity proof; it's a real moat vs. upload-to-server tools.
+
+---
+
+## Phase 6 — Platform & trust (longer horizon)
+
+- **6.1 Optional accounts** (the `account/` route exists) for saving dashboards/history across devices — *encrypted, opt-in, raw data stays client-side or client-encrypted.*
+- **6.2 Team workspaces** & comments on insights.
+- **6.3 Model routing & failover** via Vercel AI Gateway (already on the stack) — cost tracking, provider fallback, so the AI layer is robust and cheap.
+- **6.4 Public API / CLI** for the analysis engine (it's pure TS — could ship as an npm package).
+- **6.5 Evals & guardrails for the AI** — a regression suite of (dataset, question, expected-grounded-number) cases so the LLM narrator can never silently drift off the real numbers.
+
+---
+
+## Cross-cutting principles (apply to every item)
+
+1. **Privacy is the product.** Raw rows never leave the browser. Only aggregates/metadata reach `/api/insights`. Any new feature must preserve this — if it can't, it doesn't ship.
+2. **Grounded, never hallucinated.** Every number the AI states must be computed by the engine or be a transparent arithmetic derivation of engine numbers. Expand the grounding evals as the AI grows.
+3. **Graceful degradation.** The LLM is optional and off by default; everything must work (with real numbers) on the local heuristic/templated path alone.
+4. **Add behind the seams.** New analysis lands as a pure module under `src/lib` against the `types.ts` contracts; UI consumes it via the existing component pattern.
+5. **Always green.** `npm run typecheck`, `npm test`, `npm run build`, and Playwright stay passing; new engine logic ships with unit tests.
+6. **No new paid deps without asking.** Evaluate bundle-size and cost before adding anything.
+
+---
+
+## Suggested next 3 (if you just want to start)
+
+1. **1.1 Filtered questions** — biggest single jump in what the Q&A can answer; pure-TS + unit-testable.
+2. **1.3 AI picks the chart** — makes open-ended AI answers visual; small, contained change.
+3. **2.6 Data-quality scorecard** — high-perceived-value, reuses the cleaning report, great for the landing demo.

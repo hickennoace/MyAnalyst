@@ -41,3 +41,9 @@ server route `/api/insights` (the only place an LLM key lives).
 Vercel **Root Directory must be `apps/web`** and **Framework = Next.js** (pinned via
 `apps/web/vercel.json`). See `DEPLOY.md`. A wrong Root Directory is the cause of the classic
 "404 / No Output Directory `public`" errors.
+
+## Where we're going
+See **`ROADMAP.md`** for the prioritized feature/improvement plan (the goal: the best
+data-analysis website in the world). It's ordered by value × leverage and grouped into phases;
+each item names where it lands in the codebase and its done-when bar. Honor the cross-cutting
+principles there — privacy invariant, grounded-not-hallucinated, graceful degradation.
