@@ -105,19 +105,19 @@ export function DashboardView({
       )}
 
       {table && (
-        <Section title="Ask your data" subtitle="Plain-English questions, answered like an analyst — grounded in your real numbers.">
+        <Section title="Ask your data" subtitle="Plain-English questions, answered like an analyst — grounded in your real numbers." exclude>
           <QueryBox table={table} profiles={spec.profiles} domain={spec.domain.domain} />
         </Section>
       )}
 
       {table && (
-        <Section title="Build your own" subtitle="Ask for any chart you want — in plain English or by picking columns.">
+        <Section title="Build your own" subtitle="Ask for any chart you want — in plain English or by picking columns." exclude>
           <ChartBuilder table={table} profiles={spec.profiles} />
         </Section>
       )}
 
       {table && (
-        <Section title="Browse the data" subtitle="Search, sort, and page through every row.">
+        <Section title="Browse the data" subtitle="Search, sort, and page through every row." exclude>
           <DataTable table={table} profiles={spec.profiles} />
         </Section>
       )}
@@ -129,15 +129,19 @@ function Section({
   title,
   subtitle,
   badge,
+  exclude,
   children,
 }: {
   title: string;
   subtitle?: string;
   badge?: React.ReactNode;
+  exclude?: boolean;
   children: React.ReactNode;
 }) {
+  // `exclude` marks interactive sections (Ask / Build / Browse) so PNG & PDF export
+  // skip them — a static report shouldn't carry a half-typed query box or a giant table.
   return (
-    <section>
+    <section {...(exclude ? { "data-export-exclude": "" } : {})}>
       <div className="mb-3">
         <div className="flex items-center gap-2">
           <span className="section-accent" aria-hidden />

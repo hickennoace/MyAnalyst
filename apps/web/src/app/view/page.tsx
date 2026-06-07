@@ -33,8 +33,9 @@ export default function ViewPage() {
     if (!dashboardRef.current || !spec || exporting) return;
     setExporting(kind);
     try {
-      if (kind === "png") await exportPng(dashboardRef.current, spec.datasetName);
-      else await exportPdf(dashboardRef.current, spec.datasetName);
+      const meta = `${spec.rowCount.toLocaleString()} rows · ${spec.profiles.length} columns · ${spec.domain.domain}`;
+      if (kind === "png") await exportPng(dashboardRef.current, spec.datasetName, meta);
+      else await exportPdf(dashboardRef.current, spec.datasetName, meta);
     } catch {
       /* ignore — export is best-effort */
     } finally {

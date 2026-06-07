@@ -87,8 +87,9 @@ export default function AnalyzePage() {
     setExporting(kind);
     setError(null);
     try {
-      if (kind === "png") await exportPng(dashboardRef.current, spec.datasetName);
-      else await exportPdf(dashboardRef.current, spec.datasetName);
+      const meta = `${spec.rowCount.toLocaleString()} rows · ${spec.profiles.length} columns · ${spec.domain.domain}`;
+      if (kind === "png") await exportPng(dashboardRef.current, spec.datasetName, meta);
+      else await exportPdf(dashboardRef.current, spec.datasetName, meta);
     } catch {
       setError("Export failed — the dashboard may be too large. Try again or use PNG.");
     } finally {
