@@ -88,7 +88,7 @@ Differentiate on *statistical substance*, not just charts.
 
 - **5.1 Onboarding & sample datasets.** ✅ DONE (2026-06-07) — the landing hero's "Try a live sample" CTA deep-links to `/analyze?demo=1`, which auto-runs a freshly-generated demo dataset (each seeded with realistic mess so cleaning/stats have work to do). Now **nine** generators spanning all detected domains — sales, SaaS, e-commerce, marketing, HR, real-estate, fitness, and new **survey** + **finance** sets so the domain packs are all demoable. 1 test.
 - **5.2 Guided tour** of a generated dashboard the first time.
-- **5.3 Mobile-first dashboard layout** pass (charts, KPI cards, Ask box all thumb-friendly).
+- **5.3 Mobile-first dashboard layout** ✅ DONE (2026-06-07, ongoing) — all new cards (executive summary, quality, trends, segments, drivers, anomalies) use responsive grids that collapse to single-column on mobile; the new animated elements (quality ring, driver bars) now honor `prefers-reduced-motion`. (Ongoing: deeper small-screen tuning of charts + data table.)
 - **5.4 Accessibility to AAA** on the core flow; full keyboard nav for chart builder and Ask box.
 - **5.5 i18n** — start with RTL + Hebrew (the team's context), framework for more.
 - **5.6 Performance budget** — keep TTI low; lazy-load ECharts and heavy libs; measure with Lighthouse in CI.

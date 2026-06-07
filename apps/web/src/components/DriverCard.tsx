@@ -35,8 +35,8 @@ export function DriverCard({ drivers }: { drivers: DriverAnalysis }) {
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
                 <div
-                  className={`h-full rounded-full ${up ? "bg-emerald-400/70" : "bg-rose-400/70"} ${d.significant ? "" : "opacity-40"}`}
-                  style={{ width: `${w}%`, transition: "width 700ms cubic-bezier(0.22,1,0.36,1)" }}
+                  className={`h-full rounded-full ${up ? "bg-emerald-400/70" : "bg-rose-400/70"} ${d.significant ? "" : "opacity-40"} [transition:width_700ms_cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none`}
+                  style={{ width: `${w}%` }}
                 />
               </div>
             </div>

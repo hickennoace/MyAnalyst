@@ -33,10 +33,9 @@ export function QualityCard({ quality }: { quality: DataQuality }) {
               stroke="currentColor"
               strokeWidth="8"
               strokeLinecap="round"
-              className={STATUS[overall].ring}
+              className={`${STATUS[overall].ring} [transition:stroke-dashoffset_900ms_cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none`}
               strokeDasharray={circ}
               strokeDashoffset={circ * (1 - score / 100)}
-              style={{ transition: "stroke-dashoffset 900ms cubic-bezier(0.22,1,0.36,1)" }}
             />
           </svg>
           <div className="absolute text-center">
