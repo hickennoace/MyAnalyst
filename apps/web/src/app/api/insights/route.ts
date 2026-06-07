@@ -90,6 +90,22 @@ export async function POST(req: Request) {
     }
   }
 
+  // Task: plan — map a hard question to a STRUCTURED query plan from the schema only (no raw rows). The
+  // client validates it against the real columns and executes it LOCALLY, so the numbers stay exact and
+  // grounded. This is the "understand any question" planner, used when the local heuristics can't parse it.
+  if (body && typeof body === "object" && (body as { task?: string }).task === "plan") {
+    const { question, schema, conversation } = body as { question?: string; schema?: unknown; conversation?: unknown };
+    if (!question || typeof question !== "string") return NextResponse.json({ plan: null, provider: "error" });
+    try {
+      const { system, user } = buildPlanPrompt(question, schema, conversation);
+      const raw = await callLLM(system, user, { temperature: 0, maxTokens: 320 });
+      return NextResponse.json({ plan: extractJson(raw), provider });
+    } catch (err) {
+      console.error("[insights] plan failed:", err instanceof Error ? err.message : err);
+      return NextResponse.json({ plan: null, provider: "error" });
+    }
+  }
+
   // Task: answer — answer a plain-English "Ask your data" question as a thorough, professional analyst,
   // grounded strictly in pre-computed numbers (aggregates only; never raw rows). Returns prose + follow-ups.
   if (body && typeof body === "object" && (body as { task?: string }).task === "answer") {
@@ -205,6 +221,18 @@ function buildStoryPrompt(
     'Respond with ONLY JSON: {"story":{"industry":string,"summary":string}}',
   ].join("\n");
   const user = JSON.stringify({ draft, meta });
+  return { system, user };
+}
+
+// ── Query planner prompt ───────────────────────────────────────────────────────
+
+function buildPlanPrompt(question: string, schema: unknown, conversation: unknown) {
+  const system = [
+    "You convert a question about a dataset into a STRUCTURED query plan. You see only the SCHEMA (column names, roles, types, numeric ranges, a few sample category values) — never raw rows. Pick the single computation that best answers the question.",
+    'Respond with ONLY JSON: {"intent":"metric"|"aggregate"|"groupRank"|"groupAggregate"|"distribution"|"correlation"|"trend"|"compare"|"count"|"describe","metric"?:column,"metric2"?:column,"dimension"?:column,"agg"?:"sum"|"mean"|"max"|"min","direction"?:"top"|"bottom","filter"?:{"column":column,"op":"eq"|"gt"|"lt"|"gte"|"lte"|"between"|"year"|"contains","value":string|number,"value2"?:number},"compareValues"?:[valueA,valueB]}.',
+    "Use EXACT column names from the schema. Guidance: 'most/highest/best <thing>' → groupRank, direction top, dimension = the thing's category, metric = the quality asked about; 'lowest/worst/least' → bottom. Rate/score columns (intensity, price, rating, score, rate) → agg mean; additive ones (revenue, sales, units, amount, count) → agg sum. 'in 2023' → filter op year; 'over/above 100' → gt, 'under' → lt; 'for North' → eq on that dimension. 'A vs B' → intent compare, dimension = their column, compareValues=[A,B]. 'how many' → count. One metric's overall stats → metric. If the schema can't answer it, use intent describe.",
+  ].join("\n");
+  const user = JSON.stringify({ question, schema, conversation });
   return { system, user };
 }
 

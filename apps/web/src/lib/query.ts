@@ -579,6 +579,199 @@ function answerComparison(c: Comparison, table: Table, profiles: ColumnProfile[]
   return { ok: true, answer: `${head} ${detail}`, chart, method };
 }
 
+// ── LLM query plan ───────────────────────────────────────────────────────────
+// For questions the deterministic engine can't parse, the LLM acts as a query PLANNER: given only the
+// schema (column names/roles/types + small samples — never raw rows), it returns a structured plan. We
+// validate that plan against the real columns and execute it LOCALLY here, so the numbers are always
+// exact and grounded — the model chooses the method, this code computes the answer. Privacy intact.
+
+export interface PlanFilter {
+  column: string;
+  op: "eq" | "gt" | "lt" | "gte" | "lte" | "between" | "year" | "contains";
+  value: string | number;
+  value2?: number | null;
+}
+
+export interface QueryPlan {
+  intent: "metric" | "groupRank" | "groupAggregate" | "aggregate" | "compare" | "trend" | "correlation" | "count" | "distribution" | "describe";
+  metric?: string | null;
+  metric2?: string | null;
+  dimension?: string | null;
+  agg?: Agg | null;
+  direction?: "top" | "bottom" | null;
+  filter?: PlanFilter | null;
+  compareValues?: [string, string] | null;
+}
+
+function colByName(name: unknown, profiles: ColumnProfile[]): ColumnProfile | undefined {
+  if (typeof name !== "string" || !name) return undefined;
+  return profiles.find((p) => p.name === name) ?? profiles.find((p) => p.name.toLowerCase() === name.toLowerCase());
+}
+
+/** Validate a raw LLM plan against the dataset; coerce column names, drop anything off-spec. */
+export function validatePlan(raw: unknown, profiles: ColumnProfile[]): QueryPlan | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const INTENTS = new Set(["metric", "groupRank", "groupAggregate", "aggregate", "compare", "trend", "correlation", "count", "distribution", "describe"]);
+  if (!INTENTS.has(r.intent as string)) return undefined;
+  const name = (n: unknown): string | null => colByName(n, profiles)?.name ?? null;
+  const AGG = new Set<Agg>(["sum", "mean", "max", "min"]);
+  const plan: QueryPlan = { intent: r.intent as QueryPlan["intent"] };
+  plan.metric = name(r.metric);
+  plan.metric2 = name(r.metric2);
+  plan.dimension = name(r.dimension);
+  plan.agg = AGG.has(r.agg as Agg) ? (r.agg as Agg) : null;
+  plan.direction = r.direction === "bottom" ? "bottom" : r.direction === "top" ? "top" : null;
+  if (r.filter && typeof r.filter === "object") {
+    const f = r.filter as Record<string, unknown>;
+    const col = name(f.column);
+    const OPS = new Set(["eq", "gt", "lt", "gte", "lte", "between", "year", "contains"]);
+    if (col && OPS.has(f.op as string) && (typeof f.value === "string" || typeof f.value === "number")) {
+      plan.filter = { column: col, op: f.op as PlanFilter["op"], value: f.value as string | number, value2: typeof f.value2 === "number" ? f.value2 : null };
+    }
+  }
+  if (Array.isArray(r.compareValues) && r.compareValues.length === 2) {
+    plan.compareValues = [String(r.compareValues[0]), String(r.compareValues[1])];
+  }
+  return plan;
+}
+
+const planNum = (v: unknown): number => (typeof v === "number" ? v : parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, "")));
+
+/** Turn a validated plan filter into the same DataFilter shape the heuristic engine uses. */
+function planFilterToDataFilter(f: PlanFilter, profiles: ColumnProfile[]): DataFilter | undefined {
+  const col = colByName(f.column, profiles);
+  if (!col) return undefined;
+  const name = col.name;
+  switch (f.op) {
+    case "eq": {
+      const t = String(f.value).toLowerCase();
+      return { column: name, phrase: `for ${name} "${f.value}"`, label: String(f.value), predicate: (r) => String(r[name] ?? "").toLowerCase() === t };
+    }
+    case "contains": {
+      const t = String(f.value).toLowerCase();
+      return { column: name, phrase: `where ${name} contains "${f.value}"`, label: String(f.value), predicate: (r) => String(r[name] ?? "").toLowerCase().includes(t) };
+    }
+    case "year": {
+      const y = planNum(f.value);
+      return { column: name, phrase: `in ${y}`, label: `${y}`, predicate: (r) => { const d = new Date(String(r[name])); return !Number.isNaN(d.getTime()) && d.getFullYear() === y; } };
+    }
+    case "between": {
+      const lo = Math.min(planNum(f.value), planNum(f.value2));
+      const hi = Math.max(planNum(f.value), planNum(f.value2));
+      return { column: name, phrase: `where ${name} is between ${lo} and ${hi}`, label: `${name} ${lo}–${hi}`, predicate: (r) => { const v = planNum(r[name]); return Number.isFinite(v) && v >= lo && v <= hi; } };
+    }
+    default: {
+      const n = planNum(f.value);
+      const cmp: Record<string, (v: number) => boolean> = { gt: (v) => v > n, lt: (v) => v < n, gte: (v) => v >= n, lte: (v) => v <= n };
+      const pred = cmp[f.op];
+      if (!pred) return undefined;
+      const sym: Record<string, string> = { gt: ">", lt: "<", gte: "≥", lte: "≤" };
+      return { column: name, phrase: `where ${name} ${sym[f.op]} ${n}`, label: `${name} ${sym[f.op]} ${n}`, predicate: (r) => { const v = planNum(r[name]); return Number.isFinite(v) && pred(v); } };
+    }
+  }
+}
+
+/** Execute a validated plan locally → an exact, grounded answer (same shape/format as the heuristic). */
+export function executePlan(plan: QueryPlan, table: Table, profiles: ColumnProfile[]): QueryAnswer {
+  const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const dims = profiles.filter((p) => p.role === "dimension");
+  const time = profiles.find((p) => p.role === "time");
+  const filter = plan.filter ? planFilterToDataFilter(plan.filter, profiles) : undefined;
+  const view = filter ? applyFilter(table, filter) : table;
+  if (filter && view.rowCount === 0) return { ok: false, answer: `No records match ${filter.label}. Try a different value or range.` };
+  const scope = filter ? ` ${filter.phrase}` : "";
+  const metric = colByName(plan.metric, profiles) ?? metrics[0];
+  const dim = colByName(plan.dimension, profiles) ?? dims[0];
+  const aggFor = (m: ColumnProfile): Agg => plan.agg ?? chooseAgg(m, "");
+
+  switch (plan.intent) {
+    case "count":
+      return { ok: true, answer: `There are ${view.rowCount.toLocaleString()} records${filter ? scope : " in the dataset"}.`, method: `Counted rows — ${rowsNote(view, table, filter)}.` };
+    case "metric": {
+      if (!metric) break;
+      const vals = numericColumn(view, metric.name);
+      return { ok: true, answer: `${metric.name}${scope}: total ${fmt(aggregate(vals, "sum"), metric)}, average ${fmt(aggregate(vals, "mean"), metric)}, range ${fmt(aggregate(vals, "min"), metric)}–${fmt(aggregate(vals, "max"), metric)}.`, method: `Summary stats of ${metric.name} across ${rowsNote(view, table, filter)}.` };
+    }
+    case "aggregate": {
+      if (!metric) break;
+      const agg = plan.agg ?? "sum";
+      const v = aggregate(numericColumn(view, metric.name), agg);
+      const label = agg === "mean" ? "average" : agg === "sum" ? "total" : agg;
+      return { ok: true, answer: `The ${label} of ${metric.name}${scope} is ${fmt(v, metric)}.`, method: `${cap(label)} of ${metric.name} across ${rowsNote(view, table, filter)}.` };
+    }
+    case "groupRank":
+    case "groupAggregate": {
+      if (!metric || !dim) break;
+      const agg = aggFor(metric);
+      const ranked = groupBy(view, dim.name, metric.name, agg);
+      if (!ranked.length) break;
+      const wantLow = plan.direction === "bottom";
+      const top = (wantLow ? [...ranked].reverse() : ranked)[0];
+      const aggLabel = agg === "mean" ? "average" : agg === "sum" ? "total" : agg;
+      return {
+        ok: true,
+        answer: `By ${aggLabel} ${metric.name}, ${dim.name} "${top[0]}" is ${wantLow ? "lowest" : "highest"} at ${fmt(top[1], metric)}${scope}.`,
+        chart: agg === "sum" ? buildChart(view, profiles, { type: "bar", x: dim.name, y: [metric.name], aggregate: true }) : undefined,
+        method: `${cap(aggLabel)} ${metric.name} by ${dim.name} across ${rowsNote(view, table, filter)} (${ranked.length} groups).`,
+      };
+    }
+    case "distribution": {
+      if (!dim) break;
+      const counts = aggregateCount(view, dim.name);
+      const total = counts.reduce((s, [, c]) => s + c, 0);
+      if (!total) break;
+      const t0 = counts[0];
+      const t1 = counts[1];
+      return {
+        ok: true,
+        answer: `The most common ${dim.name} is "${t0[0]}" — ${t0[1]} of ${total} (${Math.round((t0[1] / total) * 100)}%)${t1 ? `, then "${t1[0]}" (${Math.round((t1[1] / total) * 100)}%)` : ""}${scope}.`,
+        chart: buildChart(view, profiles, { type: "bar", x: dim.name, y: [], count: true }),
+        method: `Tallied ${dim.name} across ${rowsNote(view, table, filter)} (${counts.length} distinct values).`,
+      };
+    }
+    case "correlation": {
+      const a = colByName(plan.metric, profiles) ?? metrics[0];
+      const b = colByName(plan.metric2, profiles) ?? metrics.find((m) => m !== a);
+      if (!a || !b) break;
+      const r = pearson(numericColumn(view, a.name), numericColumn(view, b.name));
+      if (!Number.isFinite(r)) break;
+      const strength = Math.abs(r) > 0.7 ? "strong" : Math.abs(r) > 0.4 ? "moderate" : "weak";
+      return { ok: true, answer: `${a.name} and ${b.name} have a ${strength} ${r > 0 ? "positive" : "negative"} correlation (r = ${r.toFixed(2)})${scope}.`, chart: buildChart(view, profiles, { type: "scatter", x: a.name, y: [b.name] }), method: `Pearson correlation of ${a.name} and ${b.name} across ${rowsNote(view, table, filter)}.` };
+    }
+    case "trend": {
+      if (!time || !metric) break;
+      const order = sortByTime(view, time.name);
+      const col = numericColumn(view, metric.name);
+      const series = order.map((i) => col[i]).filter(Number.isFinite);
+      if (series.length < 2) break;
+      const first = series[0];
+      const last = series[series.length - 1];
+      const pct = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : 0;
+      const d = pct > 1 ? "increased" : pct < -1 ? "decreased" : "stayed roughly flat";
+      return { ok: true, answer: `${metric.name} ${d} ${Math.abs(pct).toFixed(1)}% over the period${scope} (${fmt(first, metric)} → ${fmt(last, metric)}).`, chart: buildChart(view, profiles, { type: "line", x: time.name, y: [metric.name] }), method: `First vs last ${metric.name} along ${time.name} across ${rowsNote(view, table, filter)}.` };
+    }
+    case "compare": {
+      if (!metric || !dim || !plan.compareValues) break;
+      const agg = aggFor(metric);
+      const [lv, rv] = plan.compareValues;
+      const mk = (val: string) => (r: Record<string, unknown>) => String(r[dim.name] ?? "").toLowerCase() === val.toLowerCase();
+      const l = sliceAgg(view, metric.name, mk(lv), agg);
+      const rr = sliceAgg(view, metric.name, mk(rv), agg);
+      if (!Number.isFinite(l) || !Number.isFinite(rr)) break;
+      const aggLabel = agg === "mean" ? "average" : "total";
+      const higher = l > rr ? lv : rv;
+      return {
+        ok: true,
+        answer: `${cap(aggLabel)} ${metric.name}: ${lv} ${fmt(l, metric)} vs ${rv} ${fmt(rr, metric)}. ${l === rr ? "They're equal." : `${higher} is higher by ${fmt(Math.abs(l - rr), metric)}.`}`,
+        chart: buildComparisonChart(metric.name, agg === "mean" ? "mean" : "sum", [[lv, l], [rv, rr]]),
+        method: `Compared ${aggLabel} ${metric.name} for "${lv}" vs "${rv}"${scope}.`,
+      };
+    }
+  }
+  return { ok: false, answer: "" };
+}
+
 // ── AI path ────────────────────────────────────────────────────────────────────
 
 const round2 = (n: number): number | null => (Number.isFinite(n) ? Math.round(n * 100) / 100 : null);
@@ -908,6 +1101,44 @@ function buildSuggestedChart(question: string, table: Table, profiles: ColumnPro
  * engine computed (plus a whole-dataset brief so open-ended questions work too). Falls back to the
  * heuristic answer when the LLM is off or fails.
  */
+/** Privacy-safe schema brief for the LLM planner: column metadata + a few sample category values and
+ *  numeric ranges — never raw rows. */
+function buildSchemaBrief(table: Table, profiles: ColumnProfile[], domain?: string) {
+  return {
+    rowCount: table.rowCount,
+    domain: domain || undefined,
+    columns: profiles.map((p) => ({
+      name: p.name,
+      role: p.role,
+      type: p.type,
+      ...(p.numeric ? { min: round2(p.numeric.min), max: round2(p.numeric.max), mean: round2(p.numeric.mean) } : {}),
+      ...(p.topValues && p.topValues.length ? { sampleValues: p.topValues.slice(0, 6).map((v) => v.value) } : {}),
+    })),
+  };
+}
+
+/** LLM query planner: ask the model to map a hard question to a structured plan (schema only), validate
+ *  it, and execute it locally for an exact answer. Returns undefined on any failure (caller falls back). */
+async function planQuestion(question: string, table: Table, profiles: ColumnProfile[], domain?: string, history?: QaTurn[]): Promise<QueryAnswer | undefined> {
+  try {
+    const schema = buildSchemaBrief(table, profiles, domain);
+    const conversation = history?.filter((h) => h.a).slice(-2).map((h) => ({ q: h.q, a: h.a.slice(0, 200) }));
+    const res = await fetch("/api/insights", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ task: "plan", question, schema, conversation }),
+    });
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as { plan?: unknown };
+    const plan = validatePlan(data.plan, profiles);
+    if (!plan || plan.intent === "describe") return undefined;
+    const result = executePlan(plan, table, profiles);
+    return result.ok ? result : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function answerQuestionAI(
   question: string,
   table: Table,
@@ -916,8 +1147,16 @@ export async function answerQuestionAI(
   history?: QaTurn[],
   onToken?: (delta: string) => void
 ): Promise<RichAnswer> {
-  const base = answerQuestion(question, table, profiles);
+  let base = answerQuestion(question, table, profiles);
   if (!llmOn()) return { ...base, source: "heuristic" };
+
+  // Smart fallback: when the deterministic engine can't map the question, let the LLM PLAN the
+  // computation (schema only), then execute it locally for an exact, grounded result. One extra small
+  // LLM call, and only for the hard questions the heuristics miss.
+  if (!base.ok) {
+    const planned = await planQuestion(question, table, profiles, domain, history);
+    if (planned?.ok) base = planned;
+  }
   const evidence = buildEvidence(question, table, profiles, base.ok ? base.answer : "", domain, history);
 
   // Preferred path: stream the answer prose token-by-token for a live, responsive feel. Follow-ups
