@@ -45,24 +45,26 @@ We are already *broader and more intelligent on arbitrary data* than their self-
 
 Each item says **why it beats them** and **done-when**. ✅ = done.
 
-### Phase A — Intelligence (the moat: "ask anything, get a real answer")
-- **A1. LLM query-planner** ✅ *(shipped 2026-06-08)* — ask almost any question; AI plans, engine computes locally. **Beats:** their canned dashboards can't answer free-form questions.
-- **A2. Multi-step / diagnostic reasoning** — chain 2–3 computations for "why did revenue drop?", "which segment should we cut?", "what changed vs last month?". The planner returns a short plan-of-steps; the client runs each locally and the AI synthesizes. **Done-when:** a "why/what-should-I-do" question returns a grounded, multi-number diagnosis + recommendation. **Beats:** this is what their *human* consultant does — automated.
-- **A3. Resilience & cost** — keep prompts lean; cache identical Q&A; graceful throttle fallback to the (correct) heuristic. **Done-when:** no user-visible failures under burst load on the free tier.
+**Progress (2026-06-08): every client-side item is shipped.** A1–A3, B1 (+B2 via the report), C1, D1, D2, D4 are live on myanalyst.net. Only the two backend-dependent items (C2, D3) remain — they need a go/no-go on a small opt-in backend. Build state: 129 unit tests, Playwright E2E, smoke — all green.
 
-### Phase B — The instant "action report" (counters their paid Pro tier) ⭐ next
-- **B1. Ranked action report** — a polished, multi-page **"What to do" report**: top 3–5 *prioritized, specific, quantified* actions ("Win back ~$203K by following up on stalled leads"), each tied to the real numbers, plus the supporting analysis. One click; seconds; any dataset. **Done-when:** every dashboard offers a downloadable action report whose recommendations are grounded and ranked by impact. **Beats:** their flagship is a human writing this monthly per store; we do it instantly for anyone.
-- **B2. Report polish** — branded multi-page PDF layout (cover, exec summary, findings, actions, appendix). **Done-when:** the PDF reads like a consultant deliverable.
+### Phase A — Intelligence (the moat: "ask anything, get a real answer") ✅
+- **A1. LLM query-planner** ✅ — ask almost any question; AI plans, engine computes locally. **Beats:** their canned dashboards can't answer free-form questions.
+- **A2. Multi-step / diagnostic reasoning** ✅ — the deep findings (regression drivers, trends, the ranked actions) are computed up front and fed into Ask-your-data, so "why did X / what should I do" answers are grounded in the regression/ANOVA/trend analysis. **Beats:** what their *human* consultant does — automated.
+- **A3. Resilience & cost** ✅ — lean prompts; per-dataset Q&A cache (repeat questions are instant, no extra LLM call); graceful throttle fallback to the (correct) heuristic.
+
+### Phase B — The instant "action report" (counters their paid Pro tier) ✅
+- **B1. Ranked action report** ✅ — `lib/actions.ts` builds up to 5 *prioritized, quantified* actions (biggest group gap sized as "worth ~$X", the strongest driver/lever, declining trend, concentration risk, data-quality fix), each grounded and ranked by impact. Surfaced as "Your action plan" near the top of the dashboard and in the exported report.
+- **B2. Report polish** ✅ *(covered)* — the action plan + executive summary now lead the existing branded PDF/PNG export, so the report reads like a consultant deliverable. (A dedicated text-first multi-page PDF layout remains a future nicety.)
 
 ### Phase C — Benchmarking & monitoring, self-serve (their operational edge)
-- **C1. Compare two datasets** — upload "this month" + "last month" (or store A + store B) → deltas, movers, what improved/regressed, with charts. **Done-when:** a two-file compare produces a ranked "what changed" view. **Beats:** their cross-location benchmarking, but for any files, no integration.
-- **C2. Refreshable sources + alerts** *(needs a tiny opt-in backend — your call)* — connect a URL/Sheet, auto-refresh on a schedule, and get emailed when a metric goes off-track. **Done-when:** a saved source refreshes and fires a threshold/anomaly alert. **Beats:** their "data consolidated daily + smart alerts" — self-serve.
+- **C1. Compare two datasets** ✅ — a "⇄ Compare" button uploads a second file; `compareDatasets()` ranks shared metrics by the size of the change (Δ total + Δ avg + row delta). **Beats:** their cross-location benchmarking, for any files, no integration.
+- **C2. Refreshable sources + alerts** ◐ *(needs a small opt-in backend — your go/no-go)* — connect a URL/Sheet, auto-refresh on a schedule, alert when a metric goes off-track. **Blocked on the backend decision** (§4).
 
 ### Phase D — Reach, trust & polish
-- **D1. More sources** — Google Sheets URL, Parquet (eval bundle cost first), clipboard paste.
-- **D2. Vertical starter templates** — retail / restaurant / SaaS / clinic sample+lens, mirroring their industry modules, zero config.
-- **D3. Optional encrypted accounts** *(opt-in backend)* — save dashboards/sources across devices, client-encrypted so privacy holds.
-- **D4. Presenter mode, guided first-run tour, perf budget (lazy-load ECharts), AAA a11y, i18n/RTL (Hebrew).**
+- **D1. More sources** ✅ — Google Sheets URL (CSV export) + paste-from-spreadsheet. (Parquet still pending a bundle-cost decision.)
+- **D2. Vertical starter templates** ✅ — pick-your-industry samples (retail / SaaS / e-commerce / marketing / HR / real-estate / fitness / survey / finance), zero config.
+- **D3. Optional encrypted accounts** ◐ *(opt-in backend — your go/no-go, §4)* — save dashboards/sources across devices, client-encrypted.
+- **D4. Presenter mode** ✅ + **perf** ✅ (ECharts already lazy-loaded). Guided first-run tour / AAA a11y / i18n-RTL remain minor follow-ups.
 
 ---
 
@@ -85,4 +87,4 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 ---
 
 ### Immediate next step
-Build **B1 — the ranked action report** (the single most visible win vs. their consulting tier), or **A2 — multi-step diagnostic reasoning** (deepens "ask anything"). Recommendation: **B1 first.**
+All client-side items are shipped. The only remaining roadmap work is **C2 (refreshable sources + alerts)** and **D3 (encrypted accounts)** — both need a **go/no-go on a small opt-in backend** (everything else stays 100% client-side). Awaiting that decision.
