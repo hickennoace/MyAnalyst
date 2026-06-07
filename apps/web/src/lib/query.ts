@@ -42,11 +42,68 @@ const AGG_WORDS: { agg: Agg; re: RegExp; label: string }[] = [
   { agg: "min", re: /\b(min|minimum|lowest|smallest|least)\b/, label: "minimum" },
 ];
 
+/** Loose token match so a question word like "intense" resolves the column "Intensity", "calorie"
+ *  resolves "Calories", "duration" resolves "Duration (min)", etc. */
+function stemMatch(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length >= 4 && b.startsWith(a)) return true;
+  if (b.length >= 4 && a.startsWith(b)) return true;
+  let p = 0;
+  const n = Math.min(a.length, b.length);
+  while (p < n && a[p] === b[p]) p++;
+  return p >= 5; // share a long prefix (intens·ity ↔ intens·e)
+}
+
+const tokenize = (s: string): string[] => s.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+
+/** Does any token of a column's name loosely match the given word? */
+function columnMatchesWord(word: string, col: ColumnProfile): boolean {
+  const cl = col.name.toLowerCase();
+  if (cl.includes(word) || word.includes(cl)) return true;
+  return tokenize(cl).some((ct) => stemMatch(ct, word));
+}
+
+/** Columns referenced in the text — by exact name, else by a loose (stemmed) word match. Ordered
+ *  by where they appear so "spend vs revenue" keeps spend first. */
 function resolveCols(text: string, cols: ColumnProfile[]): ColumnProfile[] {
   const lower = text.toLowerCase();
-  return cols
-    .filter((c) => lower.includes(c.name.toLowerCase()))
-    .sort((a, b) => lower.indexOf(a.name.toLowerCase()) - lower.indexOf(b.name.toLowerCase()));
+  const words = tokenize(lower);
+  const scored: { c: ColumnProfile; pos: number }[] = [];
+  for (const c of cols) {
+    let pos = lower.indexOf(c.name.toLowerCase()); // exact substring wins
+    if (pos < 0) {
+      for (const w of words) {
+        if (columnMatchesWord(w, c)) {
+          pos = lower.indexOf(w);
+          break;
+        }
+      }
+    }
+    if (pos >= 0) scored.push({ c, pos });
+  }
+  return scored.sort((a, b) => a.pos - b.pos).map((s) => s.c);
+}
+
+// Superlative cues, used to tell "rank a group" ("most intense workout") from "the overall extreme"
+// ("maximum duration"). The distinguishing signal is a leftover subject noun or an explicit dimension.
+const SUPER_HI = /\b(most|highest|largest|biggest|greatest|strongest|longest|top|best|maximum|max|peak)\b/;
+const SUPER_LO = /\b(least|lowest|smallest|weakest|shortest|fewest|bottom|worst|minimum|min)\b/;
+const RATE_LIKE = /(intensity|rating|score|rate|ratio|index|percent|pct|average|avg|age|temperature|temp|speed|level|satisfaction|nps|price|cost|efficiency|density)/i;
+const RANK_STOP = new Set([
+  "what", "whats", "which", "the", "is", "are", "most", "least", "highest", "lowest", "largest", "smallest",
+  "biggest", "best", "worst", "top", "bottom", "greatest", "strongest", "weakest", "longest", "shortest",
+  "maximum", "minimum", "max", "min", "peak", "average", "avg", "mean", "typical", "total", "sum", "combined",
+  "overall", "aggregate", "for", "per", "each", "and", "value", "values", "how", "much", "many", "that",
+  "this", "with", "does", "has", "have", "across", "over", "whole", "entire", "dataset", "data", "there",
+  "get", "show", "give", "tell", "any", "all",
+]);
+
+/** Pick sum vs mean for a ranking: averages for rate/score-like metrics (intensity, price, rating),
+ *  sums for additive quantities (revenue, units) — unless the question says otherwise. */
+function chooseAgg(metric: ColumnProfile, lower: string): Agg {
+  if (/\b(average|avg|mean|typical|per)\b/.test(lower)) return "mean";
+  if (/\b(total|sum|combined|overall|aggregate)\b/.test(lower)) return "sum";
+  return RATE_LIKE.test(metric.name) ? "mean" : "sum";
 }
 
 function fmt(n: number, profile?: ColumnProfile): string {
@@ -98,6 +155,14 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
 
   const mMetrics = resolveCols(text, metrics);
   const mDims = resolveCols(text, dims);
+
+  // "Most <quality> <thing>" intent: a superlative plus a leftover subject noun ("most intense workout")
+  // or an explicit dimension means "rank a group", not "give the overall extreme". Subject nouns are the
+  // question words that don't refer to any column and aren't filler — their presence flips us to ranking.
+  const hasSuper = SUPER_HI.test(lower) || SUPER_LO.test(lower);
+  const subjectNouns = tokenize(lower).filter((w) => !RANK_STOP.has(w) && !profiles.some((p) => columnMatchesWord(w, p)));
+  const rankingIntent =
+    hasSuper && (mDims.length > 0 || /\b(which|each|per|category|type|kind|group|segment)\b/.test(lower) || subjectNouns.length > 0);
 
   // Comparison questions ("North vs South revenue", "how does 2023 compare to 2022") — two slices of
   // the same dimension or two periods, answered with the gap, ratio and % difference plus a paired bar.
@@ -197,16 +262,16 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     }
   }
 
-  // 4. Ranking: "which region has the highest revenue", "top products by sales".
-  if (/\b(which|top|highest|largest|best|lowest|bottom|worst|rank)\b/.test(lower)) {
+  // 4. Ranking / superlative-by-group: "which region has the highest revenue", "most intense workout",
+  //    "top products by sales". Fires on explicit ranking words OR a superlative aimed at a group.
+  if (/\b(which|top|rank|ranking)\b/.test(lower) || rankingIntent) {
     const dim = mDims[0] ?? dims[0];
     const metric = mMetrics[0] ?? metrics[0];
     if (dim && metric) {
-      const aggMatch = AGG_WORDS.find((w) => w.re.test(lower));
-      const agg: Agg = aggMatch?.agg === "mean" ? "mean" : "sum";
+      const wantLowest = SUPER_LO.test(lower);
+      const agg = chooseAgg(metric, lower);
       const ranked = groupBy(view, dim.name, metric.name, agg);
       if (ranked.length) {
-        const wantLowest = /\b(lowest|bottom|worst|smallest|least)\b/.test(lower);
         const ordered = wantLowest ? [...ranked].reverse() : ranked;
         const top = ordered[0];
         const aggLabel = agg === "mean" ? "average" : "total";

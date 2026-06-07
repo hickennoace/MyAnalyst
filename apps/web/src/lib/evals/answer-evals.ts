@@ -32,7 +32,28 @@ const SALES: Table = {
   rowCount: 6,
 };
 
+// A fitness table (Activity dimension + Intensity/Duration metrics) to guard the "most <quality> <thing>"
+// intent — the bug where "most intense workout" wrongly returned "max of Duration".
+const FITNESS: Table = {
+  name: "fitness.csv",
+  columns: ["Activity", "Duration (min)", "Intensity"],
+  rows: [
+    { Activity: "Run", "Duration (min)": 30, Intensity: 6 },
+    { Activity: "Run", "Duration (min)": 45, Intensity: 7 },
+    { Activity: "HIIT", "Duration (min)": 20, Intensity: 10 },
+    { Activity: "HIIT", "Duration (min)": 25, Intensity: 9 },
+    { Activity: "Yoga", "Duration (min)": 90, Intensity: 2 },
+    { Activity: "Yoga", "Duration (min)": 70, Intensity: 3 },
+    { Activity: "Run", "Duration (min)": 40, Intensity: 6 },
+    { Activity: "Yoga", "Duration (min)": 80, Intensity: 2 },
+  ],
+  rowCount: 8,
+};
+
 export const ANSWER_EVALS: AnswerEval[] = [
+  // "Most <quality> <thing>" must rank the group by the right metric — not give an unrelated extreme.
+  { name: "most intense workout → rank by Intensity", table: FITNESS, question: "what is the most intense workout", expect: ["Intensity", "HIIT"], forbid: ["Duration"] },
+  { name: "overall maximum duration (not grouped)", table: FITNESS, question: "what is the maximum duration", expect: ["90"], forbid: ["Activity"] },
   { name: "total aggregate", table: SALES, question: "total revenue", expect: ["1,050"] },
   { name: "grouped average", table: SALES, question: "average revenue by region", expect: ["North", "200"] },
   { name: "ranking by total", table: SALES, question: "which region has the highest revenue", expect: ["North", "600"] },

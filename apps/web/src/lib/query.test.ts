@@ -105,6 +105,62 @@ describe("answerQuestion", () => {
   });
 });
 
+// A fitness dataset like the one in the screenshot: Activity (dimension) + Intensity / Duration metrics.
+// 12 rows / 3 activities so Activity is a proper dimension (cardinality 0.25 < 0.5). HIIT is the most
+// intense; Yoga has the longest single session (90 min).
+function fitnessTable(): Table {
+  const rows = [
+    { Activity: "Run", "Duration (min)": 30, Intensity: 6, Calories: 300 },
+    { Activity: "Run", "Duration (min)": 45, Intensity: 7, Calories: 450 },
+    { Activity: "Run", "Duration (min)": 35, Intensity: 6, Calories: 320 },
+    { Activity: "Run", "Duration (min)": 40, Intensity: 7, Calories: 400 },
+    { Activity: "HIIT", "Duration (min)": 20, Intensity: 10, Calories: 280 },
+    { Activity: "HIIT", "Duration (min)": 25, Intensity: 9, Calories: 320 },
+    { Activity: "HIIT", "Duration (min)": 22, Intensity: 10, Calories: 300 },
+    { Activity: "HIIT", "Duration (min)": 24, Intensity: 9, Calories: 310 },
+    { Activity: "Yoga", "Duration (min)": 60, Intensity: 3, Calories: 150 },
+    { Activity: "Yoga", "Duration (min)": 90, Intensity: 2, Calories: 200 },
+    { Activity: "Yoga", "Duration (min)": 70, Intensity: 3, Calories: 160 },
+    { Activity: "Yoga", "Duration (min)": 80, Intensity: 2, Calories: 180 },
+  ];
+  return { name: "fit.csv", columns: ["Activity", "Duration (min)", "Intensity", "Calories"], rows, rowCount: rows.length };
+}
+
+describe("smart intent: 'most <quality> <thing>' (bug fix)", () => {
+  const t = fitnessTable();
+  const p = profileTable(t);
+
+  it("answers 'most intense workout' by ranking the activity by intensity (not max Duration)", () => {
+    const r = answerQuestion("What is the most intense workout?", t, p);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("Intensity");
+    expect(r.answer).toContain("HIIT"); // HIIT has the highest average intensity
+    expect(r.answer.toLowerCase()).not.toContain("duration"); // the old bug answered with Duration
+  });
+
+  it("handles 'most intense activity' and 'sport' the same correct way", () => {
+    for (const q of ["What is the most intense activity?", "the most intense sport"]) {
+      const r = answerQuestion(q, t, p);
+      expect(r.answer).toContain("Intensity");
+      expect(r.answer).toContain("HIIT");
+    }
+  });
+
+  it("still treats 'maximum duration' as an overall extreme, not a per-group ranking", () => {
+    const r = answerQuestion("what is the maximum duration", t, p);
+    expect(r.ok).toBe(true);
+    expect(r.answer.toLowerCase()).toContain("duration");
+    expect(r.answer).toContain("90");
+    expect(r.answer).not.toContain("Activity"); // not grouped
+  });
+
+  it("fuzzily resolves a stemmed column name (calorie → Calories)", () => {
+    const r = answerQuestion("total calories", t, p);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("Calories");
+  });
+});
+
 describe("multi-facet evidence (Phase 1.5)", () => {
   it("pre-computes the focal metric across multiple named dimensions", async () => {
     const { buildFocalFacts } = await import("./query");
