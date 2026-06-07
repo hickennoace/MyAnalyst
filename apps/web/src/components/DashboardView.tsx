@@ -10,6 +10,7 @@ import { AnomalyCard } from "./AnomalyCard";
 import { TimeTrendCard } from "./TimeTrendCard";
 import { SegmentCard } from "./SegmentCard";
 import { DriverCard } from "./DriverCard";
+import { CohortCard } from "./CohortCard";
 import { ExecutiveSummary } from "./ExecutiveSummary";
 import { domainFocus } from "@/lib/domain-pack";
 import { QueryBox } from "./QueryBox";
@@ -118,6 +119,12 @@ export function DashboardView({
       {spec.drivers && spec.drivers.drivers.length > 0 && (
         <Section title="What moves the needle" subtitle={`The factors that most influence ${spec.drivers.target}, each holding the others constant.`}>
           <DriverCard drivers={spec.drivers} />
+        </Section>
+      )}
+
+      {spec.cohorts && spec.cohorts.cohorts.length > 1 && (
+        <Section title="Cohort retention" subtitle="How well each cohort sticks around over time — the heartbeat of recurring-revenue data.">
+          <CohortCard cohorts={spec.cohorts} />
         </Section>
       )}
 

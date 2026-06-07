@@ -24,6 +24,7 @@ import { buildDataStory } from "./story";
 import { computeDataQuality } from "./quality";
 import { analyzeTimeSeries } from "./timeseries";
 import { segmentRows } from "./segment";
+import { analyzeCohorts } from "./cohort";
 import { getInsightProvider } from "./insights";
 import { llmEnabled, sharpenStory } from "./insights/humanize";
 
@@ -55,6 +56,7 @@ export async function analyze(
   const quality = computeDataQuality(table, profiles, cleaning);
   const anomalies = detectAnomalies(table, profiles);
   const segmentation = segmentRows(table, profiles);
+  const cohorts = analyzeCohorts(table, profiles);
   stage("Detecting domain");
   const domain = detectDomain(profiles, opts.userContext);
   stage("Computing KPIs");
@@ -114,6 +116,7 @@ export async function analyze(
     timeAnalysis: timeAnalysis.length ? timeAnalysis : undefined,
     segmentation,
     drivers: ctx.drivers,
+    cohorts,
   };
 }
 

@@ -334,6 +334,26 @@ export interface Segmentation {
   sampled?: number;
 }
 
+// ── Cohort & retention ────────────────────────────────────────────────────────
+
+export interface CohortRow {
+  /** the cohort's first period, e.g. "2023-01". */
+  label: string;
+  /** entities first seen in this cohort. */
+  size: number;
+  /** retention % at offset 0,1,2,… (offset 0 is always 100). */
+  retention: (number | null)[];
+}
+
+export interface CohortAnalysis {
+  entity: string;
+  time: string;
+  cadence: Cadence;
+  cohorts: CohortRow[];
+  /** widest retention row (number of offset columns). */
+  periodCount: number;
+}
+
 // ── Data-quality scorecard ────────────────────────────────────────────────────
 
 /** One dimension of the data-quality score (completeness, uniqueness, …). */
@@ -388,6 +408,8 @@ export interface DashboardSpec {
   segmentation?: Segmentation;
   /** Multiple-regression "what moves the primary metric" driver analysis (when ≥2 predictors exist). */
   drivers?: DriverAnalysis;
+  /** Cohort retention grid, when the data has a recurring entity id + a time column. */
+  cohorts?: CohortAnalysis;
 }
 
 export interface DataStory {

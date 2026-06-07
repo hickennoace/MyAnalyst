@@ -65,6 +65,19 @@ function movingAverage(values: number[], window: number): (number | null)[] {
   return out;
 }
 
+/** Detect cadence from a set of timestamps (ms) — exposed for reuse (e.g. cohort analysis). */
+export function detectCadence(times: number[]): Cadence {
+  const sorted = [...times].sort((a, b) => a - b);
+  const gaps: number[] = [];
+  for (let i = 1; i < sorted.length; i++) gaps.push((sorted[i] - sorted[i - 1]) / DAY);
+  return cadenceFromGapDays(median(gaps.filter((g) => g > 0)) || 30);
+}
+
+/** The period bucket label for a date at a given cadence (e.g. "2023-Q2") — exposed for reuse. */
+export function periodKey(d: Date, cadence: Cadence): string {
+  return bucketLabel(d, cadence);
+}
+
 export function analyzeTimeSeries(table: Table, timeCol: string, metricName: string): TimeSeriesAnalysis | undefined {
   const vals = numericColumn(table, metricName);
   const points: { t: number; v: number }[] = [];
