@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ColumnProfile, Table } from "@/lib/types";
+import type { ColumnProfile, Domain, Table } from "@/lib/types";
 import { answerQuestionAI, type QaTurn, type RichAnswer } from "@/lib/query";
 import { llmEnabled } from "@/lib/insights/humanize";
+import { domainSuggestions } from "@/lib/domain-pack";
 import { Chart } from "./Chart";
 
 // "Ask your data" box. Computes the exact numbers locally, then — when the optional LLM is enabled —
@@ -26,7 +27,7 @@ export function QueryBox({
 }: {
   table: Table;
   profiles: ColumnProfile[];
-  domain?: string;
+  domain?: Domain;
 }) {
   const [q, setQ] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -35,7 +36,11 @@ export function QueryBox({
   const threadEndRef = useRef<HTMLDivElement>(null);
   const ai = useMemo(() => llmEnabled(), []);
 
-  const suggestions = useMemo(() => buildSuggestions(profiles), [profiles]);
+  // Domain-tuned example questions (grounded in real columns), falling back to generic ones.
+  const suggestions = useMemo(
+    () => (domain ? domainSuggestions(domain, profiles) : buildSuggestions(profiles)),
+    [domain, profiles]
+  );
 
   // Keep the newest question/answer in view as the conversation grows. Skip the very first
   // render (nothing to scroll to) and honor reduced-motion preferences.

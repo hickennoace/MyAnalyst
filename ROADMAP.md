@@ -61,7 +61,7 @@ Differentiate on *statistical substance*, not just charts.
 - **2.4 Cohort & retention** (when an entity id + time exist) — retention curves and cohort heatmaps; huge for SaaS/marketing datasets.
 - **2.5 Driver analysis, explained.** ✅ DONE (2026-06-07) — the existing multiple-regression `DriverAnalysis` is now lifted onto `DashboardSpec.drivers` and rendered as a "What moves the needle" `DriverCard`: factors ranked by standardized effect (β) with direction bars, significance flags, model fit (R²), and the correlation-≠-causation caveat.
 - **2.6 Data-quality scorecard.** ✅ DONE (2026-06-07) — `computeDataQuality()` in `lib/quality.ts` scores five weighted, plain-language checks (completeness, uniqueness, informative columns, value consistency, outlier levels) into a 0–100 health score + letter grade, each failing check carrying a concrete fix. Reuses the cleaning report + profiles (cheap, runs in the worker). Surfaced as a score-ring `QualityCard` in `DashboardView`. 3 tests.
-- **2.7 Smarter domain packs.** Per-domain (sales / finance / marketing / survey) KPI + insight templates so the dashboard feels purpose-built, not generic.
+- **2.7 Smarter domain packs.** ✅ DONE (2026-06-07) — `lib/domain-pack.ts` adds per-domain `domainFocus()` orientation and `domainSuggestions()` — example questions selected/phrased per domain (financial / sales / marketing / survey / generic) but grounded in the dataset's REAL columns so they execute. Wired into the Ask box (suggestions + focus subtitle). 3 tests. (Domain already steers KPI/chart selection upstream.)
 
 ---
 

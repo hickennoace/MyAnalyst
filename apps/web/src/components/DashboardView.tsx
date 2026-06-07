@@ -10,6 +10,7 @@ import { AnomalyCard } from "./AnomalyCard";
 import { TimeTrendCard } from "./TimeTrendCard";
 import { SegmentCard } from "./SegmentCard";
 import { DriverCard } from "./DriverCard";
+import { domainFocus } from "@/lib/domain-pack";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
 
@@ -140,7 +141,7 @@ export function DashboardView({
       )}
 
       {table && (
-        <Section title="Ask your data" subtitle="Plain-English questions, answered like an analyst — grounded in your real numbers." exclude>
+        <Section title="Ask your data" subtitle={`${domainFocus(spec.domain.domain)} Ask in plain English — grounded in your real numbers.`} exclude>
           <QueryBox table={table} profiles={spec.profiles} domain={spec.domain.domain} />
         </Section>
       )}
