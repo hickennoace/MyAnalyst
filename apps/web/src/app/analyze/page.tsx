@@ -13,6 +13,7 @@ import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEnt
 import { compareDatasets, type DatasetComparison } from "@/lib/compare-datasets";
 import { profileTable } from "@/lib/profile";
 import { ComparisonCard } from "@/components/ComparisonCard";
+import { PresenterMode } from "@/components/PresenterMode";
 import { Uploader } from "@/components/Uploader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
@@ -49,6 +50,7 @@ export default function AnalyzePage() {
   const [comparison, setComparison] = useState<DatasetComparison | null>(null);
   const [comparing, setComparing] = useState(false);
   const compareInputRef = useRef<HTMLInputElement>(null);
+  const [presenting, setPresenting] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [jobDesc, setJobDesc] = useState("");
@@ -347,6 +349,13 @@ export default function AnalyzePage() {
                 🔗 Share
               </button>
               <button
+                onClick={() => setPresenting(true)}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
+                title="Full-screen presenter mode for walking a room through the findings"
+              >
+                ▶ Present
+              </button>
+              <button
                 onClick={() => compareInputRef.current?.click()}
                 disabled={comparing}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
@@ -520,6 +529,8 @@ export default function AnalyzePage() {
             />
           </div>
         )}
+
+        {presenting && spec && <PresenterMode spec={spec} onClose={() => setPresenting(false)} />}
 
         {comparison && (
           <div className="mb-6">
