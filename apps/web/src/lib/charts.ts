@@ -3,6 +3,9 @@ import { numericColumn } from "./profile";
 import { maxOf, minOf, pearson } from "./stats";
 import { primaryMetric, sortByTime } from "./kpi";
 import { defaultHorizon, forecastBand, forecastSeries } from "./forecast";
+import { isTransactionGrain, revenueMetric } from "./semantics";
+import { analyzeBestSellers } from "./bestsellers";
+import { analyzeTimeSeries, trimPartialTail } from "./timeseries";
 import {
   ANIMATION, INK, PALETTE, barSeries, categoryAxis, color, grid, legend, lineSeries, tooltip, valueAxis, vGradient,
 } from "./chart-theme";
@@ -46,6 +49,24 @@ function compact(n: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }
 
+/** A sorted bar chart of [label, value] pairs (already aggregated). */
+function barByDim(title: string, rationale: string, pairs: [string, number][]): ChartSpec {
+  return {
+    id: "chart-bar-by-dim",
+    type: "bar",
+    title,
+    rationale,
+    option: {
+      ...ANIMATION,
+      tooltip: tooltip(),
+      grid: grid({ top: 28 }),
+      xAxis: categoryAxis(pairs.map((p) => p[0]), { axisLabel: { color: INK.sub, fontSize: 11, rotate: pairs.length > 6 ? 28 : 0, hideOverlap: true } }),
+      yAxis: valueAxis(),
+      series: [barSeries(pairs.map((p) => p[1]), 0, { label: valueLabel })],
+    },
+  };
+}
+
 // ── Auto-recommendation ────────────────────────────────────────────────────
 
 export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartSpec[] {
@@ -54,8 +75,31 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   const dims = profiles.filter((p) => p.role === "dimension");
 
-  // 1. Time series line for each metric (when there's a time axis).
-  if (time && metrics.length) {
+  // 1. Trend over time. For transaction data, that's total REVENUE per month (a clean trend line) — not
+  //    a noisy tangle of every sale's price and the buyer's age. Otherwise, the raw metrics over time.
+  const grainForTrend = isTransactionGrain(profiles, table.rowCount);
+  const revForTrend = grainForTrend ? revenueMetric(profiles, grainForTrend) : undefined;
+  if (time && revForTrend) {
+    const ts = analyzeTimeSeries(table, time.name, revForTrend.name, "monthly");
+    if (ts && ts.periods.length >= 3) {
+      const label = /revenue|sales|amount|spend|cost|profit/i.test(revForTrend.name) ? revForTrend.name : "revenue";
+      charts.push({
+        id: "chart-timeseries",
+        type: "line",
+        title: `Monthly ${label.toLowerCase()} over time`,
+        rationale: "Transaction data → total revenue summed per month, the trend that actually matters.",
+        option: {
+          ...ANIMATION,
+          color: PALETTE,
+          tooltip: tooltip(),
+          grid: grid({ top: 24 }),
+          xAxis: categoryAxis(ts.periods.map((p) => p.label), { boundaryGap: false }),
+          yAxis: valueAxis(),
+          series: [lineSeries(`monthly ${label.toLowerCase()}`, ts.periods.map((p) => p.value), 0, { area: true })],
+        },
+      });
+    }
+  } else if (time && metrics.length) {
     const order = sortByTime(table, time.name);
     const x = axisLabels(table, time.name, order);
     const chosen = metrics.slice(0, 4);
@@ -81,26 +125,22 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
     });
   }
 
-  // 2. Bar of a metric by the strongest categorical dimension.
-  if (dims.length && metrics.length) {
+  // 2. "What sells the most": total REVENUE by the product/category dimension — the headline sales chart.
+  //    Falls back to summing a generic additive metric by the first dimension when there's no revenue.
+  const grain = isTransactionGrain(profiles, table.rowCount);
+  const revenue = revenueMetric(profiles, grain);
+  const bs = revenue ? analyzeBestSellers(table, profiles) : undefined;
+  if (revenue && bs) {
+    const pairs = aggregateBy(table, bs.dimension, revenue.name);
+    if (pairs.length >= 2) {
+      charts.push(barByDim(`Revenue by ${bs.dimension}`, "Total revenue per category — which products actually drive the money.", pairs));
+    }
+  } else if (dims.length && metrics.length) {
     const dim = dims[0];
     const metric = metrics[0];
     const pairs = aggregateBy(table, dim.name, metric.name);
     if (pairs.length >= 2) {
-      charts.push({
-        id: "chart-bar-by-dim",
-        type: "bar",
-        title: `${metric.name} by ${dim.name}`,
-        rationale: "A category column plus a metric → comparison across groups.",
-        option: {
-          ...ANIMATION,
-          tooltip: tooltip(),
-          grid: grid({ top: 28 }),
-          xAxis: categoryAxis(pairs.map((p) => p[0]), { axisLabel: { color: INK.sub, fontSize: 11, rotate: pairs.length > 6 ? 28 : 0, hideOverlap: true } }),
-          yAxis: valueAxis(),
-          series: [barSeries(pairs.map((p) => p[1]), 0, { label: valueLabel })],
-        },
-      });
+      charts.push(barByDim(`${metric.name} by ${dim.name}`, "A category column plus a metric → comparison across groups.", pairs));
     }
   }
 
@@ -159,18 +199,36 @@ function scatterOption(xName: string, yName: string, data: number[][]) {
 }
 
 function forecastChart(table: Table, profiles: ColumnProfile[], time: ColumnProfile): ChartSpec | null {
-  const pm = primaryMetric(profiles);
-  if (!pm) return null;
-  const order = sortByTime(table, time.name);
-  const values = numericColumn(table, pm.name);
-  const series = order.map((i) => values[i]).filter(Number.isFinite);
+  // For transaction data, forecast total REVENUE per month (a real flow); otherwise forecast the primary
+  // metric's series directly (e.g. a price level in financial data).
+  const grain = isTransactionGrain(profiles, table.rowCount);
+  const revenue = revenueMetric(profiles, grain);
+  let series: number[];
+  let histLabels: string[];
+  let metricLabel: string;
+  if (grain && revenue) {
+    const ts = analyzeTimeSeries(table, time.name, revenue.name, "monthly");
+    if (!ts) return null;
+    const periods = ts.periods.slice();
+    const trimmed = trimPartialTail(periods.map((p) => p.value));
+    series = trimmed.filter(Number.isFinite);
+    histLabels = periods.slice(0, trimmed.length).map((p) => p.label);
+    metricLabel = /revenue|sales|amount|spend|cost|profit/i.test(revenue.name) ? `Monthly ${revenue.name.toLowerCase()}` : "Monthly revenue";
+  } else {
+    const pm = primaryMetric(profiles);
+    if (!pm) return null;
+    const order = sortByTime(table, time.name);
+    const values = numericColumn(table, pm.name);
+    series = order.map((i) => values[i]).filter(Number.isFinite);
+    histLabels = order.map((i) => String(table.rows[i][time.name] ?? ""));
+    metricLabel = pm.name;
+  }
   if (series.length < 6) return null;
 
   const horizon = defaultHorizon(series.length);
   const fc = forecastSeries(series, horizon);
   if (!fc) return null;
 
-  const histLabels = order.map((i) => String(table.rows[i][time.name] ?? ""));
   const forecastLabels = Array.from({ length: horizon }, (_, h) => `+${h + 1}`);
   const x = [...histLabels, ...forecastLabels];
 
@@ -187,7 +245,7 @@ function forecastChart(table: Table, profiles: ColumnProfile[], time: ColumnProf
   return {
     id: "chart-forecast",
     type: "line",
-    title: `${pm.name} forecast (+${horizon} periods)`,
+    title: `${metricLabel} forecast (+${horizon} periods)`,
     subtitle: fc.seasonal
       ? `Holt-Winters (seasonal, period ${fc.period}) · α=${fc.alpha}, β=${fc.beta}, γ=${fc.gamma} · shaded = 95% range`
       : `Holt's linear trend · α=${fc.alpha}, β=${fc.beta} · shaded = 95% range`,
