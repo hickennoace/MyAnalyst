@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     }
     try {
       const { system, user } = buildHumanizePrompt(conclusions, userContext);
-      const raw = await callLLM(system, user);
+      const raw = await callLLM(system, user, { temperature: 0.5 });
       return NextResponse.json({ conclusions: normalizeHumanized(raw, conclusions), provider });
     } catch (err) {
       console.error("[insights] humanize failed:", err instanceof Error ? err.message : err);
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     };
     try {
       const { system, user } = buildStoryPrompt(draft ?? {}, meta ?? {});
-      const raw = await callLLM(system, user);
+      const raw = await callLLM(system, user, { temperature: 0.5 });
       const parsed = extractJson(raw) as { story?: { industry?: unknown; summary?: unknown } };
       const industry = String(parsed.story?.industry ?? draft?.industry ?? "").trim().slice(0, 60);
       const summary = String(parsed.story?.summary ?? "").trim();
@@ -175,7 +175,8 @@ export async function POST(req: Request) {
   const validCites = collectValidCites(ctx);
   const { system, user } = buildPrompt(ctx, validCites);
   try {
-    const insights = normalizeInsights(await callLLM(system, user), validCites);
+    // Slightly cooler than the prose tasks: insights must stay tightly tied to the numbers.
+    const insights = normalizeInsights(await callLLM(system, user, { temperature: 0.4 }), validCites);
     return NextResponse.json({ insights, provider });
   } catch (err) {
     console.error("[insights] LLM call failed:", err instanceof Error ? err.message : err);
@@ -187,12 +188,12 @@ export async function POST(req: Request) {
 
 function buildHumanizePrompt(conclusions: { id: string; text: string; detail?: string }[], userContext?: string) {
   const system = [
-    "You are a warm, friendly analyst explaining findings to someone with NO statistics background.",
-    "Rewrite each conclusion so it sounds natural and human — like a smart colleague talking, not a textbook.",
+    "You are a sharp, friendly analyst turning blunt statistical conclusions into clear takeaways for someone with NO statistics background.",
+    "Rewrite each conclusion so it leads with the takeaway in plain words and makes the reader feel why it matters — like a smart colleague talking it through, not a textbook restating a result.",
     "HARD RULES:",
-    "1. Keep the exact meaning and EVERY specific number/percentage/name. Never invent or change facts or numbers.",
-    "2. Plain everyday language, no jargon. 1–2 short sentences each. Encouraging, clear, concrete.",
-    userContext ? `3. The reader's context: "${userContext}". Tailor wording/examples to that.` : "3. (No extra context.)",
+    "1. Keep the exact meaning and EVERY specific number, percentage, and name. Never invent, drop, or change a figure.",
+    "2. Plain everyday language, no jargon. 1–2 tight sentences each. Confident, concrete, and clear — not flowery or padded.",
+    userContext ? `3. The reader's context: "${userContext}". Tailor the wording, emphasis, and any example to that goal.` : "3. (No extra context.)",
     'Respond with ONLY JSON: {"conclusions":[{"id":string,"text":string}]} — same ids you were given.',
   ].join("\n");
   const user = JSON.stringify({ conclusions: conclusions.map((c) => ({ id: c.id, text: c.text, detail: c.detail })) });
@@ -219,10 +220,11 @@ function buildStoryPrompt(
   meta: { datasetName?: string; domain?: string; rowCount?: number; columns?: { name: string; role: string; type: string }[]; userContext?: string }
 ) {
   const system = [
-    "You are a sharp data analyst. From dataset METADATA ONLY (column names + roles, detected domain, row count) and a rough draft, write a crisp, specific description of what the dataset is.",
-    "Cover, in 3–4 natural sentences: the likely industry/subject; what a single row represents; what it mainly measures and the dimensions it's broken down by; and what people use data like this for.",
-    "Be concrete and confident, but NEVER invent specific facts, numbers, names, or claims not implied by the column names and roles. You are given no raw data rows — do not pretend to know specific values.",
-    meta.userContext ? `The user described their goal: "${meta.userContext}". Frame the description around that goal.` : "(No user goal provided.)",
+    "You are a sharp data analyst writing the 'About this data' summary — the orientation a colleague would want before diving in. Work from METADATA ONLY (column names + roles, detected domain, row count, any time span implied by the columns) plus a rough draft.",
+    "Write 3–4 natural, specific sentences that answer: what this dataset is and the likely industry/subject; what a single row represents (the unit of analysis); what it primarily measures and the main dimensions it's broken down by; and what decisions or questions data like this is used to answer.",
+    "Be concrete and confident in tone, but describe the SHAPE of the data, never invented specifics. NEVER state a value, total, name, or claim that isn't implied by the column names and roles — you have no raw rows, so do not pretend to know specific figures.",
+    "Plain language, no jargon or schema-speak. It should read like a knowledgeable colleague orienting you, not a column listing.",
+    meta.userContext ? `The user described their goal: "${meta.userContext}". Frame the description around that goal — what they'd look for in this data to achieve it.` : "(No user goal provided.)",
     "Also return a short industry/subject label of at most 4 words.",
     'Respond with ONLY JSON: {"story":{"industry":string,"summary":string}}',
   ].join("\n");
@@ -298,16 +300,18 @@ function collectValidCites(ctx: InsightContext): Set<string> {
 
 function buildPrompt(ctx: InsightContext, validCites: Set<string>) {
   const system = [
-    "You are a warm, friendly analyst explaining what the data means to someone with NO statistics background — like a smart colleague talking them through it over coffee.",
-    "You are given ONLY pre-computed statistics (KPIs, correlations, a regression, trends, outliers) — never raw data.",
+    "You are a principal data analyst writing the headline findings for a busy decision-maker. Plain, jargon-free language — but sharp and specific, like a trusted advisor who respects the reader's time and tells them what actually matters and why.",
+    "You are given ONLY pre-computed statistics (KPIs, correlations, a regression of drivers, trends, outliers, group comparisons) — never raw rows.",
+    "Each insight must EARN its place. A strong insight does three things in 1–2 tight sentences: leads with the concrete number, says what it MEANS for the reader, and points to one thing to do or check. Be specific — name the segment, the driver, the direction, the size of the gap.",
     "Hard rules:",
-    "1. Only state numbers that appear in the provided context. NEVER invent, round differently, or estimate numbers.",
-    "2. Every insight must reference at least one id from the provided `validCites` list in its `cites` array.",
-    "3. Write in plain, everyday language — no jargon, no statistics terms (say 'these move together', not 'correlation r='). Keep each insight to 1–2 short, natural sentences.",
-    "4. Make it useful: say what it likely MEANS and what the reader could DO about it. Gently note when something could just be coincidence, and that things moving together doesn't prove one causes the other.",
-    "5. If the context includes `userContext` (the user's job/goal), tailor your wording, emphasis, and examples to that goal.",
-    "6. Return 4 to 6 insights, most important first.",
-    "7. NO OBVIOUS OR TAUTOLOGICAL INSIGHTS. Skip anything a reader already knows by definition: a metric correlating with a column derived from it (tax↔sales, total↔price×quantity, a unit conversion, a near-perfect r≈1.0 link), or merely restating a KPI's value as if it were a finding. If a 'relationship' is true by construction, it is not an insight — drop it and surface something non-obvious instead. Prefer fewer, genuinely informative insights over filler.",
+    "1. GROUNDING: state only numbers that appear in the context. Never invent, re-round, or estimate a figure. Plain arithmetic of given numbers (a difference, a %, a share) is fine; a brand-new number is not.",
+    "2. CITES: every insight references at least one id from the provided `validCites` list in its `cites` array.",
+    "3. PLAIN LANGUAGE: no statistics terms — say 'these tend to rise together', not 'r = 0.7'; say 'the strongest lever', not 'highest standardized β'. Explain any idea in passing.",
+    "4. CALIBRATE confidence honestly: use 'high' only when the finding is strong and clear; use 'low' when it's weak, a small sample, or could be coincidence — and say so in the text. Things moving together never proves one causes the other; note that where it matters.",
+    "5. VARIETY & PRIORITY: lead with the single most decision-relevant finding, then cover DIFFERENT angles (a driver, a gap between groups, a trend over time, a risk/outlier, a concentration) — don't return five versions of the same correlation. Quantify impact where you can ('a 15% gap', 'about a third of the total').",
+    "6. NO OBVIOUS / TAUTOLOGICAL INSIGHTS: skip anything true by construction (a metric vs a column derived from it, tax↔sales, total↔price×quantity, a unit conversion, a near-perfect r≈1.0 link) or a bare restatement of a KPI's value. If it's true by definition, drop it and surface something non-obvious instead.",
+    "7. Return 4 to 6 insights, most important first. Fewer genuinely useful insights beat padding.",
+    "8. If the context includes `userContext` (the reader's job/goal), frame the emphasis, wording, and suggested actions around that goal.",
     'Respond with ONLY a JSON object: {"insights":[{"text":string,"confidence":"high"|"medium"|"low","kind":"summary"|"trend"|"correlation"|"regression"|"outlier"|"composition","cites":string[]}]}',
   ].join("\n");
 
