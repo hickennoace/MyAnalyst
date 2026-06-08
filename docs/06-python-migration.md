@@ -124,7 +124,12 @@ Original scope (for reference):
 - Tests: extend `_test_engine.py`; add a parity script that runs the **same CSV** through TS (`scripts/smoke`)
   and Python and diffs KPI values/headline facts (tolerance for float noise).
 
-### Phase 3 — AI conclusions
+### Phase 3 — AI conclusions  ✅ DONE
+Shipped `api/conclude.py` + `_conclude.py`: Groq over stdlib urllib (no SDK), grounding verifier flags
+invented figures, zero-API templated fallback, disclaimer. 7 tests green. (Real Groq call validates once
+the preview deploy has the `LLM_API_KEY`.)
+
+Original scope:
 - `api/conclude.py`: take `facts[]` + domain + userContext → Groq (`gpt-oss-120b`, reasoning low/hidden) →
   **decision-first conclusions + prioritized action plan**. Reuse the consultant-grade prompt + the numeric
   **grounding verifier** (every figure must trace to a fact; flag any that don't). Gemini fallback. Always
@@ -139,7 +144,14 @@ Original scope (for reference):
   `/api/analyze-heavy`. If the full stack (sklearn) won't fit, stand up a small **FastAPI** service instead
   and point the frontend at it.
 
-### Phase 5 — Frontend wiring & cutover
+### Phase 5 — Frontend wiring & cutover  🟡 IN PROGRESS
+Shipped the client (`lib/py-engine.ts`, samples under 4.5 MB), the chart adapter (`lib/py-charts.ts` →
+styled ECharts `ChartSpec`), a `PythonDashboard` component, and an **isolated `/analyze-py` page** (upload
+CSV → `/api/analyze` → `/api/conclude` → render). Nothing on `/analyze` changed. **Remaining:** validate
+`/analyze-py` on the preview, run the parity basket, then flip `NEXT_PUBLIC_ENGINE=python` on the main page.
+The k-means `segments` and (future) RFM/cohort/relationships still need rendering in `PythonDashboard`.
+
+Original scope:
 - A thin client `lib/py-client.ts`: POST the parsed/sampled data to `/api/analyze`, receive the spec.
 - A **feature flag** (`NEXT_PUBLIC_ENGINE=python|ts`): render the Python spec with the existing KPI cards +
   ECharts; keep the TS engine as fallback. Ship to preview, dogfood on real files.
