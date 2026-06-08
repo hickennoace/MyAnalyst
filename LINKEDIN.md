@@ -1,37 +1,41 @@
-# LinkedIn Post — MyAnalyst
+# LinkedIn Post - MyAnalyst
 
 > Copy-paste ready. Pick the English or Hebrew version below. Replace the **Website** link with your live URL before posting.
 
 ---
 
-## 🇬🇧 English
+## English
 
-Just shipped MyAnalyst 📊
+Just shipped MyAnalyst.
 
-An AI-powered analytics tool that's a zero-skill alternative to Power BI / Tableau: drop in an Excel, CSV, or JSON file and get an instant, fully-explained dashboard back — auto-cleaned data, ranked KPIs, real statistics, forecasts, auto-generated charts, and plain-language insights. No mapping, no config, no learning curve.
+It's a tool that turns a messy spreadsheet into an actual report in a few seconds. You drop in an Excel, CSV, or JSON file and it hands you back a clean dashboard: the data gets fixed up automatically, the important numbers get pulled out, you get real statistics and a forecast, charts are drawn for you, and everything is explained in plain language. No setup, no formulas, nothing to learn.
 
-I built it to see how far a serious analysis engine can be pushed *entirely in the browser*. The whole pipeline — parsing, cleaning, type inference, domain detection, KPI selection, OLS regression, ANOVA, chi-square, correlation significance, and Holt's time-series forecasting — runs client-side in pure TypeScript. That means no backend, no API key, and your data never leaves the page. Leak-proof by design.
+I built it because I got tired of watching people stare at a pile of data with no idea where to start. I wanted something where you didn't need to know anything about analysis to get a real answer out of your own numbers. So I built that.
 
-The hardest part wasn't the charts — it was making it genuinely *smart* at zero cost and with zero hallucination. Every "insight" is written by a grounded narrator that can only fill templates with numbers the engine actually computed, so it can't invent a fact. A real LLM narrator is built in behind a privacy boundary (only aggregate stats ever cross the wire) but ships off by default. Best lesson of the project.
+The interesting part is how it works: the whole thing runs inside your browser. Reading the file, cleaning it, figuring out what each column is, picking the right stats, running the regression and the forecast - all of it happens on your machine, in plain TypeScript. That means there's no server, no API key, and your file never leaves the page. Nothing to leak, because nothing gets sent anywhere.
 
-Built with Next.js 15, React 19, TypeScript, Tailwind v4, and ECharts. 190 tests, CI/CD, runs fully client-side.
+The hardest part was making it genuinely smart for free, without it ever making things up. Every sentence it writes is filled in with numbers the engine actually calculated, so it can't invent a fact. There's an optional AI layer too, but it's off by default and only ever sees summary stats, never your raw data.
+
+Built with Next.js 15, React 19, TypeScript, Tailwind, and ECharts. 190 tests, CI/CD, runs fully in the browser.
 Repo: https://github.com/hickennoace/MyAnalyst
 Website: <ADD-YOUR-LIVE-URL>
-Feedback welcome 🙏
+Feedback welcome.
 
 ---
 
-## 🇮🇱 עברית
+## עברית
 
-שחררתי את MyAnalyst 📊
+שחררתי את MyAnalyst.
 
-כלי אנליטיקה מבוסס AI שהוא חלופה ל-Power BI / Tableau בלי צורך בשום ידע מקדים: גוררים קובץ Excel, CSV או JSON — ומקבלים מיד דאשבורד מלא ומוסבר עד הסוף: נתונים שעברו ניקוי אוטומטי, מדדי KPI מדורגים, סטטיסטיקה אמיתית, תחזיות, גרפים שנוצרים לבד, ותובנות בשפה פשוטה. בלי מיפוי, בלי הגדרות, בלי עקומת למידה.
+זה כלי שלוקח קובץ נתונים מבולגן והופך אותו לדוח אמיתי תוך כמה שניות. אתה גורר קובץ Excel, CSV או JSON, ומקבל בחזרה דאשבורד נקי: הנתונים מסתדרים לבד, המספרים החשובים נשלפים החוצה, אתה מקבל סטטיסטיקה אמיתית ותחזית, הגרפים מצוירים בשבילך, והכל מוסבר בשפה פשוטה. בלי הגדרות, בלי נוסחאות, בלי שום דבר ללמוד.
 
-בניתי אותו כדי לבדוק עד כמה אפשר לדחוף מנוע ניתוח רציני שרץ *לגמרי בתוך הדפדפן*. כל הצינור — פענוח, ניקוי, זיהוי טיפוסים, זיהוי תחום, בחירת KPI, רגרסיית OLS, ANOVA, חי בריבוע, מובהקות מתאם ותחזית סדרות-זמן בשיטת Holt — רץ בצד הלקוח ב-TypeScript טהור. כלומר אין שרת, אין מפתח API, והמידע שלך אף פעם לא יוצא מהעמוד. חסין דליפות מעצם התכנון.
+בניתי אותו כי נמאס לי לראות אנשים בוהים בערימת נתונים בלי מושג מאיפה להתחיל. רציתי משהו שבו אתה לא צריך להבין כלום באנליטיקה כדי להוציא תשובה אמיתית מהמספרים שלך. אז בניתי את זה.
 
-החלק הכי קשה לא היה הגרפים — אלא להפוך אותו לחכם *באמת*, בלי עלות ובלי הזיות. כל "תובנה" נכתבת על ידי נרטור מעוגן שיכול למלא תבניות רק במספרים שהמנוע באמת חישב, ולכן הוא לא יכול להמציא עובדה. יש גם נרטור מבוסס LLM אמיתי, מאחורי גבול פרטיות (רק נתונים מצרפיים חוצים את הרשת) — אבל הוא כבוי כברירת מחדל. השיעור הכי טוב מהפרויקט.
+החלק המעניין הוא איך זה עובד: הכל רץ בתוך הדפדפן שלך. קריאת הקובץ, הניקוי, ההבנה מה כל עמודה, בחירת הסטטיסטיקה הנכונה, הרגרסיה והתחזית - הכל קורה על המחשב שלך, ב-TypeScript פשוט. כלומר אין שרת, אין מפתח API, והקובץ שלך אף פעם לא יוצא מהעמוד. אין מה לדלוף, כי שום דבר לא נשלח לשום מקום.
 
-נבנה עם Next.js 15, React 19, TypeScript, Tailwind v4 ו-ECharts. 190 בדיקות, CI/CD, רץ לגמרי בצד הלקוח.
+החלק הכי קשה היה לגרום לו להיות חכם באמת בחינם, בלי שאף פעם הוא ימציא דברים. כל משפט שהוא כותב מתמלא במספרים שהמנוע באמת חישב, ולכן הוא לא יכול להמציא עובדה. יש גם שכבת AI אופציונלית, אבל היא כבויה כברירת מחדל ורואה רק נתונים מסכמים, אף פעם לא את המידע הגולמי שלך.
+
+נבנה עם Next.js 15, React 19, TypeScript, Tailwind ו-ECharts. 190 בדיקות, CI/CD, רץ לגמרי בדפדפן.
 ריפו: https://github.com/hickennoace/MyAnalyst
 אתר: <ADD-YOUR-LIVE-URL>
-אשמח לפידבק 🙏
+אשמח לפידבק.
