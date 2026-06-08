@@ -1,12 +1,12 @@
 # LinkedIn Post - MyAnalyst
 
-> Copy-paste ready. Pick the English or Hebrew version below. Replace the **Website** link with your live URL before posting.
+> Copy-paste ready. Pick the English or Hebrew version below.
 
 ---
 
 ## English
 
-Just shipped MyAnalyst.
+Meet MyAnalyst 📊
 
 It's a tool that turns a messy spreadsheet into an actual report in a few seconds. You drop in an Excel, CSV, or JSON file and it hands you back a clean dashboard: the data gets fixed up automatically, the important numbers get pulled out, you get real statistics and a forecast, charts are drawn for you, and everything is explained in plain language. No setup, no formulas, nothing to learn.
 
@@ -18,14 +18,14 @@ The hardest part was making it genuinely smart for free, without it ever making 
 
 Built with Next.js 15, React 19, TypeScript, Tailwind, and ECharts. 190 tests, CI/CD, runs fully in the browser.
 Repo: https://github.com/hickennoace/MyAnalyst
-Website: <ADD-YOUR-LIVE-URL>
+Website: https://myanalyst.net
 Feedback welcome.
 
 ---
 
 ## עברית
 
-שחררתי את MyAnalyst.
+הכירו את MyAnalyst 📊
 
 זה כלי שלוקח קובץ נתונים מבולגן והופך אותו לדוח אמיתי תוך כמה שניות. אתה גורר קובץ Excel, CSV או JSON, ומקבל בחזרה דאשבורד נקי: הנתונים מסתדרים לבד, המספרים החשובים נשלפים החוצה, אתה מקבל סטטיסטיקה אמיתית ותחזית, הגרפים מצוירים בשבילך, והכל מוסבר בשפה פשוטה. בלי הגדרות, בלי נוסחאות, בלי שום דבר ללמוד.
 
@@ -37,5 +37,5 @@ Feedback welcome.
 
 נבנה עם Next.js 15, React 19, TypeScript, Tailwind ו-ECharts. 190 בדיקות, CI/CD, רץ לגמרי בדפדפן.
 ריפו: https://github.com/hickennoace/MyAnalyst
-אתר: <ADD-YOUR-LIVE-URL>
+אתר: https://myanalyst.net
 אשמח לפידבק.
