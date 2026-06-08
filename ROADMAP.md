@@ -131,12 +131,14 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 - **W3.3 Aggregator-label bug fixed** ✅ — group rankings used a binary `mean ? "average" : "total"` label, so a median (or max/min) ranking was mislabelled a "total". Now a shared `labelForAgg()` names every aggregator correctly. Guarded by a regression test.
 - *Tests:* +7 unit + 2 grounding evals → **178 unit tests**; typecheck + build + smoke green.
 
-### Next (prioritized, all deterministic/client-side unless noted)
-- **W3.4 Share / percentage-of-total** — "what % of revenue comes from North", "share of orders that are cancelled". Compute group total ÷ grand total; attach a pie/share chart. Highest-value gap remaining in Q&A. **Done-when:** scoped % answers exactly, with the numerator/denominator shown in `method`.
-- **W3.5 Percentiles & quartiles** — "90th percentile of price", "top-quartile customers". Reuse the sorted-array path from median. **Done-when:** p25/p50/p75/p90 answerable and grounded.
-- **W3.6 Numeric grounding verifier (AI trust)** — extract the numbers from an LLM answer and classify each as grounded (present in the evidence payload, or a transparent derivation: difference/ratio/%/share, within a rounding tolerance) vs. unverifiable; surface a subtle "✓ grounded" / "⚠ unverified figure" signal. Pure-function + heavily unit-tested to keep false positives near zero. Directly serves the §3b "rigor is the moat" thesis. **Done-when:** the verifier flags an injected hallucinated number in tests and never flags a legitimately-derived one.
-- **W3.7 Two-dimension group-bys** — "revenue by region and product". Cross-tab + heatmap/stacked-bar. **Done-when:** a 2-key breakdown answers with the top cell and a matrix chart.
-- **W3.8 Planner repair loop** — when the LLM returns a plan that fails validation, do one cheap repair pass (echo the rejected fields) before falling back to the heuristic. **Done-when:** malformed-plan recovery measurably lifts the answer rate on the eval set.
+### Shipped — second batch (2026-06-08)
+- **W3.4 Share / percentage-of-total** ✅ — "what % of revenue comes from North" → metric share (slice total ÷ grand total) with a pie; "what percentage of orders are South" → row-count share. Numerator/denominator shown in `method`.
+- **W3.5 Percentiles & quartiles** ✅ — "90th percentile of price", "top/bottom quartile of revenue" via linear interpolation between order statistics (reuses the median sorted-array path).
+- **W3.6 Numeric grounding verifier (AI trust)** ✅ — `lib/grounding.ts`: extracts the numbers from an LLM answer and classifies each as grounded (verbatim, sig-fig-rounded, or a transparent derivation — difference/sum/ratio/%/share/%-change) vs. unverifiable; structural numbers (small counts/ordinals ≤ 12, years) exempt, tolerances wide so legitimate figures are never wrongly flagged. Wired into `answerQuestionAI` (`RichAnswer.grounding`) and surfaced in `QueryBox` as "✓ Every figure traces back to your data" / "⚠ Couldn't verify: …". Pure + 9 unit tests.
+- **W3.7 Two-dimension group-bys** ✅ — "revenue by region and product" cross-tabulates the metric (or counts) by two dimensions, names the top cell + combination count, and draws a stacked bar (`buildCrossTabChart`).
+- **W3.8 Planner repair loop** ✅ — a rejected first plan (bad intent / unknown column) triggers ONE repair attempt feeding the exact reason + valid column names back to the model before the heuristic fallback. Pure, tested `planRejectionReason()`.
+
+> **Wave 3 is COMPLETE.** Test suite **198 unit tests** + grounding evals, Playwright E2E, smoke — all green. The Ask-your-data engine now answers median / percentile / share-of-total / count-distinct / two-dimension breakdowns exactly and privately (no LLM round-trip), the LLM planner has median + a repair loop, and every AI answer carries a numeric grounding signal.
 
 ---
 
