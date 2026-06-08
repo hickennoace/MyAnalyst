@@ -72,7 +72,7 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 
 > Phases A–D took us to parity-plus on the self-serve surface. This wave is about **out-thinking** them: the analyses a senior consultant *actually* does by hand, more rigor than a dashboard ever shows, and reach into where data really lives — **all without breaking the 100%-client-side / privacy-first line.** Ordered by value × leverage. Each item is buildable as a pure `src/lib` module + a dashboard card unless noted.
 >
-> **Status (2026-06-08): Phases E, F, H, I1 and G2 all shipped & live; G3 shipped earlier. Only the two heavy-dependency items remain — G1 (Parquet/PDF/OCR ingest) and I2 (in-browser WebGPU model) — awaiting a bundle-cost go/no-go.** Test suite 144→160 unit tests, all green; typecheck + build + smoke pass.
+> **Status (2026-06-08): Wave 2 COMPLETE — every item E–I is shipped & live, including the two heavy-dependency ones (G1 ingest, I2 on-device model) after the go-all-of-them call.** Test suite 144→164 unit tests, all green; typecheck + build + smoke pass.
 
 ### Phase E — Consultant-grade analysis (the biggest unmatched value) ✅
 - **E1. Contribution / mix-shift decomposition** ✅ — `lib/contribution.ts` + "What drove the change" card: attributes the primary metric's period-over-period move to a dimension; per-segment deltas sum to the total, plus mix-shift (share gained/lost). **Done.**
@@ -86,8 +86,8 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 - **F2. Caveat propagation** ✅ — `lib/caveats.ts` flows the data-quality findings into a "read with care" strip + a ⚠ on any KPI derived from a flagged column. **Done.**
 - **F3. Methodology appendix + reproducible recipe** ✅ — `lib/methodology.ts` + MethodologyCard: methods/assumptions/limitations (incl. the not-financial-advice disclaimer) kept in the export, a deterministic fingerprint, and a downloadable `.recipe.json`. **Done.**
 
-### Phase G — Reach without a backend
-- **G1. Meet data where it lives** ◐ *(needs a heavy-dep go/no-go — §4)* — Parquet, PDF-table extraction, image-of-a-table (OCR), multi-file drop. Each pulls a sizeable new dependency (parquet-wasm / pdf.js / tesseract.js), so it's gated on a bundle-cost call.
+### Phase G — Reach without a backend ✅
+- **G1. Meet data where it lives** ✅ — Parquet (hyparquet, pure-JS), PDF-table extraction (pdf.js positioned text), and image/OCR (tesseract.js) ingest, all dynamically imported so they only load on use. PDF + OCR share the pure, unit-tested `lib/table-extract.ts` reconstruction core. **Done.**
 - **G2. Install & offline (PWA) + mobile polish** ✅ — web manifest (installable, maskable icon), service worker (network-first navigations + stale-while-revalidate assets, never caches `/api`), production registrar; analyzes data with no network once cached. **Done.**
 - **G3. Privacy-preserving "refresh" without our servers** ✅ *(shipped earlier — Google Sheet/URL re-fetch + local re-analyze).*
 
@@ -96,18 +96,15 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 - **H2. White-label / branded export** ✅ — `lib/brand.ts` + BrandEditor: name, accent, logo (local-only) applied to the report, deck, and image-export header. **Done.**
 - **H3. Auto-generated slide deck** ✅ — `exportDeckPdf` turns the spec into a landscape readout deck (cover + key-findings/actions/metrics slides + notes). **Done.**
 
-### Phase I — Optional AI depth (privacy intact)
+### Phase I — Optional AI depth (privacy intact) ✅
 - **I1. Bring-your-own-key LLM** ✅ — `lib/llm-settings.ts` + AiKeyEditor: a user's own provider key (stored locally, off by default) threaded through the analyzer to the narrator; the `/api/insights` route prefers a per-request BYOK key over the env and never persists it. Metadata-only context unchanged. **Done.** *(Follow-up: extend BYOK to the Ask-your-data planner; today it still uses the server key.)*
-- **I2. In-browser LLM (WebGPU / transformers.js)** ◐ *(needs a heavy-dep go/no-go — §4)* — fully-offline narration with no network call at all. Pulls a large dependency + a model download, so it's gated on a bundle/UX call.
+- **I2. In-browser LLM (WebGPU / transformers.js)** ✅ — `lib/local-llm.ts` runs Qwen2.5-0.5B-Instruct in-browser via WebGPU; opt-in toggle, lazy-loaded (weights cached after first download), zero network at inference. After analysis the page sharpens the story locally and degrades silently if WebGPU/model is unavailable. **Especially valuable on the free Groq tier — uses no API quota.** **Done.**
 
 ---
 
 ## 4. Explicitly deferred (need your decision)
-- **Heavy-dependency ingest & local model (G1, I2)** — the only wave-2 items not yet built, *because* they each add a sizeable new dependency and the project rule is "no deps without asking":
-  - **G1:** Parquet (`parquet-wasm`, ~MBs of WASM), PDF-table extraction (`pdf.js`), image-of-a-table OCR (`tesseract.js`, large + slow). Likely do them à la carte rather than all at once.
-  - **I2:** in-browser WebGPU model (`@huggingface/transformers` + a multi-hundred-MB model download) for zero-network narration.
-  - **Awaiting:** a per-feature bundle-cost go/no-go.
-- **Any backend** (C2 alerts/scheduled refresh, D3 accounts): crosses the 100%-client-side line. G3 already covers most of C2's value without a server.
+- **Heavy-dependency ingest & local model (G1, I2)** — ✅ **built (2026-06-08)** after the "go for all of them" call. All dynamically imported so the initial bundle is unchanged. Done with hyparquet (Parquet), pdf.js (PDF), tesseract.js (OCR), and `@huggingface/transformers` (WebGPU model).
+- **Any backend** (C2 alerts/scheduled refresh, D3 accounts): crosses the 100%-client-side line. G3 already covers most of C2's value without a server. Still deferred.
 - **Their actual model** (POS/QuickBooks integrations, multi-tenant SaaS, sales team, human consulting): deliberately *not* pursued — that's their game, capital-heavy, and not our edge.
 
 ## 5. How we'll know we're winning
@@ -117,12 +114,13 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 - Privacy stays absolute: raw rows never leave the browser. This is the line we never cross.
 
 ## 6. What I need from you
-- **One decision (the only blocker left):** the **G1 / I2 heavy-dependency go/no-go.** Everything else in wave 2 is built and pushed. Pick which (if any) of these to pull a dep for: Parquet ingest, PDF-table extraction, image/OCR ingest, in-browser WebGPU model — or hold them all.
+- **Nothing blocking — wave 2 is fully shipped.** Worth a manual pass on the new heavy-ingest paths with real files when convenient (a real Parquet, a tabular PDF, a screenshot of a table) and a try of on-device mode on a WebGPU browser, since those can't be unit-tested headlessly.
 - **Still deferred unless you reopen it:** any of *our* backend (C2 managed alerts, D3 cloud accounts). G3 already covers most of C2's value without a server.
+- **Small follow-up:** extend I1 BYOK to the Ask-your-data planner (today it uses the server key).
 
 ---
 
-### Status: wave 1 shipped · wave 2 ~90% shipped (2026-06-08)
+### Status: wave 1 shipped · wave 2 COMPLETE (2026-06-08)
 **Wave 1 (Phases A–D, client-side) is complete and live at myanalyst.net.** **Decision stands: MyAnalyst is 100% client-side / privacy-first** — managed-backend items (**C2** alerts, **D3** cloud accounts) remain deferred; **G3** is the privacy-preserving alternative.
 
-**Wave 2 (Phases E–I, §3b): Phases E, F, H, plus G2 and I1 are shipped and pushed to `main`** — consultant-grade analysis (contribution decomposition, what-if/goal-seek, anomaly root-cause, open-text analytics), rigor/trust (significance everywhere, caveat propagation, methodology + reproducible recipe), the deliverable (text-first PDF report, white-label, slide deck), PWA/offline, and bring-your-own-key narration. Test suite at **160 unit tests**, all green; typecheck + build + smoke pass. **Only G1 (heavy-dep ingest) and I2 (in-browser model) remain — gated on the bundle-cost decision in §4.** Also open as a small follow-up: extend I1 BYOK to the Ask-your-data planner (today it uses the server key).
+**Wave 2 (Phases E–I, §3b) is fully shipped and pushed to `main`:** consultant-grade analysis (contribution decomposition, what-if/goal-seek, anomaly root-cause, open-text analytics), rigor/trust (significance everywhere, caveat propagation, methodology + reproducible recipe), the deliverable (text-first PDF report, white-label, slide deck), PWA/offline, bring-your-own-key narration, **heavy-dependency ingest (Parquet/PDF/OCR), and an on-device WebGPU model.** Test suite at **164 unit tests**, all green; typecheck + build + smoke pass. Next horizon would be a fresh wave (or the deferred backend items) — open for direction.
