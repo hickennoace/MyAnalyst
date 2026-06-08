@@ -108,6 +108,52 @@ def build_facts(spec: dict) -> list[dict]:
     return facts
 
 
+def chart_readings(spec: dict) -> list[dict]:
+    """A plain-language reading of EACH chart the engine produced, so the LLM can interpret the visuals
+    (not just the raw facts). Built from the computed analysis, tied to each chart's title."""
+    readings: list[dict] = []
+    trend = spec.get("trend") or {}
+    bs = spec.get("bestSellers") or {}
+    fc = spec.get("forecast") or {}
+    cors = (spec.get("stats") or {}).get("correlations", [])
+
+    for c in spec.get("charts", []):
+        title = c["title"]
+        reading = None
+        if c["id"] == "chart-timeseries" and trend:
+            best = trend.get("best", {})
+            direction = trend.get("direction", "flat")
+            reading = (f"Revenue trends {direction} over the period"
+                       + (f", peaking in {best.get('label')} at {_money(best.get('value', 0))}" if best else "")
+                       + (f"; {'up' if (trend.get('yoyChangePct') or 0) >= 0 else 'down'} "
+                          f"{_pct(abs(trend.get('yoyChangePct') or 0))} year-over-year" if trend.get("yoyChangePct") is not None else "")
+                       + ".")
+        elif c["id"] == "chart-bestsellers" and bs:
+            tr = bs["topRevenue"]
+            top3 = sum(p["revenueShare"] for p in bs["byRevenue"][:3])
+            reading = (f"\"{tr['name']}\" is the biggest {bs['dimension']} at {_money(tr['revenue'])} "
+                       f"({_pct(tr['revenueShare'])}); the top 3 make up {_pct(top3)} of revenue — "
+                       f"{'concentrated' if top3 > 0.6 else 'fairly spread'}.")
+        elif c["id"] == "chart-forecast" and fc:
+            reading = (f"The {fc.get('method', 'model')} projects revenue "
+                       f"{'rising' if fc['changePct'] >= 0 else 'falling'} {_pct(abs(fc['changePct']))} "
+                       f"over the next {len(fc['forecast'])} months"
+                       + (" (seasonal pattern carried through)" if fc.get("seasonal") else "") + ".")
+        elif c["id"] == "chart-corr" and cors:
+            strong = next((x for x in cors if not x["redundant"] and abs(x["r"]) > 0.3), None)
+            if strong:
+                reading = (f"Strongest relationship: {strong['a']} and {strong['b']} "
+                           f"(r={strong['r']:.2f}, {strong['strength']}{'' if strong.get('significant') else ', not significant'}).")
+            else:
+                reading = "No strong correlations between the numeric metrics."
+        elif c["id"] == "chart-scatter" and cors:
+            s = cors[0]
+            reading = f"{s['a']} vs {s['b']} scatter: r={s['r']:.2f} ({s['strength']})."
+        if reading:
+            readings.append({"title": title, "reading": reading})
+    return readings
+
+
 def templated_narrative(facts: list[dict]) -> str:
     """A zero-API conclusion paragraph from the facts — the always-works fallback."""
     if not facts:

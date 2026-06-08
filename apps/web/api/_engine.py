@@ -435,5 +435,6 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
         "correlations": stats_block.get("correlations", []), "metric_names": metric_names,
     })
     spec["facts"] = _ins.build_facts(spec)
+    spec["chartReadings"] = _ins.chart_readings(spec)
     spec["narrative"] = _ins.templated_narrative(spec["facts"])
     return spec

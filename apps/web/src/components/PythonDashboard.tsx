@@ -141,6 +141,18 @@ function ConclusionsCard({ c }: { c: PyConclusions }) {
         </span>
       </div>
       {c.bottomLine && <p className="mt-2 text-[15px] font-medium text-slate-100">{c.bottomLine}</p>}
+      {c.summary && <p className="mt-2 text-[13px] leading-relaxed text-slate-300">{c.summary}</p>}
+      {c.chartInsights && c.chartInsights.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">What the charts show</div>
+          {c.chartInsights.map((ci, i) => (
+            <div key={i} className="flex gap-2 text-[12px] leading-relaxed text-slate-300">
+              <span className="shrink-0 font-medium text-slate-400">{ci.chart}:</span>
+              <span>{ci.insight}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {c.conclusions.length > 0 && (
         <ul className="mt-3 space-y-1.5">
           {c.conclusions.map((t, i) => (

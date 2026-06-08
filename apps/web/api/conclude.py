@@ -28,6 +28,8 @@ class handler(BaseHTTPRequestHandler):
                 domain=payload.get("domain", "generic"),
                 user_context=payload.get("userContext"),
                 templated_fallback=payload.get("narrative", ""),
+                kpis=payload.get("kpis"),
+                chart_readings=payload.get("chartReadings"),
             ))
         except Exception as exc:  # noqa: BLE001
             self._send(400, {"error": str(exc)})

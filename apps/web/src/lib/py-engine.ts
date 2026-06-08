@@ -45,6 +45,7 @@ export interface PyAnalysisSpec {
   rfm?: PyRfm | null;
   charts: PyChart[];
   facts: PyFact[];
+  chartReadings?: { title: string; reading: string }[];
   narrative: string;
 }
 
@@ -77,6 +78,8 @@ export interface PyRfm {
 export interface PyConclusions {
   provider: "groq" | "none";
   bottomLine: string;
+  summary?: string;
+  chartInsights?: { chart: string; insight: string }[];
   conclusions: string[];
   actions: { title: string; detail: string }[];
   grounding: { grounded: boolean; unverified: string[] };
@@ -109,7 +112,14 @@ export async function runPythonAnalysis(columns: string[], rows: Record<string, 
 }
 
 export async function runPythonConclusions(spec: PyAnalysisSpec, userContext?: string): Promise<PyConclusions> {
-  const body = JSON.stringify({ facts: spec.facts, domain: spec.domain.domain, userContext, narrative: spec.narrative });
+  const body = JSON.stringify({
+    facts: spec.facts,
+    kpis: spec.kpis.map((k) => ({ name: k.name, value: k.value })),
+    chartReadings: spec.chartReadings,
+    domain: spec.domain.domain,
+    userContext,
+    narrative: spec.narrative,
+  });
   const res = await fetch("/api/conclude", { method: "POST", headers: { "Content-Type": "application/json" }, body });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
