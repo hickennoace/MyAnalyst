@@ -316,6 +316,32 @@ export function buildComparisonChart(metricName: string, agg: "sum" | "mean", pa
   };
 }
 
+/** Stacked-bar cross-tab: x = first dimension's categories, one stacked series per second-dimension
+ *  value, heights = the aggregated metric (or counts). Powers the two-dimension breakdown answer. */
+export function buildCrossTabChart(
+  title: string,
+  xCats: string[],
+  seriesNames: string[],
+  matrix: number[][],
+  yName: string
+): ChartSpec {
+  return {
+    id: `chart-crosstab-${Date.now()}`,
+    type: "bar",
+    title,
+    rationale: "A two-dimension breakdown: each bar is split into the contribution of the second dimension.",
+    option: {
+      ...ANIMATION,
+      tooltip: tooltip({ trigger: "axis", axisPointer: { type: "shadow" } }),
+      legend: legend({ data: seriesNames, type: "scroll" }),
+      grid: grid({ top: 44 }),
+      xAxis: categoryAxis(xCats, { axisLabel: { color: INK.sub, fontSize: 11, interval: 0, rotate: xCats.length > 5 ? 22 : 0, hideOverlap: true } }),
+      yAxis: valueAxis({ name: yName }),
+      series: seriesNames.map((name, i) => barSeries(matrix[i], i, { name, stack: "total" })),
+    },
+  };
+}
+
 function pieOption(pairs: [string, number][]) {
   return {
     ...ANIMATION,

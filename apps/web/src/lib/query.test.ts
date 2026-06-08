@@ -19,6 +19,23 @@ function salesTable(): Table {
 const table = salesTable();
 const profiles = profileTable(table);
 
+// Two-dimension table (Region × Product) for cross-tab tests.
+function crossTabTable(): Table {
+  const rows = [
+    { Region: "North", Product: "Widget", Revenue: 100 },
+    { Region: "North", Product: "Widget", Revenue: 50 },
+    { Region: "North", Product: "Gadget", Revenue: 40 },
+    { Region: "South", Product: "Widget", Revenue: 30 },
+    { Region: "South", Product: "Gadget", Revenue: 20 },
+    { Region: "South", Product: "Gadget", Revenue: 10 },
+    { Region: "North", Product: "Gadget", Revenue: 60 },
+    { Region: "South", Product: "Widget", Revenue: 25 },
+  ];
+  return { name: "ct.csv", columns: ["Region", "Product", "Revenue"], rows, rowCount: rows.length };
+}
+const ctTable = crossTabTable();
+const ctProfiles = profileTable(ctTable);
+
 describe("answerQuestion", () => {
   it("answers a total aggregate", () => {
     const r = answerQuestion("total revenue", table, profiles);
@@ -129,6 +146,18 @@ describe("answerQuestion", () => {
     const r = answerQuestion("top quartile of units", table, profiles);
     expect(r.ok).toBe(true);
     expect(r.answer.toLowerCase()).toContain("75th percentile");
+  });
+
+  // ── Two-dimension cross-tab (Wave 3 W3.7) ─────────────────────────────────────
+
+  it("breaks a metric down by two dimensions and names the top cell", () => {
+    // North/Widget = 100+50 = 150 is the top combination.
+    const r = answerQuestion("revenue by region and product", ctTable, ctProfiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("North");
+    expect(r.answer).toContain("Widget");
+    expect(r.answer).toContain("150");
+    expect(r.chart?.type).toBe("bar");
   });
 
   // ── Filtered & conditional questions (Phase 1.1) ──────────────────────────────

@@ -1,7 +1,7 @@
 import type { ChartSpec, ChartType, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
 import { maxOf, minOf, pearson, isRedundantCorrelation } from "./stats";
-import { aggregateCount, buildChart, buildComparisonChart, type ChartRequest } from "./charts";
+import { aggregateCount, buildChart, buildComparisonChart, buildCrossTabChart, type ChartRequest } from "./charts";
 import { parseChartRequest } from "./nl-chart";
 import { sortByTime } from "./kpi";
 import { activeLlmConfig } from "./llm-settings";
@@ -179,6 +179,55 @@ function groupBy(table: Table, dim: string, metric: string, agg: Agg): [string, 
     .sort((a, b) => b[1] - a[1]);
 }
 
+interface CrossTabResult {
+  cells: { a: string; b: string; value: number }[]; // every (dimA, dimB) cell, sorted desc by value
+  aCount: number;
+  bCount: number;
+  xCats: string[]; // top dimA categories (for the x axis)
+  seriesNames: string[]; // top dimB values (stacked series)
+  matrix: number[][]; // matrix[seriesIndex][xIndex]
+}
+
+/** Cross-tabulate a metric (or row counts when `metric` is omitted) by two dimensions. Returns the
+ *  ranked cells plus a capped, chart-ready matrix (top categories × top series). */
+function crossTab(table: Table, dimA: string, dimB: string, metric: string | undefined, agg: Agg): CrossTabResult {
+  const SEP = " ";
+  const buckets = new Map<string, number[]>();
+  const vals = metric ? numericColumn(table, metric) : null;
+  const aSet = new Set<string>();
+  const bSet = new Set<string>();
+  table.rows.forEach((r, i) => {
+    if (metric && !Number.isFinite(vals![i])) return;
+    const a = String(r[dimA] ?? "—");
+    const b = String(r[dimB] ?? "—");
+    const key = a + SEP + b;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(metric ? vals![i] : 1);
+    aSet.add(a);
+    bSet.add(b);
+  });
+  const cells = [...buckets.entries()]
+    .map(([k, arr]) => {
+      const [a, b] = k.split(SEP);
+      return { a, b, value: metric ? aggregate(arr, agg) : arr.length };
+    })
+    .filter((c) => Number.isFinite(c.value))
+    .sort((x, y) => y.value - x.value);
+
+  const aTotals = new Map<string, number>();
+  const bTotals = new Map<string, number>();
+  for (const c of cells) {
+    aTotals.set(c.a, (aTotals.get(c.a) ?? 0) + c.value);
+    bTotals.set(c.b, (bTotals.get(c.b) ?? 0) + c.value);
+  }
+  const topKeys = (m: Map<string, number>, n: number) => [...m.entries()].sort((p, q) => q[1] - p[1]).slice(0, n).map((e) => e[0]);
+  const xCats = topKeys(aTotals, 8);
+  const seriesNames = topKeys(bTotals, 6);
+  const cellMap = new Map(cells.map((c) => [c.a + SEP + c.b, c.value]));
+  const matrix = seriesNames.map((s) => xCats.map((x) => cellMap.get(x + SEP + s) ?? 0));
+  return { cells, aCount: aSet.size, bCount: bSet.size, xCats, seriesNames, matrix };
+}
+
 /** "N of M rows (scope)" or "M rows" — the row basis quoted in every `method` string. */
 function rowsNote(view: Table, table: Table, filter?: DataFilter): string {
   return filter ? `${view.rowCount.toLocaleString()} of ${table.rowCount.toLocaleString()} rows ${filter.phrase}` : `${table.rowCount.toLocaleString()} rows`;
@@ -288,6 +337,26 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         ok: true,
         answer: `Records ${filter.phrase} are ${pct.toFixed(1)}% of all rows — ${view.rowCount.toLocaleString()} of ${table.rowCount.toLocaleString()}.`,
         method: `Counted rows ${filter.phrase} (${view.rowCount.toLocaleString()}) ÷ all ${table.rowCount.toLocaleString()} rows.`,
+      };
+    }
+  }
+
+  // 0.7 Two-dimension breakdown: "revenue by region and product", "orders by status and channel".
+  // Runs before the single-dimension ranking/aggregate so two named dimensions aren't collapsed to one.
+  if (mDims.length >= 2 && mDims[0].name !== mDims[1].name && /\b(by|across|split|grouped|breakdown|broken down)\b/.test(lower)) {
+    const [dimA, dimB] = mDims;
+    const ctMetric = mMetrics[0];
+    const agg = ctMetric ? chooseAgg(ctMetric, lower) : "sum";
+    const ct = crossTab(view, dimA.name, dimB.name, ctMetric?.name, agg);
+    if (ct.cells.length) {
+      const top = ct.cells[0];
+      const what = ctMetric ? `${labelForAgg(agg)} ${ctMetric.name}` : "row count";
+      const valStr = ctMetric ? fmt(top.value, ctMetric) : top.value.toLocaleString();
+      return {
+        ok: true,
+        answer: `By ${what}, the top ${dimA.name} × ${dimB.name} combination is "${top.a}" / "${top.b}" at ${valStr}${scope}. There ${ct.cells.length === 1 ? "is" : "are"} ${ct.cells.length} combination${ct.cells.length === 1 ? "" : "s"} across ${ct.aCount} ${dimA.name} × ${ct.bCount} ${dimB.name}.`,
+        chart: buildCrossTabChart(`${cap(what)} by ${dimA.name} × ${dimB.name}`, ct.xCats, ct.seriesNames, ct.matrix, ctMetric ? ctMetric.name : "count"),
+        method: `Cross-tabbed ${ctMetric ? ctMetric.name : "rows"} by ${dimA.name} and ${dimB.name} (${ctMetric ? labelForAgg(agg) : "count"}) across ${rowsNote(view, table, filter)}, then ranked all ${ct.cells.length} cells.`,
       };
     }
   }
