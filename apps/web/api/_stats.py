@@ -12,8 +12,32 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 from scipy import stats
-import statsmodels.api as sm
-from statsmodels.stats.multitest import multipletests
+
+# statsmodels gives the most battle-tested OLS/FDR, but it's the heaviest dependency. Make it OPTIONAL so
+# the engine still deploys (and works) if it can't be installed — numpy/scipy provide identical inference.
+try:
+    import statsmodels.api as sm
+    from statsmodels.stats.multitest import multipletests as _sm_multipletests
+    HAS_STATSMODELS = True
+except Exception:  # pragma: no cover - exercised only when statsmodels is absent
+    HAS_STATSMODELS = False
+
+
+def _fdr_reject(pvals: list[float], alpha: float = 0.05) -> list[bool]:
+    """Benjamini-Hochberg FDR — statsmodels when present, else a numpy hand-roll (same result)."""
+    if HAS_STATSMODELS:
+        return [bool(x) for x in _sm_multipletests(pvals, method="fdr_bh")[0]]
+    p = np.asarray(pvals, dtype=float)
+    m = len(p)
+    order = np.argsort(p)
+    thresh = (np.arange(1, m + 1) / m) * alpha
+    passed = p[order] <= thresh
+    k = np.where(passed)[0]
+    cutoff = k.max() if k.size else -1
+    reject = np.zeros(m, dtype=bool)
+    if cutoff >= 0:
+        reject[order[: cutoff + 1]] = True
+    return reject.tolist()
 
 # Reuse the semantics regexes for "don't recommend closing a price gap" (a premium product isn't a laggard).
 _UNIT_PRICE = re.compile(r"\b(price|unit[_\s-]?price|msrp|list[_\s-]?price|fee|wage|salary|hourly|per[_\s-]?unit)\b", re.I)
@@ -50,7 +74,7 @@ def correlations(df: pd.DataFrame, metric_names: list[str], top: int = 8) -> lis
             "redundant": ar >= 0.98,
         })
     if len(pairs) > 1:
-        reject = multipletests([x["p"] for x in pairs], method="fdr_bh")[0]
+        reject = _fdr_reject([x["p"] for x in pairs])
         for x, sig in zip(pairs, reject):
             x["significant"] = bool(sig)
     elif pairs:
@@ -80,21 +104,49 @@ def driver_analysis(df: pd.DataFrame, metric_names: list[str], target: str) -> d
         return None
 
     z = (data - data.mean()) / data.std(ddof=0)
-    X = sm.add_constant(z[preds])
     try:
-        model = sm.OLS(z[target], X).fit()
+        if HAS_STATSMODELS:
+            model = sm.OLS(z[target], sm.add_constant(z[preds])).fit()
+            ci = model.conf_int()
+            drivers = [{
+                "name": p, "beta": float(model.params[p]), "p": float(model.pvalues[p]),
+                "ciLow": float(ci.loc[p, 0]), "ciHigh": float(ci.loc[p, 1]),
+                "significant": bool(model.pvalues[p] < 0.05),
+            } for p in preds]
+            r2, adjr2, fp = float(model.rsquared), float(model.rsquared_adj), float(model.f_pvalue)
+        else:
+            r2, adjr2, fp, drivers = _numpy_ols(z[target].to_numpy(), z[preds].to_numpy(), preds)
     except Exception:
         return None
-    drivers = [{
-        "name": p, "beta": float(model.params[p]), "p": float(model.pvalues[p]),
-        "ciLow": float(model.conf_int().loc[p, 0]), "ciHigh": float(model.conf_int().loc[p, 1]),
-        "significant": bool(model.pvalues[p] < 0.05),
-    } for p in preds]
     drivers.sort(key=lambda d: abs(d["beta"]), reverse=True)
-    return {
-        "target": target, "r2": float(model.rsquared), "adjR2": float(model.rsquared_adj),
-        "fP": float(model.f_pvalue), "n": int(len(data)), "drivers": drivers,
-    }
+    return {"target": target, "r2": r2, "adjR2": adjr2, "fP": fp, "n": int(len(data)), "drivers": drivers}
+
+
+def _numpy_ols(y: np.ndarray, Xp: np.ndarray, names: list[str]):
+    """Standardized OLS via numpy lstsq + scipy t/F — identical inference, no statsmodels."""
+    n, k = Xp.shape
+    X = np.column_stack([np.ones(n), Xp])
+    beta, *_ = np.linalg.lstsq(X, y, rcond=None)
+    resid = y - X @ beta
+    dof = n - (k + 1)
+    sse = float((resid ** 2).sum())
+    sst = float(((y - y.mean()) ** 2).sum())
+    r2 = 1 - sse / sst if sst > 0 else 0.0
+    adjr2 = 1 - (1 - r2) * (n - 1) / dof if dof > 0 else r2
+    mse = sse / dof if dof > 0 else np.nan
+    cov = mse * np.linalg.pinv(X.T @ X)
+    se = np.sqrt(np.clip(np.diag(cov), 0, None))
+    tvals = np.divide(beta, se, out=np.zeros_like(beta), where=se > 0)
+    pvals = 2 * stats.t.sf(np.abs(tvals), dof)
+    tcrit = stats.t.ppf(0.975, dof)
+    f_stat = (r2 / k) / ((1 - r2) / dof) if dof > 0 and r2 < 1 else np.inf
+    fp = float(stats.f.sf(f_stat, k, dof)) if np.isfinite(f_stat) else 0.0
+    drivers = [{
+        "name": names[i], "beta": float(beta[i + 1]), "p": float(pvals[i + 1]),
+        "ciLow": float(beta[i + 1] - tcrit * se[i + 1]), "ciHigh": float(beta[i + 1] + tcrit * se[i + 1]),
+        "significant": bool(pvals[i + 1] < 0.05),
+    } for i in range(k)]
+    return r2, adjr2, fp, drivers
 
 
 def group_comparisons(df: pd.DataFrame, profiles: list[dict], metric_names: list[str], top: int = 4) -> list[dict]:
@@ -126,7 +178,7 @@ def group_comparisons(df: pd.DataFrame, profiles: list[dict], metric_names: list
                 "valueTautology": is_value_tautology(m, dim["name"]),
             })
     if len(out) > 1:
-        reject = multipletests([x["p"] for x in out], method="fdr_bh")[0]
+        reject = _fdr_reject([x["p"] for x in out])
         for x, sig in zip(out, reject):
             x["significant"] = bool(sig)
     elif out:
