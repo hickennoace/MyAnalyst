@@ -27,6 +27,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { PrivacyBadge } from "@/components/PrivacyBadge";
 import { DashboardView } from "@/components/DashboardView";
+import { PythonDashboard } from "@/components/PythonDashboard";
+import { runPythonAnalysis, runPythonConclusions, type PyAnalysisSpec, type PyConclusions } from "@/lib/py-engine";
 import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ColumnControls } from "@/components/ColumnControls";
@@ -61,6 +63,10 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string | null>(null);
   const [table, setTable] = useState<Table | null>(null);
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
+  // The Python engine computes the dashboard KPIs/charts/conclusions (the primary view); the TS spec above
+  // stays as a safety fallback if the Python backend is unreachable.
+  const [pySpec, setPySpec] = useState<PyAnalysisSpec | null>(null);
+  const [pyConclusions, setPyConclusions] = useState<PyConclusions | null>(null);
   // The full parsed source (all columns) + the user's column choices, so "Apply & re-run" can
   // re-analyze from scratch with exclusions/type overrides applied.
   const [sourceTable, setSourceTable] = useState<Table | null>(null);
@@ -222,7 +228,11 @@ export default function AnalyzePage() {
     setBusy(true);
     // Fresh run (from upload/sample) returns to the uploader+progress view; a re-run from the
     // column controls keeps the current dashboard on screen (dimmed) so it doesn't flash away.
-    if (!opts) setSpec(null);
+    if (!opts) {
+      setSpec(null);
+      setPySpec(null);
+      setPyConclusions(null);
+    }
     setSourceTable(sourceTbl);
     try {
       // Apply column exclusions (the pipeline reads `columns`, so filtering it is enough — rows can
@@ -239,6 +249,18 @@ export default function AnalyzePage() {
       setSpec(result);
       setExcluded(excl);
       setTypeOverrides(ov);
+
+      // ── The cutover: compute the dashboard's KPIs + charts with the PYTHON engine (pandas/statsmodels).
+      // Runs on the cleaned table; renders the Python dashboard. If the backend is unreachable (e.g. local
+      // `next dev`, or a transient error), we keep the TS dashboard above so the page never goes blank.
+      setStage("Analyzing with Python (pandas/statsmodels)…");
+      try {
+        const py = await runPythonAnalysis(cleaned.columns, cleaned.rows);
+        setPySpec(py);
+        runPythonConclusions(py, ctx).then(setPyConclusions).catch(() => setPyConclusions(null));
+      } catch {
+        setPySpec(null); // fall back to the in-browser TS dashboard
+      }
 
       // On-device narration (opt-in, WebGPU): sharpen the story locally with ZERO network, after the
       // dashboard is already up. Fire-and-forget so it never blocks rendering; patches the story in place.
@@ -417,6 +439,8 @@ export default function AnalyzePage() {
 
   function reset() {
     setSpec(null);
+    setPySpec(null);
+    setPyConclusions(null);
     setTable(null);
     setError(null);
     setSourceTable(null);
@@ -824,12 +848,20 @@ export default function AnalyzePage() {
           </div>
         )}
 
-        {spec && table && (
-          <ErrorBoundary label="dashboard">
-            <div className={busy ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
-              <DashboardView spec={spec} table={table} innerRef={dashboardRef} />
+        {pySpec ? (
+          <ErrorBoundary label="python-dashboard">
+            <div ref={dashboardRef} className={busy ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
+              <PythonDashboard spec={pySpec} conclusions={pyConclusions} />
             </div>
           </ErrorBoundary>
+        ) : (
+          spec && table && (
+            <ErrorBoundary label="dashboard">
+              <div className={busy ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
+                <DashboardView spec={spec} table={table} innerRef={dashboardRef} />
+              </div>
+            </ErrorBoundary>
+          )
         )}
 
         <footer className="mt-16 space-y-2 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
