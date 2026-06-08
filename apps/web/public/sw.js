@@ -6,7 +6,7 @@
  *  - Never touch /api/* (the optional LLM route) or non-GET / cross-origin requests.
  * Because the entire analysis engine runs in the browser, a cached build analyzes data with no network.
  */
-const VERSION = "myanalyst-v1";
+const VERSION = "myanalyst-v2";
 const ASSETS = `${VERSION}-assets`;
 const PAGES = `${VERSION}-pages`;
 

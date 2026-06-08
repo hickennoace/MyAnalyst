@@ -7,7 +7,7 @@ import { parseFile, type SourceInfo } from "@/lib/parse";
 import { runAnalysis } from "@/lib/analyze-client";
 import { downloadCsv } from "@/lib/csv";
 import { sampleTable } from "@/lib/sample";
-import { INDUSTRY_TAGS, combinedContext } from "@/lib/industry-tags";
+import { combinedContext } from "@/lib/industry-tags";
 import { exportPdf, exportPng } from "@/lib/export";
 import { exportDeckPdf, exportReportPdf } from "@/lib/report-pdf";
 import { loadBrand } from "@/lib/brand";
@@ -494,7 +494,7 @@ export default function AnalyzePage() {
 
         {!spec && (
           <div className="space-y-4">
-            <Uploader onFile={handleFile} onSample={startSample} busy={busy} />
+            <Uploader onFile={handleFile} onSample={startSample} busy={busy} industry={industry} onIndustry={updateIndustry} />
             {busy && stage && <PipelineProgress stages={STAGES} current={stage} detail={readInfo ?? undefined} />}
             {error && <div className="card border-rose-500/40 bg-rose-500/5 p-4 text-sm text-rose-300">{error}</div>}
 
@@ -506,33 +506,6 @@ export default function AnalyzePage() {
                 A line about your data or goal sharpens the analysis: it steers domain detection and the metrics
                 we pick, and frames the “About this data” summary and insights around what you care about. Stored
                 only in this browser — never uploaded anywhere.
-              </p>
-
-              {/* Industry tag for YOUR uploaded file — tells the engine + AI what kind of data this is. */}
-              <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-slate-500">Tag your data’s industry</p>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {INDUSTRY_TAGS.map((t) => {
-                  const active = industry === t.key;
-                  return (
-                    <button
-                      key={t.key}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => updateIndustry(active ? null : t.key)}
-                      className={`rounded-full border px-3 py-1 text-xs transition ${
-                        active
-                          ? "border-blue-400 bg-blue-500/15 text-blue-200"
-                          : "border-slate-700 text-slate-300 hover:border-blue-500/50 hover:text-blue-300"
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-1.5 text-[11px] text-slate-500">
-                Optional. Tags the file you upload so the analysis and AI know what they’re looking at — separate from the
-                “try a sample” buttons above.
               </p>
 
               <textarea

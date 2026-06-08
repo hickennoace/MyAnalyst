@@ -2,16 +2,21 @@
 
 import { useCallback, useRef, useState } from "react";
 import { fetchAsFile } from "@/lib/url-import";
-import { SAMPLE_KINDS } from "@/lib/sample";
+import { INDUSTRY_TAGS } from "@/lib/industry-tags";
 
 export function Uploader({
   onFile,
   onSample,
   busy,
+  industry,
+  onIndustry,
 }: {
   onFile: (file: File) => void;
   onSample: (kind?: string) => void;
   busy: boolean;
+  /** Industry tag for the file the user is about to upload (sharpens analysis); null = none. */
+  industry?: string | null;
+  onIndustry?: (key: string | null) => void;
 }) {
   const [drag, setDrag] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -99,20 +104,34 @@ export function Uploader({
         </button>
       </div>
 
-      {/* Vertical templates — try the tool with data shaped like your industry, zero config. */}
+      {/* Industry TAG for the file you're about to upload — sharpens domain detection + the AI's
+          understanding. This does NOT load a sample; it just labels your data. */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-        <span className="text-[11px] uppercase tracking-wide text-slate-500">or by industry:</span>
-        {SAMPLE_KINDS.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => onSample(s.key)}
-            disabled={busy}
-            className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:-translate-y-0.5 hover:border-blue-500/50 hover:text-blue-300 disabled:opacity-50"
-          >
-            {s.label}
-          </button>
-        ))}
+        <span className="text-[11px] uppercase tracking-wide text-slate-500">tag your industry:</span>
+        {INDUSTRY_TAGS.map((t) => {
+          const active = industry === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onIndustry?.(active ? null : t.key)}
+              className={`rounded-full border px-3 py-1 text-xs transition hover:-translate-y-0.5 ${
+                active
+                  ? "border-blue-400 bg-blue-500/15 text-blue-200"
+                  : "border-slate-700 text-slate-300 hover:border-blue-500/50 hover:text-blue-300"
+              }`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
+      <p className="mt-1.5 text-[11px] text-slate-500">
+        {industry
+          ? "Tagged — your uploaded file will be analyzed as this kind of data."
+          : "Optional. Tags the file you upload so the analysis & AI know what it is — it doesn’t load a sample."}
+      </p>
 
       {/* Or load from a public URL — reuses the same parser; data is fetched straight to your browser. */}
       <div className="mt-5 w-full max-w-md">
