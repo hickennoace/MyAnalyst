@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { segmentRows } from "./segment";
+import { segmentMembers, segmentRows } from "./segment";
 import { profileTable } from "./profile";
 import type { Table } from "./types";
 
@@ -36,5 +36,25 @@ describe("segmentRows", () => {
     const a = segmentRows(t, p)!;
     const b = segmentRows(t, p)!;
     expect(a.segments.map((s) => s.size).sort()).toEqual(b.segments.map((s) => s.size).sort());
+  });
+});
+
+describe("segmentMembers", () => {
+  it("assigns clustered rows to the same clusters segmentRows reports, with matching sizes", () => {
+    const t = twoClusterTable();
+    const p = profileTable(t);
+    const seg = segmentRows(t, p)!;
+    const members = segmentMembers(t, p)!;
+    // Every clustered row appears once, indices are valid into the table.
+    expect(members.every((m) => m.rowIndex >= 0 && m.rowIndex < t.rowCount)).toBe(true);
+    // Per-cluster counts line up with the reported segment sizes (same seed, same pipeline).
+    for (const s of seg.segments) {
+      expect(members.filter((m) => m.cluster === s.id)).toHaveLength(s.size);
+    }
+  });
+
+  it("returns undefined when segmentation doesn't apply", () => {
+    const small: Table = { name: "s.csv", columns: ["A", "B"], rows: [{ A: 1, B: 2 }], rowCount: 1 };
+    expect(segmentMembers(small, profileTable(small))).toBeUndefined();
   });
 });

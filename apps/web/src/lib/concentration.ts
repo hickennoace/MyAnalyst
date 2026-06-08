@@ -1,4 +1,4 @@
-import type { ColumnProfile, Concentration, ConcentrationSegment, Table } from "./types";
+import type { ColumnProfile, Concentration, ConcentrationMember, ConcentrationSegment, Table } from "./types";
 import { numericColumn } from "./profile";
 
 // Concentration / Pareto analysis — the "80–20" lens. For a categorical (or id) column and a measure,
@@ -107,6 +107,24 @@ function groupTotals(table: Table, dimName: string, metricValues: number[] | nul
 /** Concentration of one measure (or row count) across one named column — for targeted NL questions. */
 export function concentrationFor(table: Table, dimName: string, metric: { name: string; values: number[] } | null): Concentration | null {
   return profileTotals(dimName, metric ? metric.name : "row count", !metric, groupTotals(table, dimName, metric ? metric.values : null));
+}
+
+/**
+ * The "vital few" categories that carry a concentration result — re-derived from the raw table so it
+ * recovers every category up to the Pareto point (not just the top few shown before the "Other" roll-up).
+ * Used to export the concentration as an actionable account list. Pure.
+ */
+export function concentrationMembers(table: Table, c: Concentration): ConcentrationMember[] {
+  const metricValues = c.metricIsCount ? null : numericColumn(table, c.metric);
+  const entries = [...groupTotals(table, c.dimension, metricValues).entries()]
+    .filter(([, v]) => Number.isFinite(v) && v > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const grand = entries.reduce((s, [, v]) => s + v, 0) || 1;
+  let cum = 0;
+  return entries.slice(0, c.paretoCount).map(([name, value], i) => {
+    cum += value;
+    return { rank: i + 1, name, value, share: value / grand, cumShare: cum / grand };
+  });
 }
 
 /**

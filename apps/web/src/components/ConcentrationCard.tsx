@@ -1,4 +1,6 @@
-import type { ColumnProfile, Concentration } from "@/lib/types";
+import type { ColumnProfile, Concentration, Table } from "@/lib/types";
+import { concentrationMembers } from "@/lib/concentration";
+import { DownloadCsvButton } from "./DownloadCsvButton";
 
 // Concentration / Pareto card: how much of a measure the biggest few categories hold. Sorted bars with
 // a running cumulative share, the "vital few" highlighted up to the 80% line, plus the concentration
@@ -26,7 +28,7 @@ const LEVEL: Record<Concentration["level"], { label: string; cls: string }> = {
   low: { label: "Fairly even", cls: "bg-emerald-500/15 text-emerald-300" },
 };
 
-function One({ c, profiles }: { c: Concentration; profiles: ColumnProfile[] }) {
+function One({ c, profiles, table }: { c: Concentration; profiles: ColumnProfile[]; table?: Table | null }) {
   const metricProfile = profiles.find((p) => p.name === c.metric);
   const measure = c.metricIsCount ? "the rows" : c.metric;
   const lvl = LEVEL[c.level];
@@ -84,16 +86,31 @@ function One({ c, profiles }: { c: Concentration; profiles: ColumnProfile[] }) {
         <span>
           Total {fmt(c.total, metricProfile)} across {c.distinct.toLocaleString()} {c.dimension}s
         </span>
+        {table && (
+          <span className="ml-auto">
+            <DownloadCsvButton
+              columns={[c.dimension, c.metricIsCount ? "row_count" : c.metric, "share", "cumulative_share"]}
+              rows={concentrationMembers(table, c).map((m) => ({
+                [c.dimension]: m.name,
+                [c.metricIsCount ? "row_count" : c.metric]: m.value,
+                share: +(m.share).toFixed(4),
+                cumulative_share: +(m.cumShare).toFixed(4),
+              }))}
+              filename={`concentration-${c.dimension}`}
+              label={`Download top ${c.paretoCount} ${c.dimension}${c.paretoCount === 1 ? "" : "s"}`}
+            />
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-export function ConcentrationCard({ concentration, profiles }: { concentration: Concentration[]; profiles: ColumnProfile[] }) {
+export function ConcentrationCard({ concentration, profiles, table }: { concentration: Concentration[]; profiles: ColumnProfile[]; table?: Table | null }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       {concentration.map((c) => (
-        <One key={`${c.dimension}-${c.metric}`} c={c} profiles={profiles} />
+        <One key={`${c.dimension}-${c.metric}`} c={c} profiles={profiles} table={table} />
       ))}
     </div>
   );

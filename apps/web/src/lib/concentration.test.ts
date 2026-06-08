@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeConcentration, gini } from "./concentration";
+import { analyzeConcentration, concentrationFor, concentrationMembers, gini } from "./concentration";
 import { profileTable } from "./profile";
 import type { Table } from "./types";
 
@@ -77,5 +77,33 @@ describe("analyzeConcentration", () => {
     const rows = Array.from({ length: 40 }, (_, i) => ({ Region: `R${i % 8}`, Sales: 100 }));
     const t: Table = { name: "even.csv", columns: ["Region", "Sales"], rows, rowCount: rows.length };
     expect(analyzeConcentration(t, profileTable(t))).toHaveLength(0);
+  });
+});
+
+describe("concentrationMembers", () => {
+  it("returns the vital-few categories that reach the Pareto point, ranked with cumulative share", () => {
+    const t = skewedTable();
+    const [c] = analyzeConcentration(t, profileTable(t));
+    const members = concentrationMembers(t, c);
+    // paretoCount is 3 (A,B,C reach 85%).
+    expect(members.map((m) => m.name)).toEqual(["A", "B", "C"]);
+    expect(members.map((m) => m.rank)).toEqual([1, 2, 3]);
+    expect(members[0].value).toBeCloseTo(50, 6);
+    expect(members[0].share).toBeCloseTo(0.5, 6);
+    expect(members.at(-1)!.cumShare).toBeCloseTo(0.85, 6);
+  });
+
+  it("recovers vital-few categories beyond the displayed top-8 (past the 'Other' roll-up)", () => {
+    // 12 roughly-equal categories carry the total; reaching 80% takes ~10 of them — past the top-8
+    // shown individually, so the members must come from a fresh re-derivation, not the summary rows.
+    const rows: Record<string, unknown>[] = [];
+    for (let i = 0; i < 12; i++) rows.push({ Cat: `M${i}`, Amt: 100 - i });
+    const t: Table = { name: "t.csv", columns: ["Cat", "Amt"], rows, rowCount: rows.length };
+    const c = concentrationFor(t, "Cat", { name: "Amt", values: rows.map((r) => r.Amt as number) })!;
+    expect(c.segments.filter((s) => !s.isOther).length).toBeLessThanOrEqual(8); // summary rolled the tail up
+    const members = concentrationMembers(t, c);
+    expect(members).toHaveLength(c.paretoCount);
+    expect(members.length).toBeGreaterThan(8); // proves we re-derived past the rolled-up tail
+    expect(members.at(-1)!.cumShare).toBeGreaterThanOrEqual(0.8 - 1e-9);
   });
 });

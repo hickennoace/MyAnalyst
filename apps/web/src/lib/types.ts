@@ -420,6 +420,12 @@ export interface Segmentation {
   sampled?: number;
 }
 
+/** A clustered row's assignment — `rowIndex` into the table, `cluster` matching a Segment.id. */
+export interface SegmentMember {
+  rowIndex: number;
+  cluster: number;
+}
+
 // ── Concentration / Pareto (80–20) ──────────────────────────────────────────────
 
 /** One category's slice of a measure, with its share and the running cumulative share. */
@@ -435,6 +441,15 @@ export interface ConcentrationSegment {
   rank: number;
   /** true for the rolled-up long tail ("Other") row. */
   isOther?: boolean;
+}
+
+/** One "vital few" category behind a concentration result — the exportable membership detail. */
+export interface ConcentrationMember {
+  rank: number;
+  name: string;
+  value: number;
+  share: number;
+  cumShare: number;
 }
 
 /** How concentrated a measure is across the values of one categorical/identifier column. */
@@ -507,6 +522,20 @@ export interface RfmSegment {
   totalMonetary: number;
   /** this segment's share of total monetary value, 0..1. */
   monetaryShare: number;
+}
+
+/** One scored entity (customer) behind the RFM segments — the exportable membership detail. */
+export interface RfmMember {
+  /** the entity id (value of the entity column). */
+  id: string;
+  recencyDays: number;
+  frequency: number;
+  monetary: number;
+  /** 1–5 recency / frequency quintile scores. */
+  rScore: number;
+  fScore: number;
+  segmentKey: string;
+  segmentLabel: string;
 }
 
 /** Recency–Frequency–Monetary segmentation of an entity (customer) by transaction-shaped data. */

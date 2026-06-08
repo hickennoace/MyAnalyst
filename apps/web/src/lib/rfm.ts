@@ -1,4 +1,4 @@
-import type { ColumnProfile, RfmAnalysis, RfmSegment, Table } from "./types";
+import type { ColumnProfile, RfmAnalysis, RfmMember, RfmSegment, Table } from "./types";
 import { numericColumn, dateColumn } from "./profile";
 import { looksLikeEntity } from "./cohort";
 
@@ -60,7 +60,16 @@ function pickColumns(table: Table, profiles: ColumnProfile[]): { entity: ColumnP
   return { entity, date, value };
 }
 
-export function analyzeRfm(table: Table, profiles: ColumnProfile[]): RfmAnalysis | undefined {
+interface RfmDetail {
+  entity: string;
+  dateColumn: string;
+  valueColumn: string;
+  asOfDay: number;
+  members: RfmMember[];
+}
+
+/** Score every entity into RFM members — the shared core behind both the summary and the export. */
+function rfmDetail(table: Table, profiles: ColumnProfile[]): RfmDetail | undefined {
   const cols = pickColumns(table, profiles);
   if (!cols) return undefined;
 
@@ -98,20 +107,46 @@ export function analyzeRfm(table: Table, profiles: ColumnProfile[]): RfmAnalysis
   const rScore = quintiles(recencyDays, false); // fewer days since last seen = better
   const fScore = quintiles(freq, true);
 
+  const members: RfmMember[] = ids.map((id, i) => {
+    const def = SEGMENTS.find((s) => s.match(rScore[i], fScore[i]))!;
+    return {
+      id,
+      recencyDays: recencyDays[i],
+      frequency: freq[i],
+      monetary: monetary[i],
+      rScore: rScore[i],
+      fScore: fScore[i],
+      segmentKey: def.key,
+      segmentLabel: def.label,
+    };
+  });
+
+  return { entity: cols.entity.name, dateColumn: cols.date.name, valueColumn: cols.value.name, asOfDay, members };
+}
+
+/** The per-entity membership behind the RFM segments — used to export a segment as a worklist. */
+export function rfmMembers(table: Table, profiles: ColumnProfile[]): RfmMember[] | undefined {
+  return rfmDetail(table, profiles)?.members;
+}
+
+export function analyzeRfm(table: Table, profiles: ColumnProfile[]): RfmAnalysis | undefined {
+  const detail = rfmDetail(table, profiles);
+  if (!detail) return undefined;
+  const { members } = detail;
+
   // Aggregate entities into their segments.
   interface Bucket { size: number; recency: number; freq: number; monetary: number }
   const buckets = new Map<string, Bucket>();
-  ids.forEach((_id, i) => {
-    const def = SEGMENTS.find((s) => s.match(rScore[i], fScore[i]))!;
-    const b = buckets.get(def.key) ?? { size: 0, recency: 0, freq: 0, monetary: 0 };
+  for (const m of members) {
+    const b = buckets.get(m.segmentKey) ?? { size: 0, recency: 0, freq: 0, monetary: 0 };
     b.size += 1;
-    b.recency += recencyDays[i];
-    b.freq += freq[i];
-    b.monetary += monetary[i];
-    buckets.set(def.key, b);
-  });
+    b.recency += m.recencyDays;
+    b.freq += m.frequency;
+    b.monetary += m.monetary;
+    buckets.set(m.segmentKey, b);
+  }
 
-  const grandMonetary = monetary.reduce((s, v) => s + v, 0) || 1;
+  const grandMonetary = members.reduce((s, m) => s + m.monetary, 0) || 1;
   const segments: RfmSegment[] = SEGMENTS.filter((d) => buckets.has(d.key)).map((d) => {
     const b = buckets.get(d.key)!;
     return {
@@ -119,7 +154,7 @@ export function analyzeRfm(table: Table, profiles: ColumnProfile[]): RfmAnalysis
       label: d.label,
       blurb: d.blurb,
       size: b.size,
-      sharePct: (b.size / ids.length) * 100,
+      sharePct: (b.size / members.length) * 100,
       avgRecencyDays: b.recency / b.size,
       avgFrequency: b.freq / b.size,
       avgMonetary: b.monetary / b.size,
@@ -130,11 +165,11 @@ export function analyzeRfm(table: Table, profiles: ColumnProfile[]): RfmAnalysis
   segments.sort((a, b) => b.totalMonetary - a.totalMonetary);
 
   return {
-    entity: cols.entity.name,
-    dateColumn: cols.date.name,
-    valueColumn: cols.value.name,
-    asOf: new Date(asOfDay * DAY).toISOString().slice(0, 10),
-    customers: ids.length,
+    entity: detail.entity,
+    dateColumn: detail.dateColumn,
+    valueColumn: detail.valueColumn,
+    asOf: new Date(detail.asOfDay * DAY).toISOString().slice(0, 10),
+    customers: members.length,
     segments,
   };
 }

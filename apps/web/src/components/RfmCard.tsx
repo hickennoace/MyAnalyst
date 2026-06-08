@@ -1,4 +1,7 @@
-import type { RfmAnalysis, RfmSegment } from "@/lib/types";
+import { useMemo } from "react";
+import type { ColumnProfile, RfmAnalysis, RfmMember, RfmSegment, Table } from "@/lib/types";
+import { rfmMembers } from "@/lib/rfm";
+import { DownloadCsvButton } from "./DownloadCsvButton";
 
 // RFM card: the customer-value segments (Champions, Loyal, At Risk, …) found by scoring every customer
 // on Recency, Frequency, and Monetary value. Each tile shows the segment's size, its share of revenue,
@@ -21,7 +24,8 @@ const TONE: Record<string, string> = {
   attention: "border-violet-500/30 bg-violet-500/5",
 };
 
-function Tile({ s, maxShare }: { s: RfmSegment; maxShare: number }) {
+function Tile({ s, maxShare, idColumn, members }: { s: RfmSegment; maxShare: number; idColumn?: string; members?: RfmMember[] }) {
+  const rows = members?.filter((m) => m.segmentKey === s.key) ?? [];
   return (
     <div className={`rounded-xl border p-4 ${TONE[s.key] ?? "border-[var(--line)]"}`}>
       <div className="flex items-center justify-between gap-2">
@@ -56,21 +60,43 @@ function Tile({ s, maxShare }: { s: RfmSegment; maxShare: number }) {
           <div className="h-full rounded bg-gradient-to-r from-emerald-500 to-teal-400" style={{ width: `${Math.max(2, (s.monetaryShare / maxShare) * 100).toFixed(1)}%` }} />
         </div>
       </div>
+
+      {idColumn && rows.length > 0 && (
+        <div className="mt-3 border-t border-slate-700/50 pt-2.5">
+          <DownloadCsvButton
+            columns={[idColumn, "recency_days", "frequency", "monetary", "rfm_score", "segment"]}
+            rows={rows.map((m) => ({
+              [idColumn]: m.id,
+              recency_days: Math.round(m.recencyDays),
+              frequency: m.frequency,
+              monetary: m.monetary,
+              rfm_score: `${m.rScore}${m.fScore}`,
+              segment: m.segmentLabel,
+            }))}
+            filename={`rfm-${s.key}`}
+            label={`Download ${rows.length.toLocaleString()} ${rows.length === 1 ? "customer" : "customers"}`}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-export function RfmCard({ rfm }: { rfm: RfmAnalysis }) {
+export function RfmCard({ rfm, table, profiles }: { rfm: RfmAnalysis; table?: Table | null; profiles?: ColumnProfile[] }) {
   const maxShare = Math.max(...rfm.segments.map((s) => s.monetaryShare), 0.01);
+  // Per-customer membership is computed from the raw table on demand (live analyzer only), so shared
+  // read-only views never carry customer ids.
+  const members = useMemo(() => (table && profiles ? rfmMembers(table, profiles) : undefined), [table, profiles]);
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-400">
         {rfm.customers.toLocaleString()} {rfm.entity}s scored on Recency, Frequency, and Monetary value
         (spend = {rfm.valueColumn}, as of {rfm.asOf}). Tiles are ordered by total revenue.
+        {members ? " Download any segment as a worklist." : ""}
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {rfm.segments.map((s) => (
-          <Tile key={s.key} s={s} maxShare={maxShare} />
+          <Tile key={s.key} s={s} maxShare={maxShare} idColumn={members ? rfm.entity : undefined} members={members} />
         ))}
       </div>
     </div>

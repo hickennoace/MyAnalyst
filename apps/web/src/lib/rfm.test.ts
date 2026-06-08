@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeRfm } from "./rfm";
+import { analyzeRfm, rfmMembers } from "./rfm";
 import { profileTable } from "./profile";
 import type { Table } from "./types";
 
@@ -60,5 +60,37 @@ describe("analyzeRfm", () => {
     const rows = Array.from({ length: 6 }, (_, i) => ({ CustomerID: `C${i}`, Date: "2024-01-01", Amount: 10 }));
     const t: Table = { name: "few.csv", columns: ["CustomerID", "Date", "Amount"], rows, rowCount: rows.length };
     expect(analyzeRfm(t, profileTable(t))).toBeUndefined();
+  });
+});
+
+describe("rfmMembers", () => {
+  it("returns one row per entity, consistent with the aggregated segment sizes", () => {
+    const t = transactions();
+    const profiles = profileTable(t);
+    const members = rfmMembers(t, profiles)!;
+    const rfm = analyzeRfm(t, profiles)!;
+    expect(members).toHaveLength(12);
+    // Each member carries its entity id and a recognized segment.
+    expect(new Set(members.map((m) => m.id)).size).toBe(12);
+    // The per-segment counts match the aggregated summary exactly.
+    for (const seg of rfm.segments) {
+      expect(members.filter((m) => m.segmentKey === seg.key)).toHaveLength(seg.size);
+    }
+  });
+
+  it("scores the champion cohort with high frequency and labels them", () => {
+    const t = transactions();
+    const champs = rfmMembers(t, profileTable(t))!.filter((m) => m.segmentKey === "champions");
+    expect(champs).toHaveLength(4);
+    for (const m of champs) {
+      expect(m.frequency).toBe(6);
+      expect(m.segmentLabel).toBe("Champions");
+    }
+  });
+
+  it("returns undefined when RFM doesn't apply", () => {
+    const rows = Array.from({ length: 20 }, (_, i) => ({ Region: `R${i % 4}`, Sales: 100 + i }));
+    const t: Table = { name: "flat.csv", columns: ["Region", "Sales"], rows, rowCount: rows.length };
+    expect(rfmMembers(t, profileTable(t))).toBeUndefined();
   });
 });

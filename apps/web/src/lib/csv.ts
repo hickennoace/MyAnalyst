@@ -28,14 +28,21 @@ export function tableToCsv(table: Table): string {
   return [header, ...rows].join("\r\n");
 }
 
-export function downloadCsv(table: Table, filename: string): void {
-  const csv = tableToCsv(table);
+/** Serialize an arbitrary set of rows to CSV, projecting (and ordering) only the given columns. */
+export function rowsToCsv(columns: string[], rows: Array<Record<string, unknown>>): string {
+  const header = columns.map(escapeCell).join(",");
+  const body = rows.map((r) => columns.map((c) => escapeCell(r[c])).join(","));
+  return [header, ...body].join("\r\n");
+}
+
+/** Trigger a client-side download of CSV text under `filename` (a .csv extension is ensured). */
+function triggerCsvDownload(csv: string, filename: string): void {
   // Prepend a UTF-8 BOM so Excel opens it with correct encoding.
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename.replace(/\.[^.]+$/, "") + "-cleaned.csv";
+  a.download = filename.replace(/\.[^.]+$/, "") + ".csv";
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -43,4 +50,13 @@ export function downloadCsv(table: Table, filename: string): void {
   // download of a large blob (e.g. a cleaned 200k-row table) in some browsers before they've
   // started reading it. A short delay lets the download begin first.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+export function downloadCsv(table: Table, filename: string): void {
+  triggerCsvDownload(tableToCsv(table), filename.replace(/\.[^.]+$/, "") + "-cleaned");
+}
+
+/** Download a subset of rows (a segment worklist) as CSV — used by the insight→action exports. */
+export function downloadRows(columns: string[], rows: Array<Record<string, unknown>>, filename: string): void {
+  triggerCsvDownload(rowsToCsv(columns, rows), filename);
 }

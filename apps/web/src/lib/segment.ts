@@ -1,4 +1,4 @@
-import type { ColumnProfile, Segment, Segmentation, Table } from "./types";
+import type { ColumnProfile, Segment, SegmentMember, Segmentation, Table } from "./types";
 import { numericColumn } from "./profile";
 
 // Segmentation: a dependency-free k-means over the numeric columns that finds the natural groups in the
@@ -102,7 +102,18 @@ function kmeans(X: number[][], k: number, seed: number, iters = 30): KMeans {
   return { assign, centroids, inertia };
 }
 
-export function segmentRows(table: Table, profiles: ColumnProfile[]): Segmentation | undefined {
+interface Clustering {
+  k: number;
+  result: KMeans;
+  /** table row index for each clustered (sampled) point. */
+  sampleIdx: number[];
+  cols: { name: string; values: number[]; mean: number; std: number }[];
+  /** number of points clustered (≤ rowCount when sampled). */
+  n: number;
+}
+
+/** The shared clustering core: standardize → sample → pick k → k-means. Deterministic. */
+function cluster(table: Table, profiles: ColumnProfile[]): Clustering | undefined {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric && (p.numeric.std ?? 0) > 0).slice(0, 6);
   if (metrics.length < 2 || table.rowCount < MIN_ROWS) return undefined;
 
@@ -128,6 +139,20 @@ export function segmentRows(table: Table, profiles: ColumnProfile[]): Segmentati
   if (k === 3 && runs.has(4) && runs.get(4)!.inertia < 0.8 * runs.get(3)!.inertia) k = 4;
   const result = runs.get(k);
   if (!result) return undefined;
+  return { k, result, sampleIdx, cols, n: X.length };
+}
+
+/** Per-row cluster assignment (sampled rows) — used to export a cluster's rows from the raw table. */
+export function segmentMembers(table: Table, profiles: ColumnProfile[]): SegmentMember[] | undefined {
+  const c = cluster(table, profiles);
+  if (!c) return undefined;
+  return c.result.assign.map((cl, i) => ({ rowIndex: c.sampleIdx[i], cluster: cl }));
+}
+
+export function segmentRows(table: Table, profiles: ColumnProfile[]): Segmentation | undefined {
+  const clustering = cluster(table, profiles);
+  if (!clustering) return undefined;
+  const { k, result, sampleIdx, cols, n } = clustering;
 
   // Describe each cluster by its defining features (cluster mean vs global mean, in std units).
   const segments: Segment[] = [];
@@ -149,10 +174,10 @@ export function segmentRows(table: Table, profiles: ColumnProfile[]): Segmentati
       id: c,
       label: label.charAt(0).toUpperCase() + label.slice(1),
       size: members.length,
-      sharePct: (members.length / X.length) * 100,
+      sharePct: (members.length / n) * 100,
       defining: top.length ? top : defining.slice(0, 2),
     });
   }
   segments.sort((a, b) => b.size - a.size);
-  return { k, features: cols.map((c) => c.name), segments, sampled: X.length < table.rowCount ? X.length : undefined };
+  return { k, features: cols.map((c) => c.name), segments, sampled: n < table.rowCount ? n : undefined };
 }

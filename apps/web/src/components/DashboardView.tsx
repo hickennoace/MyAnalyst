@@ -191,19 +191,19 @@ export function DashboardView({
 
           {spec.segmentation && spec.segmentation.segments.length > 1 && (
             <Section title="Natural segments" subtitle="Groups the data falls into on its own — and what defines each.">
-              <SegmentCard segmentation={spec.segmentation} profiles={spec.profiles} />
+              <SegmentCard segmentation={spec.segmentation} profiles={spec.profiles} table={table} />
             </Section>
           )}
 
           {spec.concentration && spec.concentration.length > 0 && (
             <Section title="The 80–20" subtitle="How concentrated each measure is — whether a vital few categories carry the whole number (a risk worth knowing).">
-              <ConcentrationCard concentration={spec.concentration} profiles={spec.profiles} />
+              <ConcentrationCard concentration={spec.concentration} profiles={spec.profiles} table={table} />
             </Section>
           )}
 
           {spec.rfm && spec.rfm.segments.length > 0 && (
             <Section title="Customer value (RFM)" subtitle="Customers grouped by how recently, how often, and how much they buy — your Champions through to those slipping away.">
-              <RfmCard rfm={spec.rfm} />
+              <RfmCard rfm={spec.rfm} table={table} profiles={spec.profiles} />
             </Section>
           )}
 
