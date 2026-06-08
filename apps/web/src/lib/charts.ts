@@ -2,7 +2,7 @@ import type { ChartSpec, ChartType, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
 import { maxOf, minOf, pearson } from "./stats";
 import { primaryMetric, sortByTime } from "./kpi";
-import { defaultHorizon, forecastBand, holtForecast } from "./forecast";
+import { defaultHorizon, forecastBand, forecastSeries } from "./forecast";
 import {
   ANIMATION, INK, PALETTE, barSeries, categoryAxis, color, grid, legend, lineSeries, tooltip, valueAxis, vGradient,
 } from "./chart-theme";
@@ -167,7 +167,7 @@ function forecastChart(table: Table, profiles: ColumnProfile[], time: ColumnProf
   if (series.length < 6) return null;
 
   const horizon = defaultHorizon(series.length);
-  const fc = holtForecast(series, horizon);
+  const fc = forecastSeries(series, horizon);
   if (!fc) return null;
 
   const histLabels = order.map((i) => String(table.rows[i][time.name] ?? ""));
@@ -188,8 +188,12 @@ function forecastChart(table: Table, profiles: ColumnProfile[], time: ColumnProf
     id: "chart-forecast",
     type: "line",
     title: `${pm.name} forecast (+${horizon} periods)`,
-    subtitle: `Holt's linear trend · α=${fc.alpha}, β=${fc.beta} · shaded = 95% range`,
-    rationale: "A long-enough time series → a short forward projection of the primary metric, with a 95% prediction interval that widens with the horizon.",
+    subtitle: fc.seasonal
+      ? `Holt-Winters (seasonal, period ${fc.period}) · α=${fc.alpha}, β=${fc.beta}, γ=${fc.gamma} · shaded = 95% range`
+      : `Holt's linear trend · α=${fc.alpha}, β=${fc.beta} · shaded = 95% range`,
+    rationale: fc.seasonal
+      ? "A seasonal time series → a forward projection that carries the recurring cycle (Holt-Winters), not just the trend, with a 95% prediction interval that widens with the horizon."
+      : "A long-enough time series → a short forward projection of the primary metric, with a 95% prediction interval that widens with the horizon.",
     option: {
       ...ANIMATION,
       color: [color(0), color(3)],

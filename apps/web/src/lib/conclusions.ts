@@ -170,9 +170,12 @@ export function deriveConclusions(ctx: InsightContext): Conclusion[] {
       basis: "forecast",
       text:
         `If things keep going the way they have been, ${f.metric} is heading toward about ${num(f.projected)} ` +
-        `over the next ${f.horizon} period${f.horizon === 1 ? "" : "s"} (${f.changePct >= 0 ? "up" : "down"} about ${pctTxt(Math.abs(f.changePct))}). ` +
+        `over the next ${f.horizon} period${f.horizon === 1 ? "" : "s"} (${f.changePct >= 0 ? "up" : "down"} about ${pctTxt(Math.abs(f.changePct))})` +
+        `${f.seasonal ? ", with the usual seasonal swing carried through" : ""}. ` +
         `Plan around that, and update it as new numbers come in.`,
-      detail: `Projection based on the recent trend (Holt's method).`,
+      detail: f.seasonal
+        ? `Projection based on the recent trend plus the repeating ${f.period}-period cycle (Holt-Winters seasonal method).`
+        : `Projection based on the recent trend (Holt's method).`,
     });
   }
 

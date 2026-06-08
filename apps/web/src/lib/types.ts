@@ -254,6 +254,8 @@ export interface ForecastFact {
   lastValue: number;
   projected: number;
   changePct: number; // fraction, projected vs last observed
+  seasonal?: boolean; // true when a seasonal (Holt-Winters) model carried the projection
+  period?: number; // detected season length, when seasonal
 }
 
 /** Frequency breakdown of a categorical column. */

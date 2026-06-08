@@ -21,7 +21,7 @@ import { computeKpis, primaryMetric, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
 import { isRedundantCorrelation, zOutliers } from "./stats";
 import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAnova, olsSimple, pearsonTest } from "./inference";
-import { defaultHorizon, holtForecast } from "./forecast";
+import { defaultHorizon, forecastSeries } from "./forecast";
 import { buildDataStory } from "./story";
 import { computeDataQuality } from "./quality";
 import { buildActionReport } from "./actions";
@@ -414,10 +414,10 @@ function buildInsightContext(
     const pmCol = numericColumn(table, pm.name);
     const ser = order.map((i) => pmCol[i]).filter(Number.isFinite);
     const horizon = defaultHorizon(ser.length);
-    const fc = holtForecast(ser, horizon);
+    const fc = forecastSeries(ser, horizon);
     if (fc) {
       const changePct = fc.lastValue !== 0 ? (fc.projected - fc.lastValue) / Math.abs(fc.lastValue) : 0;
-      forecast = { metric: pm.name, horizon, lastValue: fc.lastValue, projected: fc.projected, changePct };
+      forecast = { metric: pm.name, horizon, lastValue: fc.lastValue, projected: fc.projected, changePct, seasonal: fc.seasonal, period: fc.period };
     }
   }
 
