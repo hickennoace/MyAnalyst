@@ -1,9 +1,13 @@
 import type { ColumnProfile, Domain, Kpi, Table } from "./types";
 import { numericColumn } from "./profile";
 import { cagr, mean, std } from "./stats";
+import { analyzeTimeSeries } from "./timeseries";
+import { isAdditive, isTransactionGrain, metricKind, quantityMetric, revenueMetric } from "./semantics";
 
 // KPI engine: given the typed table + profiles + domain, compute the headline numbers that matter.
-// Rules are keyed by column ROLE (and domain), not by hard-coded column names, so it generalizes.
+// It leads with the business questions a manager actually has — total revenue, volume, average sale,
+// and how revenue is trending — using metric SEMANTICS so it sums values (revenue, units) and only
+// averages attributes (unit price, age, rating). Rules are keyed by role + meaning, not column names.
 
 function fmtCurrency(n: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -11,11 +15,24 @@ function fmtCurrency(n: number): string {
 function fmtNum(n: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }
+function fmtCount(n: number): string {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+}
 
-/** Pick the most "important" metric column: prefer the highest-total currency, then highest-variance numeric. */
+/** Headline label for the value metric: keep a value-named column's name, call a price-like one "revenue". */
+function totalLabelFor(name: string): string {
+  if (/revenue|sales|turnover|gmv|income|amount|spend|spending|cost|profit|bookings?/i.test(name)) {
+    return /^total\b/i.test(name) ? name : `Total ${name}`;
+  }
+  return "Total revenue";
+}
+
+/** Pick the most "important" metric column: the revenue/value metric, else highest-total currency, else highest-variance. */
 export function primaryMetric(profiles: ColumnProfile[]): ColumnProfile | undefined {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   if (metrics.length === 0) return undefined;
+  const revenue = revenueMetric(profiles, true);
+  if (revenue) return revenue;
   const currency = metrics.filter((m) => m.type === "currency");
   if (currency.length)
     return [...currency].sort((a, b) => (b.numeric!.sum || 0) - (a.numeric!.sum || 0))[0];
@@ -26,102 +43,139 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
   const kpis: Kpi[] = [];
   const timeCol = profiles.find((p) => p.role === "time");
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const grain = isTransactionGrain(profiles, table.rowCount);
+  const revenue = revenueMetric(profiles, grain, domain);
+  const qty = quantityMetric(profiles, revenue);
 
-  // Always-useful structural KPIs.
-  kpis.push({
-    id: "kpi-rows",
-    name: "Records analyzed",
-    value: table.rowCount,
-    howComputed: "Total non-empty rows ingested.",
-    relevance: 0.4,
-  });
+  // ── Headline business KPIs: total revenue, volume, average sale, and revenue trend. ──
+  if (revenue) {
+    const n = revenue.numeric!;
+    const isMoney = revenue.type === "currency";
+    kpis.push({
+      id: `kpi-total-${revenue.name}`,
+      name: totalLabelFor(revenue.name),
+      value: (isMoney ? fmtCurrency : fmtNum)(n.sum),
+      unit: isMoney ? "USD" : undefined,
+      howComputed: `Sum of ${revenue.name} across all ${fmtCount(table.rowCount)} rows.`,
+      relevance: 1.0,
+    });
 
-  for (const m of metrics) {
-    const n = m.numeric!;
-    const isMoney = m.type === "currency";
-    const fmt = isMoney ? fmtCurrency : fmtNum;
-
-    // Sum is only meaningful for additive metrics (money, quantities) — never for
-    // ratios, rates, percentages, prices, scores or averages. Word boundaries matter:
-    // "discount" must NOT match "count".
-    // Snapshot/stock figures (MRR, ARR, balance) are currency but NOT additive — you
-    // don't sum a recurring-revenue or balance snapshot across periods.
-    const ratioLike = m.type === "percent" || /(%|\brate\b|ratio|\baverage\b|\bavg\b|\bmean\b|margin|\bprice\b|score|rating|index|\bper\b|\bmrr\b|\barr\b|\bbalance\b)/i.test(m.name);
-    const additive = !ratioLike && (isMoney || /\b(qty|quantity|units|count|orders|volume|sales|spend|revenue|amount|cost|profit|total|sum)\b/i.test(m.name));
-    if (additive) {
-      // Avoid awkward labels like "Total Total" when the column is already named "Total".
-      const totalLabel = /^total\b/i.test(m.name) ? m.name : `Total ${m.name}`;
+    // Volume — units sold if there's a quantity column, otherwise the transaction count.
+    if (qty) {
       kpis.push({
-        id: `kpi-total-${m.name}`,
-        name: totalLabel,
-        value: fmt(n.sum),
-        unit: isMoney ? "USD" : undefined,
-        howComputed: `Sum of all ${m.name} values.`,
-        relevance: isMoney ? 0.95 : 0.75,
+        id: `kpi-total-${qty.name}`,
+        name: `Total ${qty.name}`,
+        value: fmtCount(qty.numeric!.sum),
+        howComputed: `Sum of ${qty.name} across all rows.`,
+        relevance: 0.95,
+      });
+    } else {
+      kpis.push({
+        id: "kpi-volume",
+        name: grain ? "Transactions" : "Records analyzed",
+        value: fmtCount(table.rowCount),
+        howComputed: grain ? "Number of transactions (one row per sale)." : "Total non-empty rows ingested.",
+        relevance: 0.95,
       });
     }
 
+    kpis.push({
+      id: `kpi-avg-${revenue.name}`,
+      name: `Average ${revenue.name}`,
+      value: (isMoney ? fmtCurrency : fmtNum)(n.mean),
+      unit: isMoney ? "USD" : undefined,
+      howComputed: `Mean ${revenue.name} per row (median ${(isMoney ? fmtCurrency : fmtNum)(n.median)}).`,
+      relevance: 0.8,
+    });
+
+    // Revenue trend — on revenue SUMMED PER PERIOD (the honest version), not per-row noise.
+    if (timeCol) {
+      const ts = analyzeTimeSeries(table, timeCol.name, revenue.name);
+      const chg = ts?.yoyChangePct ?? ts?.changePct;
+      if (ts && chg !== undefined && Number.isFinite(chg)) {
+        const yoy = ts.yoyChangePct !== undefined;
+        kpis.push({
+          id: "kpi-revtrend",
+          name: `${totalLabelFor(revenue.name)} ${yoy ? "(YoY)" : "change"}`,
+          value: `${(chg * 100).toFixed(1)}%`,
+          trend: chg,
+          howComputed: `Change in total ${revenue.name} per ${ts.cadence} ${yoy ? "versus a year earlier" : "from the first to the latest period"}.`,
+          relevance: 0.9,
+          spark: downsample(ts.periods.map((p) => p.value), 40),
+        });
+      }
+    }
+  } else {
+    kpis.push({
+      id: "kpi-rows",
+      name: "Records analyzed",
+      value: fmtCount(table.rowCount),
+      howComputed: "Total non-empty rows ingested.",
+      relevance: 0.4,
+    });
+  }
+
+  // ── Per-metric KPIs, by what the number MEANS. Sum flows (values, quantities); average attributes. ──
+  for (const m of metrics) {
+    if (m.name === revenue?.name || m.name === qty?.name) continue; // already a headline KPI
+    const n = m.numeric!;
+    const isMoney = m.type === "currency";
+    const fmt = isMoney ? fmtCurrency : fmtNum;
+    if (isAdditive(m, revenue)) {
+      kpis.push({
+        id: `kpi-total-${m.name}`,
+        name: /^total\b/i.test(m.name) ? m.name : `Total ${m.name}`,
+        value: fmt(n.sum),
+        unit: isMoney ? "USD" : undefined,
+        howComputed: `Sum of all ${m.name} values.`,
+        relevance: isMoney ? 0.7 : 0.6,
+      });
+    }
+    // An average is always meaningful; for attributes (age, unit price, rating) it's the ONLY total worth showing.
     kpis.push({
       id: `kpi-avg-${m.name}`,
       name: `Average ${m.name}`,
       value: fmt(n.mean),
       unit: isMoney ? "USD" : undefined,
       howComputed: `Mean of ${m.name} (median ${fmt(n.median)}, σ = ${fmtNum(n.std)}).`,
-      relevance: 0.6,
+      relevance: isAdditive(m, revenue) ? 0.5 : 0.45,
     });
   }
 
-  // Variability of the primary metric — how consistent the data is (coefficient of variation).
-  const pmSpread = primaryMetric(profiles);
-  if (pmSpread?.numeric && pmSpread.numeric.mean !== 0) {
-    const cv = pmSpread.numeric.std / Math.abs(pmSpread.numeric.mean);
-    if (Number.isFinite(cv)) {
-      kpis.push({
-        id: `kpi-cv-${pmSpread.name}`,
-        name: `${pmSpread.name} variability`,
-        value: `${(cv * 100).toFixed(0)}%`,
-        howComputed: `Coefficient of variation (σ ÷ mean) — higher means less consistent ${pmSpread.name}.`,
-        relevance: 0.55,
-      });
-    }
-  }
-
-  // Time-series KPIs: growth & volatility of the primary metric over the time axis.
-  const pm = primaryMetric(profiles);
-  if (timeCol && pm) {
-    const order = sortByTime(table, timeCol.name);
-    const pmCol = numericColumn(table, pm.name);
-    const series = order.map((i) => pmCol[i]).filter(Number.isFinite);
-    if (series.length >= 2) {
-      const first = series[0];
-      const last = series[series.length - 1];
-      const totalGrowth = first !== 0 ? (last - first) / Math.abs(first) : NaN;
-      if (Number.isFinite(totalGrowth)) {
-        kpis.push({
-          id: `kpi-growth-${pm.name}`,
-          name: `${pm.name} change`,
-          value: `${(totalGrowth * 100).toFixed(1)}%`,
-          trend: totalGrowth,
-          howComputed: `Change in ${pm.name} from first to last period (${fmtNum(first)} → ${fmtNum(last)}).`,
-          relevance: 0.9,
-          spark: downsample(series, 40),
-        });
-      }
-
-      const g = cagr(first, last, series.length - 1);
-      if (Number.isFinite(g) && (domain === "financial-timeseries" || domain === "sales-operational")) {
-        kpis.push({
-          id: `kpi-cagr-${pm.name}`,
-          name: `${pm.name} per-period growth (CAGR)`,
-          value: `${(g * 100).toFixed(2)}%`,
-          trend: g,
-          howComputed: `Compound growth rate of ${pm.name} across ${series.length} periods.`,
-          relevance: 0.85,
-        });
-      }
-
-      // Financial: period-over-period return volatility.
-      if (domain === "financial-timeseries") {
+  // ── Financial price-series KPIs (growth / CAGR / volatility / Sharpe) — only where summing is wrong
+  //    and a price LEVEL over time is the story. Never applied to transaction data. ──
+  if (domain === "financial-timeseries" && timeCol) {
+    const pm = primaryMetric(profiles);
+    if (pm) {
+      const order = sortByTime(table, timeCol.name);
+      const pmCol = numericColumn(table, pm.name);
+      const series = order.map((i) => pmCol[i]).filter(Number.isFinite);
+      if (series.length >= 2) {
+        const first = series[0];
+        const last = series[series.length - 1];
+        const totalGrowth = first !== 0 ? (last - first) / Math.abs(first) : NaN;
+        if (Number.isFinite(totalGrowth)) {
+          kpis.push({
+            id: `kpi-growth-${pm.name}`,
+            name: `${pm.name} change`,
+            value: `${(totalGrowth * 100).toFixed(1)}%`,
+            trend: totalGrowth,
+            howComputed: `Change in ${pm.name} from first to last period (${fmtNum(first)} → ${fmtNum(last)}).`,
+            relevance: 0.9,
+            spark: downsample(series, 40),
+          });
+        }
+        const g = cagr(first, last, series.length - 1);
+        if (Number.isFinite(g)) {
+          kpis.push({
+            id: `kpi-cagr-${pm.name}`,
+            name: `${pm.name} per-period growth (CAGR)`,
+            value: `${(g * 100).toFixed(2)}%`,
+            trend: g,
+            howComputed: `Compound growth rate of ${pm.name} across ${series.length} periods.`,
+            relevance: 0.85,
+          });
+        }
         const rets: number[] = [];
         for (let i = 1; i < series.length; i++) {
           if (series[i - 1] !== 0) rets.push((series[i] - series[i - 1]) / series[i - 1]);
