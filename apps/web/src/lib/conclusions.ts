@@ -25,11 +25,36 @@ function confFromP(p: number): Conclusion["confidence"] {
 
 type Draft = Omit<Conclusion, "id">;
 
+function money(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  const abs = Math.abs(n);
+  if (abs >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
+  if (abs >= 1e3) return "$" + (n / 1e3).toFixed(0) + "K";
+  return "$" + Math.round(n).toLocaleString();
+}
+
 export function deriveConclusions(ctx: InsightContext): Conclusion[] {
   const out: Draft[] = [];
 
-  // 1. Group differences (ANOVA) — usually the most actionable.
-  for (const g of ctx.groupComparisons.filter((g) => g.significant).slice(0, 2)) {
+  // 0. Best sellers — what makes the most money and what moves the most volume. The lead business read.
+  if (ctx.bestSellers) {
+    const b = ctx.bestSellers;
+    const volNoun = b.hasQuantity ? "units" : "sales";
+    const same = b.topRevenue.name === b.topUnits.name;
+    out.push({
+      confidence: "high",
+      basis: `best-selling ${b.dimension}`,
+      text: same
+        ? `"${b.topRevenue.name}" is your single biggest ${b.dimension} — ${money(b.topRevenue.revenue)} (${pctTxt(b.topRevenue.revenueShare)} of revenue) and the most ${volNoun} too. So much rides on it that it's worth protecting hard and understanding exactly why it wins.`
+        : `Your money-maker and your volume leader are different: "${b.topRevenue.name}" brings the most revenue (${money(b.topRevenue.revenue)}, ${pctTxt(b.topRevenue.revenueShare)} of the total), while "${b.topUnits.name}" sells the most (${num(b.topUnits.units)} ${volNoun}). Lean on "${b.topUnits.name}" to pull people in and "${b.topRevenue.name}" to make the margin — and look hard at the ${b.dimension}s near the bottom to cut or fix.`,
+      detail: `Ranked ${b.distinct} ${b.dimension}s by ${b.metric}. Top earner ${pctTxt(b.topRevenue.revenueShare)} of revenue; top seller ${pctTxt(b.topUnits.unitShare)} of ${volNoun}.`,
+    });
+  }
+
+  // 1. Group differences (ANOVA). Skip unit-price / product-dimension comparisons — "copy what the
+  //    priciest model does" is nonsense — while keeping outcome×operational gaps, which are real advice.
+  const suppressed = new Set(ctx.suppressGroupComparisons ?? []);
+  for (const g of ctx.groupComparisons.filter((g) => g.significant && !suppressed.has(`${g.metric}~${g.dimension}`)).slice(0, 2)) {
     out.push({
       confidence: confFromP(g.p),
       basis: `ANOVA ${g.metric} by ${g.dimension}`,

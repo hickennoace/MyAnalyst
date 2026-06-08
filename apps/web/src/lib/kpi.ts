@@ -1,7 +1,7 @@
 import type { ColumnProfile, Domain, Kpi, Table } from "./types";
 import { numericColumn } from "./profile";
 import { cagr, mean, std } from "./stats";
-import { analyzeTimeSeries } from "./timeseries";
+import { analyzeTimeSeries, trimPartialTail } from "./timeseries";
 import { isAdditive, isTransactionGrain, metricKind, quantityMetric, revenueMetric } from "./semantics";
 
 // KPI engine: given the typed table + profiles + domain, compute the headline numbers that matter.
@@ -88,21 +88,27 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
       relevance: 0.8,
     });
 
-    // Revenue trend — on revenue SUMMED PER PERIOD (the honest version), not per-row noise.
+    // Revenue trend — on revenue SUMMED PER MONTH (the honest version), not per-row noise. Monthly so a
+    // dense stream of daily transactions reads as a real trend, and the incomplete final period is trimmed.
     if (timeCol) {
-      const ts = analyzeTimeSeries(table, timeCol.name, revenue.name);
-      const chg = ts?.yoyChangePct ?? ts?.changePct;
-      if (ts && chg !== undefined && Number.isFinite(chg)) {
-        const yoy = ts.yoyChangePct !== undefined;
-        kpis.push({
-          id: "kpi-revtrend",
-          name: `${totalLabelFor(revenue.name)} ${yoy ? "(YoY)" : "change"}`,
-          value: `${(chg * 100).toFixed(1)}%`,
-          trend: chg,
-          howComputed: `Change in total ${revenue.name} per ${ts.cadence} ${yoy ? "versus a year earlier" : "from the first to the latest period"}.`,
-          relevance: 0.9,
-          spark: downsample(ts.periods.map((p) => p.value), 40),
-        });
+      const ts = analyzeTimeSeries(table, timeCol.name, revenue.name, "monthly");
+      const series = ts ? trimPartialTail(ts.periods.map((p) => p.value)) : [];
+      if (ts && series.length >= 2) {
+        const last = series[series.length - 1];
+        const yoy = series.length > 12;
+        const base = yoy ? series[series.length - 13] : series[0];
+        const chg = base !== 0 ? (last - base) / Math.abs(base) : NaN;
+        if (Number.isFinite(chg)) {
+          kpis.push({
+            id: "kpi-revtrend",
+            name: `${totalLabelFor(revenue.name)} ${yoy ? "(YoY)" : "trend"}`,
+            value: `${(chg * 100).toFixed(1)}%`,
+            trend: chg,
+            howComputed: `Change in total ${revenue.name} per month ${yoy ? "versus a year earlier" : "from the first to the latest complete month"}.`,
+            relevance: 0.9,
+            spark: downsample(series, 40),
+          });
+        }
       }
     }
   } else {

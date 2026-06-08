@@ -1,5 +1,6 @@
 import type { ColumnProfile, Concentration, ConcentrationMember, ConcentrationSegment, Table } from "./types";
 import { numericColumn } from "./profile";
+import { isAdditive, revenueMetric } from "./semantics";
 
 // Concentration / Pareto analysis — the "80–20" lens. For a categorical (or id) column and a measure,
 // how much of the total do the biggest few categories hold? Answers questions every analyst asks but
@@ -133,8 +134,12 @@ export function concentrationMembers(table: Table, c: Concentration): Concentrat
  * one per dimension for variety. Falls back to a row-count concentration when no usable measure exists.
  */
 export function analyzeConcentration(table: Table, profiles: ColumnProfile[]): Concentration[] {
+  // Only concentrate ADDITIVE measures (revenue, units) — "the top 3 brands hold 80% of revenue" is a
+  // real risk; "…of customer age" is gibberish. Summing an attribute (age, rating, unit price) is never
+  // the 80–20 story, so those columns are excluded here.
+  const revenue = revenueMetric(profiles, true);
   const metrics = profiles
-    .filter((p) => p.role === "metric" && p.numeric && (p.numeric.sum ?? 0) > 0)
+    .filter((p) => p.role === "metric" && p.numeric && (p.numeric.sum ?? 0) > 0 && isAdditive(p, revenue))
     .sort((a, b) => (b.numeric!.sum ?? 0) - (a.numeric!.sum ?? 0))
     .slice(0, MAX_METRICS);
   const dims = profiles

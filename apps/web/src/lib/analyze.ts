@@ -25,13 +25,15 @@ import { defaultHorizon, forecastSeries } from "./forecast";
 import { buildDataStory } from "./story";
 import { computeDataQuality } from "./quality";
 import { buildActionReport } from "./actions";
-import { analyzeTimeSeries } from "./timeseries";
+import { analyzeTimeSeries, trimPartialTail } from "./timeseries";
 import { buildContributions } from "./contribution";
 import { buildTextAnalyses } from "./text-analytics";
 import { buildCaveats } from "./caveats";
 import { segmentRows } from "./segment";
 import { analyzeCohorts } from "./cohort";
 import { analyzeConcentration } from "./concentration";
+import { analyzeBestSellers } from "./bestsellers";
+import { isTransactionGrain, isValueTautology, revenueMetric } from "./semantics";
 import { buildRelationships } from "./relationships";
 import { analyzeRfm } from "./rfm";
 import { getInsightProvider } from "./insights";
@@ -70,6 +72,7 @@ export async function analyze(
   const segmentation = segmentRows(table, profiles);
   const cohorts = analyzeCohorts(table, profiles);
   const concentration = analyzeConcentration(table, profiles);
+  const bestSellers = analyzeBestSellers(table, profiles);
   const relationships = buildRelationships(table, profiles);
   const rfm = analyzeRfm(table, profiles);
   stage("Detecting domain");
@@ -95,7 +98,7 @@ export async function analyze(
   stage("Running statistics");
   const charts = opts.skipCharts ? [] : recommendCharts(table, profiles);
 
-  const ctx = buildInsightContext(table, profiles, kpis, domain.domain, concentration);
+  const ctx = buildInsightContext(table, profiles, kpis, domain.domain, concentration, bestSellers);
   ctx.userContext = opts.userContext?.trim() || undefined;
   stage("Writing insights");
   const provider = getInsightProvider(opts.llm);
@@ -210,7 +213,8 @@ function buildInsightContext(
   profiles: ReturnType<typeof profileTable>,
   kpis: DashboardSpec["kpis"],
   domain: InsightContext["domain"],
-  concentration: InsightContext["concentration"]
+  concentration: InsightContext["concentration"],
+  bestSellers: InsightContext["bestSellers"]
 ): InsightContext {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   const dims = profiles.filter((p) => p.role === "dimension");
@@ -406,10 +410,27 @@ function buildInsightContext(
   }
   outliers.sort((a, b) => b.count - a.count);
 
-  // Forecast of the primary metric along the time axis.
+  // Forecast along the time axis. For transaction data, project REVENUE SUMMED PER PERIOD (a real flow
+  // that trends) rather than individual sale prices (which don't "rise"); otherwise project the primary
+  // metric's series directly (e.g. a price level in financial data).
   let forecast: ForecastFact | undefined;
   const pm = primaryMetric(profiles);
-  if (time && pm) {
+  const grainForFc = isTransactionGrain(profiles, table.rowCount);
+  const revForFc = revenueMetric(profiles, grainForFc, domain);
+  if (time && grainForFc && revForFc) {
+    // Project total revenue per MONTH (smooths daily noise), dropping any incomplete final month.
+    const ts = analyzeTimeSeries(table, time.name, revForFc.name, "monthly");
+    const ser = ts ? trimPartialTail(ts.periods.map((p) => p.value).filter(Number.isFinite)) : [];
+    if (ser.length >= 4) {
+      const horizon = defaultHorizon(ser.length);
+      const fc = forecastSeries(ser, horizon);
+      if (fc) {
+        const changePct = fc.lastValue !== 0 ? (fc.projected - fc.lastValue) / Math.abs(fc.lastValue) : 0;
+        const label = /revenue|sales|amount|spend|cost|profit/i.test(revForFc.name) ? revForFc.name.toLowerCase() : "revenue";
+        forecast = { metric: `monthly ${label}`, horizon, lastValue: fc.lastValue, projected: fc.projected, changePct, seasonal: fc.seasonal, period: fc.period };
+      }
+    }
+  } else if (time && pm) {
     const order = sortByTime(table, time.name);
     const pmCol = numericColumn(table, pm.name);
     const ser = order.map((i) => pmCol[i]).filter(Number.isFinite);
@@ -449,6 +470,10 @@ function buildInsightContext(
     associations: associations.slice(0, 4),
     drivers,
     concentration: concentration?.slice(0, 2),
+    bestSellers,
+    suppressGroupComparisons: groupComparisons
+      .filter((g) => isValueTautology(g.metric, g.dimension))
+      .map((g) => `${g.metric}~${g.dimension}`),
     smallSample: table.rowCount < 30,
   };
 }

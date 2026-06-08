@@ -17,6 +17,13 @@ function fmt(n: number): string {
   if (abs >= 1000) return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }
+function money(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  const abs = Math.abs(n);
+  if (abs >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
+  if (abs >= 1e3) return "$" + (n / 1e3).toFixed(0) + "K";
+  return "$" + n.toFixed(0);
+}
 
 export class TemplatedInsightProvider implements InsightProvider {
   readonly name = "templated";
@@ -38,8 +45,28 @@ export class TemplatedInsightProvider implements InsightProvider {
         (k ? `. The headline figure is ${k.name}: ${k.value}${k.unit ? " " + k.unit : ""}.` : "."),
     });
 
-    // 2. Group differences (ANOVA) — usually the single most actionable finding.
-    for (const g of ctx.groupComparisons.filter((g) => g.significant).slice(0, 2)) {
+    // 2. Best sellers — the first thing a sales dataset should answer: what drives the most revenue and
+    //    the most volume (often different products). Leads, because it's the decisive business read.
+    if (ctx.bestSellers) {
+      const b = ctx.bestSellers;
+      const sameLeader = b.topRevenue.name === b.topUnits.name;
+      const volNoun = b.hasQuantity ? "units" : "sales";
+      out.push({
+        id: "ins-bestseller",
+        kind: "composition",
+        confidence: "high",
+        cites: [`bestsellers:${b.dimension}`],
+        text: sameLeader
+          ? `"${b.topRevenue.name}" is your best-selling ${b.dimension} on both fronts — ${pct(b.topRevenue.revenueShare)} of revenue (${money(b.topRevenue.revenue)}) and ${pct(b.topUnits.unitShare)} of ${volNoun} (${fmt(b.topUnits.units)}). It's carrying the business; protect and grow it.`
+          : `Your top ${b.dimension} by revenue is "${b.topRevenue.name}" — ${money(b.topRevenue.revenue)}, ${pct(b.topRevenue.revenueShare)} of the total — but by volume it's "${b.topUnits.name}" (${fmt(b.topUnits.units)} ${volNoun}, ${pct(b.topUnits.unitShare)}). The biggest seller and the biggest earner are different ${b.dimension}s, so grow each for a different reason: "${b.topUnits.name}" for reach, "${b.topRevenue.name}" for margin.`,
+      });
+    }
+
+    // 3. Group differences (ANOVA) — "copy the leader" is real advice for an outcome (revenue, score)
+    //    on an operational dimension (region, rep). It's nonsense for a unit price or a product dimension
+    //    (a pricier model isn't an underperformer), so those comparisons are suppressed.
+    const suppressed = new Set(ctx.suppressGroupComparisons ?? []);
+    for (const g of ctx.groupComparisons.filter((g) => g.significant && !suppressed.has(`${g.metric}~${g.dimension}`)).slice(0, 2)) {
       out.push({
         id: `ins-anova-${g.metric}-${g.dimension}`,
         kind: "composition",

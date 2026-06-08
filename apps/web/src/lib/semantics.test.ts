@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAdditive, isTransactionGrain, metricKind, quantityMetric, revenueMetric } from "./semantics";
+import { isAdditive, isTransactionGrain, isValueTautology, metricKind, quantityMetric, revenueMetric } from "./semantics";
 import { profileTable } from "./profile";
 import type { Table } from "./types";
 
@@ -87,6 +87,25 @@ describe("metricKind / isAdditive", () => {
     const t: Table = { name: "p.csv", columns: ["SKU", "UnitPrice"], rows, rowCount: rows.length };
     const up = profileTable(t).find((x) => x.name === "UnitPrice")!;
     expect(isAdditive(up)).toBe(false);
+  });
+});
+
+describe("isValueTautology", () => {
+  it("suppresses 'close the gap' for a unit price across any dimension", () => {
+    expect(isValueTautology("Price", "Model")).toBe(true);
+    expect(isValueTautology("Price", "Region")).toBe(true); // unit price → still a price comparison
+    expect(isValueTautology("MSRP", "Salesperson")).toBe(true);
+  });
+
+  it("suppresses it for an outcome metric across a PRODUCT dimension", () => {
+    expect(isValueTautology("Revenue", "Model")).toBe(true);
+    expect(isValueTautology("Revenue", "Brand")).toBe(true);
+  });
+
+  it("keeps it for an outcome metric across an OPERATIONAL dimension (a real gap to close)", () => {
+    expect(isValueTautology("Revenue", "Region")).toBe(false);
+    expect(isValueTautology("ConversionRate", "SalesRep")).toBe(false);
+    expect(isValueTautology("Satisfaction", "Store")).toBe(false);
   });
 });
 

@@ -86,3 +86,29 @@ export function isAdditive(p: ColumnProfile, revenue?: ColumnProfile): boolean {
   const k = metricKind(p, revenue);
   return k === "value" || k === "quantity";
 }
+
+// A unit PRICE (price/MSRP/fee/wage) — comparing its average across groups and saying "close the gap"
+// is nonsense: a cheaper product isn't an underperforming one. (Distinct from revenue/amount OUTCOMES,
+// where a low-performing region/rep genuinely can be brought up.)
+const UNIT_PRICE_ONLY = /\b(price|unit[_\s-]?price|msrp|list[_\s-]?price|sticker|fee|wage|salary|hourly|per[_\s-]?unit)\b/i;
+export function isUnitPriced(name: string): boolean {
+  return UNIT_PRICE_ONLY.test(name);
+}
+
+// A product/catalog dimension (model/SKU/brand/category) — it DEFINES what's being priced, so "average
+// value differs by product" is a price tier, not a gap to close. Operational dimensions (region, rep,
+// channel, store, segment) are NOT product dimensions, so their gaps stay actionable.
+const PRODUCT_DIM = /\b(product|products|model|models|sku|item|items|service|services|plan|plans|brand|brands|category|categories|type|variant|variants|title|make|line|tier|package)\b/i;
+export function isProductDimension(name: string): boolean {
+  return PRODUCT_DIM.test(name);
+}
+
+/**
+ * Should a group-comparison's "copy the leader / close the gap" framing be suppressed? Yes when the metric
+ * is a unit price, or the dimension is the product itself — in both cases a higher average just means a
+ * pricier product, not an opportunity. Kept for outcome metrics (revenue, score, rate) on operational
+ * dimensions (region, rep, channel), where bringing the laggard up is real advice.
+ */
+export function isValueTautology(metricName: string, dimensionName: string): boolean {
+  return isUnitPriced(metricName) || isProductDimension(dimensionName);
+}

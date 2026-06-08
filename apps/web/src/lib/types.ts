@@ -139,6 +139,11 @@ export interface InsightContext {
   drivers?: DriverAnalysis;
   /** the most concentrated measure×category views ("80–20"), for a concentration-risk insight */
   concentration?: Concentration[];
+  /** best-selling products/categories by revenue and by volume — the lead story for sales data */
+  bestSellers?: BestSellers;
+  /** group-comparison keys ("metric~dimension") whose "copy the leader" framing is a price/product
+   *  tautology (a premium product just costs more) and must NOT become a "close the gap" recommendation. */
+  suppressGroupComparisons?: string[];
   /** true when the dataset is small enough that estimates are unstable (n < 30) */
   smallSample: boolean;
 }
@@ -264,6 +269,38 @@ export interface CategoryFact {
   total: number; // non-null count
   distinct: number;
   top: ValueCount[];
+}
+
+/** One product/category's sales performance: how much revenue and volume it drives. */
+export interface Performer {
+  name: string;
+  revenue: number;
+  /** revenue / total revenue across the dimension, 0..1. */
+  revenueShare: number;
+  units: number;
+  /** units / total units, 0..1. */
+  unitShare: number;
+}
+
+/** The best-seller story: which products/categories drive the most revenue and the most volume. */
+export interface BestSellers {
+  /** the product/category dimension (e.g. "Model", "Brand"). */
+  dimension: string;
+  /** the revenue/value metric being ranked. */
+  metric: string;
+  /** number of distinct values in the dimension. */
+  distinct: number;
+  totalRevenue: number;
+  totalUnits: number;
+  /** top performers by revenue, largest first. */
+  byRevenue: Performer[];
+  /** top performers by volume (units / transaction count), largest first. */
+  byUnits: Performer[];
+  /** #1 by revenue and #1 by volume (may be the same or different products). */
+  topRevenue: Performer;
+  topUnits: Performer;
+  /** true when units were summed from a real quantity column (vs. counting transactions). */
+  hasQuantity: boolean;
 }
 
 /** An AI-derived, action-oriented interpretation of the data. Not professional advice. */

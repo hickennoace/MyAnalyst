@@ -24,8 +24,32 @@ export function buildActionReport(ctx: InsightContext, quality: DataQuality | un
   const prof = (name: string) => profiles.find((p) => p.name === name);
   const fmt = (n: number, name?: string) => fmtVal(n, name ? prof(name) : undefined);
 
+  // 0. Double down on what sells — concrete, revenue-first, and the first move any operator wants.
+  if (ctx.bestSellers) {
+    const b = ctx.bestSellers;
+    const same = b.topRevenue.name === b.topUnits.name;
+    const laggards = b.byRevenue.filter((p) => p.revenueShare < 0.05).length;
+    out.push({
+      score: 0.95,
+      a: {
+        id: `act-bestseller-${b.dimension}`,
+        title: same
+          ? `Protect and grow your top ${b.dimension}, "${b.topRevenue.name}"`
+          : `Push volume on "${b.topUnits.name}" and margin on "${b.topRevenue.name}"`,
+        detail: same
+          ? `"${b.topRevenue.name}" drives ${Math.round(b.topRevenue.revenueShare * 100)}% of revenue (${fmt(b.topRevenue.revenue, b.metric)}) and leads on volume — keep it in stock, defend its pricing, and study why it wins.${laggards ? ` Meanwhile ${laggards} ${b.dimension}${laggards === 1 ? "" : "s"} barely move — cut or relaunch them.` : ""}`
+          : `"${b.topRevenue.name}" earns the most (${fmt(b.topRevenue.revenue, b.metric)}, ${Math.round(b.topRevenue.revenueShare * 100)}% of revenue) while "${b.topUnits.name}" sells the most volume. Use "${b.topUnits.name}" to win traffic and upsell toward "${b.topRevenue.name}" for margin.${laggards ? ` ${laggards} ${b.dimension}${laggards === 1 ? "" : "s"} contribute almost nothing — cut or fix them.` : ""}`,
+        impact: "high",
+        basis: `Best-seller analysis of ${b.metric} by ${b.dimension}`,
+      },
+    });
+  }
+
   // 1. Biggest group gap — sized as an opportunity ("bring the laggard up to the leader is worth ~$X").
-  for (const g of ctx.groupComparisons.filter((g) => g.significant).slice(0, 2)) {
+  //    Suppressed for unit-price / product-dimension comparisons (raising a cheap model's price to match a
+  //    premium one is nonsense); kept for outcome×operational gaps (a region/rep that genuinely lags).
+  const suppressed = new Set(ctx.suppressGroupComparisons ?? []);
+  for (const g of ctx.groupComparisons.filter((g) => g.significant && !suppressed.has(`${g.metric}~${g.dimension}`)).slice(0, 2)) {
     const uplift = (g.top.mean - g.bottom.mean) * g.bottom.n;
     if (uplift > 0 && g.top.name !== g.bottom.name) {
       out.push({

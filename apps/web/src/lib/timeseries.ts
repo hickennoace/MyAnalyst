@@ -53,6 +53,19 @@ function bucketLabel(d: Date, cadence: Cadence): string {
   }
 }
 
+/**
+ * Drop an obviously incomplete final period (e.g. the current, half-finished month) so it doesn't drag a
+ * revenue trend or forecast artificially downward. Conservative — only trims when the last value sits far
+ * below the typical level of the periods before it, so a genuinely weak final month isn't discarded.
+ */
+export function trimPartialTail(values: number[]): number[] {
+  if (values.length < 4) return values;
+  const prior = values.slice(0, -1);
+  const sorted = [...prior].sort((a, b) => a - b);
+  const med = sorted[Math.floor(sorted.length / 2)];
+  return med > 0 && values[values.length - 1] < 0.5 * med ? prior : values;
+}
+
 /** Trailing moving average over `window` periods (null until enough history). */
 function movingAverage(values: number[], window: number): (number | null)[] {
   const out: (number | null)[] = [];
@@ -132,7 +145,7 @@ export function detectSeasonality(periods: PeriodPoint[], cadence: Cadence): Sea
   return { unit, indices, peak, trough, strength: peak.index - trough.index };
 }
 
-export function analyzeTimeSeries(table: Table, timeCol: string, metricName: string): TimeSeriesAnalysis | undefined {
+export function analyzeTimeSeries(table: Table, timeCol: string, metricName: string, forceCadence?: Cadence): TimeSeriesAnalysis | undefined {
   const vals = numericColumn(table, metricName);
   const points: { t: number; v: number }[] = [];
   table.rows.forEach((r, i) => {
@@ -142,10 +155,11 @@ export function analyzeTimeSeries(table: Table, timeCol: string, metricName: str
   if (points.length < 3) return undefined;
   points.sort((a, b) => a.t - b.t);
 
-  // Cadence from the median gap between consecutive timestamps.
+  // Cadence from the median gap between consecutive timestamps — or a caller-forced one (e.g. summing
+  // dense transactions up to MONTHLY so a revenue trend isn't drowned in day-to-day noise).
   const gaps: number[] = [];
   for (let i = 1; i < points.length; i++) gaps.push((points[i].t - points[i - 1].t) / DAY);
-  const cadence = cadenceFromGapDays(median(gaps.filter((g) => g > 0)) || 30);
+  const cadence = forceCadence ?? cadenceFromGapDays(median(gaps.filter((g) => g > 0)) || 30);
 
   // Aggregate (sum) into period buckets, preserving chronological order.
   const buckets = new Map<string, number>();
