@@ -1,5 +1,6 @@
 import type { jsPDF as JsPdf } from "jspdf";
 import { chartBg } from "./chart-theme";
+import { DEFAULT_BRAND, type BrandSettings } from "./brand";
 
 // Client-side dashboard export. Snapshots the rendered dashboard DOM (ECharts canvases included)
 // to a PNG, and composes a paginated PDF from that image. No server, no upload — same privacy
@@ -29,12 +30,13 @@ function escapeHtml(s: string): string {
  * Hide interactive sections and prepend a branded report header, so the captured image reads as a
  * polished report rather than a screenshot of a live app. Returns a function that undoes everything.
  */
-function prepareCapture(node: HTMLElement, title: string, meta: string): () => void {
+function prepareCapture(node: HTMLElement, title: string, meta: string, brand: BrandSettings = DEFAULT_BRAND): () => void {
   const dark = isDark();
   const fg = dark ? "#e2e8f0" : "#0f172a";
   const sub = dark ? "#94a3b8" : "#64748b";
   const line = dark ? "rgba(148,163,184,0.22)" : "rgba(15,23,42,0.12)";
   const font = "ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
+  const accent = /^#[0-9a-f]{6}$/i.test(brand.accent) ? brand.accent : "#3b82f6";
 
   // Hide the interactive sections (Ask / Build / Browse).
   const hidden: { el: HTMLElement; prev: string }[] = [];
@@ -43,10 +45,12 @@ function prepareCapture(node: HTMLElement, title: string, meta: string): () => v
     el.style.display = "none";
   });
 
-  // A small inline logomark mirroring BrandMark, so the header is self-contained for html-to-image.
-  const logo = `<svg viewBox="0 0 32 32" width="30" height="30" role="img" aria-label="MyAnalyst">
+  // A custom logo when branded; otherwise the inline MyAnalyst logomark (self-contained for html-to-image).
+  const logo = brand.logoDataUrl
+    ? `<img src="${brand.logoDataUrl}" alt="${escapeHtml(brand.name)}" style="width:30px;height:30px;border-radius:7px;object-fit:contain;" />`
+    : `<svg viewBox="0 0 32 32" width="30" height="30" role="img" aria-label="${escapeHtml(brand.name)}">
       <defs><linearGradient id="exp-grad" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#22d3ee"/>
+        <stop offset="0" stop-color="${accent}"/><stop offset="1" stop-color="#22d3ee"/>
       </linearGradient></defs>
       <rect x="1" y="1" width="30" height="30" rx="8.5" fill="url(#exp-grad)"/>
       <g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
@@ -56,7 +60,8 @@ function prepareCapture(node: HTMLElement, title: string, meta: string): () => v
     </svg>`;
 
   const header = document.createElement("div");
-  header.style.cssText = `display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:14px;margin-bottom:20px;border-bottom:1px solid ${line};`;
+  header.style.cssText = `display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:14px;margin-bottom:20px;border-bottom:2px solid ${accent};`;
+  const by = brand.name !== DEFAULT_BRAND.name ? `${escapeHtml(brand.name)} · MyAnalyst` : "MyAnalyst";
   header.innerHTML = `
     <div style="display:flex;align-items:center;gap:11px;">
       ${logo}
@@ -66,7 +71,7 @@ function prepareCapture(node: HTMLElement, title: string, meta: string): () => v
       </div>
     </div>
     <div style="text-align:right;line-height:1.25;">
-      <div style="font:600 13px ${font};color:${fg};">MyAnalyst</div>
+      <div style="font:600 13px ${font};color:${fg};">${by}</div>
       <div style="font:400 11px ${font};color:${sub};margin-top:2px;">Generated ${new Date().toLocaleDateString()}</div>
     </div>`;
   node.insertBefore(header, node.firstChild);
@@ -105,8 +110,8 @@ function triggerDownload(dataUrl: string, filename: string) {
   a.remove();
 }
 
-export async function exportPng(node: HTMLElement, datasetName: string, meta = ""): Promise<void> {
-  const restore = prepareCapture(node, datasetName, meta);
+export async function exportPng(node: HTMLElement, datasetName: string, meta = "", brand?: BrandSettings): Promise<void> {
+  const restore = prepareCapture(node, datasetName, meta, brand);
   try {
     const dataUrl = await snapshot(node);
     triggerDownload(dataUrl, `${safeName(datasetName)}.png`);
@@ -115,8 +120,8 @@ export async function exportPng(node: HTMLElement, datasetName: string, meta = "
   }
 }
 
-export async function exportPdf(node: HTMLElement, datasetName: string, meta = ""): Promise<void> {
-  const restore = prepareCapture(node, datasetName, meta);
+export async function exportPdf(node: HTMLElement, datasetName: string, meta = "", brand?: BrandSettings): Promise<void> {
+  const restore = prepareCapture(node, datasetName, meta, brand);
   let dataUrl: string;
   let boundaries: number[];
   try {

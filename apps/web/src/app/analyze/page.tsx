@@ -8,6 +8,9 @@ import { runAnalysis } from "@/lib/analyze-client";
 import { downloadCsv } from "@/lib/csv";
 import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
+import { exportDeckPdf, exportReportPdf } from "@/lib/report-pdf";
+import { loadBrand } from "@/lib/brand";
+import { BrandEditor } from "@/components/BrandEditor";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
 import { compareDatasets, type DatasetComparison } from "@/lib/compare-datasets";
@@ -47,11 +50,12 @@ export default function AnalyzePage() {
   const [currentSourceId, setCurrentSourceId] = useState<string>("");
   const [sourceKind, setSourceKind] = useState<"sheet" | "table" | undefined>(undefined);
   const [joinId, setJoinId] = useState<string>("");
-  const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
+  const [exporting, setExporting] = useState<null | "png" | "pdf" | "report" | "deck">(null);
   const [comparison, setComparison] = useState<DatasetComparison | null>(null);
   const [comparing, setComparing] = useState(false);
   const compareInputRef = useRef<HTMLInputElement>(null);
   const [presenting, setPresenting] = useState(false);
+  const [branding, setBranding] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [jobDesc, setJobDesc] = useState("");
@@ -143,15 +147,20 @@ export default function AnalyzePage() {
     }
   }
 
-  async function handleExport(kind: "png" | "pdf") {
-    if (!dashboardRef.current || !spec || exporting) return;
+  async function handleExport(kind: "png" | "pdf" | "report" | "deck") {
+    if (!spec || exporting) return;
+    if ((kind === "png" || kind === "pdf") && !dashboardRef.current) return;
     setExporting(kind);
     setToast(null);
     try {
       const meta = `${spec.rowCount.toLocaleString()} rows · ${spec.profiles.length} columns · ${spec.domain.domain}`;
-      if (kind === "png") await exportPng(dashboardRef.current, spec.datasetName, meta);
-      else await exportPdf(dashboardRef.current, spec.datasetName, meta);
-      setToast({ text: `✓ ${kind.toUpperCase()} downloaded.`, tone: "info" });
+      const brand = loadBrand();
+      if (kind === "png") await exportPng(dashboardRef.current!, spec.datasetName, meta, brand);
+      else if (kind === "pdf") await exportPdf(dashboardRef.current!, spec.datasetName, meta, brand);
+      else if (kind === "report") await exportReportPdf(spec, brand);
+      else await exportDeckPdf(spec, brand);
+      const label = kind === "report" ? "Report PDF" : kind === "deck" ? "Deck PDF" : kind.toUpperCase();
+      setToast({ text: `✓ ${label} downloaded.`, tone: "info" });
     } catch {
       // The export-error banner was previously routed to `error`, which only renders in the
       // pre-analysis (no-spec) view — so failures were silent. Surface it in the toast instead.
@@ -387,9 +396,33 @@ export default function AnalyzePage() {
                 onClick={() => handleExport("pdf")}
                 disabled={!!exporting}
                 className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
-                title="Download the dashboard as a PDF"
+                title="Download the dashboard as a PDF image"
               >
                 {exporting === "pdf" ? "Exporting…" : "⬇ PDF"}
+              </button>
+              <button
+                onClick={() => handleExport("report")}
+                disabled={!!exporting}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
+                title="Download a text-first, multi-page consultant report (PDF)"
+              >
+                {exporting === "report" ? "Exporting…" : "⬇ Report"}
+              </button>
+              <button
+                onClick={() => handleExport("deck")}
+                disabled={!!exporting}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
+                title="Download a slide deck (PDF)"
+              >
+                {exporting === "deck" ? "Exporting…" : "⬇ Deck"}
+              </button>
+              <button
+                onClick={() => setBranding(true)}
+                disabled={!!exporting}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
+                title="Brand your exported report and deck"
+              >
+                ✦ Brand
               </button>
               <button
                 onClick={reset}
@@ -532,6 +565,7 @@ export default function AnalyzePage() {
         )}
 
         {presenting && spec && <PresenterMode spec={spec} onClose={() => setPresenting(false)} />}
+        {branding && <BrandEditor onClose={() => setBranding(false)} />}
 
         {comparison && (
           <div className="mb-6">
