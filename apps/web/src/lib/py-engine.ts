@@ -41,9 +41,37 @@ export interface PyAnalysisSpec {
   forecast?: Record<string, unknown> | null;
   stats?: Record<string, unknown>;
   outliers?: Record<string, unknown>[];
+  segments?: PySegmentation | null;
+  rfm?: PyRfm | null;
   charts: PyChart[];
   facts: PyFact[];
   narrative: string;
+}
+
+export interface PySegmentation {
+  k: number;
+  features: string[];
+  segments: {
+    id: number;
+    label: string;
+    size: number;
+    sharePct: number;
+    defining: { column: string; direction: "high" | "low"; mean: number; z: number }[];
+  }[];
+  sampled?: number | null;
+}
+
+export interface PyRfm {
+  entity: string;
+  customers: number;
+  segments: {
+    key: string;
+    label: string;
+    size: number;
+    sharePct: number;
+    avgMonetary: number;
+    monetaryShare: number;
+  }[];
 }
 
 export interface PyConclusions {

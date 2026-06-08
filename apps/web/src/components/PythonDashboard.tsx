@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { KpiCard } from "./KpiCard";
 import { Chart } from "./Chart";
 import { pyChartsToSpecs } from "@/lib/py-charts";
@@ -42,6 +43,57 @@ export function PythonDashboard({ spec, conclusions }: { spec: PyAnalysisSpec; c
         </section>
       )}
 
+      {spec.bestSellers && (
+        <Section title={`Best sellers by ${spec.bestSellers.dimension}`}>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {spec.bestSellers.byRevenue.map((p, i) => (
+              <div key={p.name} className="flex items-center justify-between rounded-lg border border-[var(--line)] px-3 py-2">
+                <span className="truncate text-[13px] text-slate-200">
+                  <span className="text-slate-500">{i + 1}.</span> {p.name}
+                </span>
+                <span className="shrink-0 text-[12px] tabular-nums text-slate-400">
+                  {money(p.revenue)} · {(p.revenueShare * 100).toFixed(0)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {spec.rfm && spec.rfm.segments.length > 0 && (
+        <Section title={`Customer value (RFM) · ${spec.rfm.customers.toLocaleString()} ${spec.rfm.entity}s`}>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {spec.rfm.segments.map((s) => (
+              <div key={s.key} className="rounded-lg border border-[var(--line)] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-slate-100">{s.label}</span>
+                  <span className="text-[11px] text-slate-400">{s.size} · {s.sharePct.toFixed(0)}%</span>
+                </div>
+                <div className="mt-1 text-[11px] text-slate-500">
+                  {(s.monetaryShare * 100).toFixed(0)}% of revenue · avg {money(s.avgMonetary)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {spec.segments && spec.segments.segments.length > 1 && (
+        <Section title={`Natural segments (clustered on ${spec.segments.features.join(", ")})`}>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {spec.segments.segments.map((s) => (
+              <div key={s.id} className="rounded-lg border border-[var(--line)] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-slate-100">{s.label}</span>
+                  <span className="text-[11px] text-slate-400">{s.sharePct.toFixed(0)}%</span>
+                </div>
+                <div className="mt-1 text-[11px] text-slate-500">{s.size.toLocaleString()} rows</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
       <section className="card p-5">
         <h3 className="mb-2 text-sm font-semibold text-slate-100">What the numbers say</h3>
         <ul className="space-y-1.5">
@@ -55,6 +107,23 @@ export function PythonDashboard({ spec, conclusions }: { spec: PyAnalysisSpec; c
       </section>
     </div>
   );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="card p-5">
+      <h3 className="mb-3 text-sm font-semibold text-slate-100">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function money(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  const a = Math.abs(n);
+  if (a >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
+  if (a >= 1e3) return "$" + (n / 1e3).toFixed(0) + "K";
+  return "$" + n.toFixed(0);
 }
 
 function ConclusionsCard({ c }: { c: PyConclusions }) {
