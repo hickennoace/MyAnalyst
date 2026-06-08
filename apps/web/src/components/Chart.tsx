@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { ChartSpec } from "@/lib/types";
 import { chartBg } from "@/lib/chart-theme";
@@ -11,6 +11,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
 interface EChartsInstance {
   getDataURL(opts: { type: string; pixelRatio: number; backgroundColor: string }): string;
+  resize(): void;
 }
 
 function safeName(s: string): string {
@@ -28,6 +29,21 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 
 export function Chart({ spec }: { spec: ChartSpec }) {
   const instance = useRef<EChartsInstance | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  // echarts-for-react@3 binds no resize listener of its own, so keep the canvas in step with its
+  // container width (responsive layouts, window resizes) via a ResizeObserver. Inactive tab panels stay
+  // laid out (clipped, not display:none), so charts always initialise at the right width — no tab-switch
+  // resize dance needed.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth > 0) instance.current?.resize();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Export the chart WITH its title/subtitle composited on top (ECharts' own PNG omits the DOM heading).
   async function downloadPng() {
@@ -98,7 +114,7 @@ export function Chart({ spec }: { spec: ChartSpec }) {
         )}
       >
         {/* The ECharts canvas is invisible to screen readers; describe it as an image. */}
-        <div role="img" aria-label={`${spec.type} chart: ${spec.title}${spec.subtitle ? ` — ${spec.subtitle}` : ""}`}>
+        <div ref={wrapRef} role="img" aria-label={`${spec.type} chart: ${spec.title}${spec.subtitle ? ` — ${spec.subtitle}` : ""}`}>
           <ReactECharts
             option={spec.option}
             style={{ height: 320, width: "100%" }}

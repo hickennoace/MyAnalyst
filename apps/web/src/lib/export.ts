@@ -38,11 +38,23 @@ function prepareCapture(node: HTMLElement, title: string, meta: string, brand: B
   const font = "ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
   const accent = /^#[0-9a-f]{6}$/i.test(brand.accent) ? brand.accent : "#3b82f6";
 
-  // Hide the interactive sections (Ask / Build / Browse).
+  // Hide the interactive sections (Ask / Build / Browse / Scenario / the tab bar).
   const hidden: { el: HTMLElement; prev: string }[] = [];
   node.querySelectorAll<HTMLElement>("[data-export-exclude]").forEach((el) => {
     hidden.push({ el, prev: el.style.display });
     el.style.display = "none";
+  });
+
+  // Un-clip every inactive tab panel so the report includes all sections (on screen only the active tab
+  // is shown). Panels are clipped (height:0) rather than display:none, so their charts are already sized
+  // correctly — revealing is just removing the clip.
+  const revealed: { el: HTMLElement; height: string; overflow: string; opacity: string; inert: boolean }[] = [];
+  node.querySelectorAll<HTMLElement>('[data-tab-panel][data-active="false"]').forEach((el) => {
+    revealed.push({ el, height: el.style.height, overflow: el.style.overflow, opacity: el.style.opacity, inert: el.inert });
+    el.style.height = "auto";
+    el.style.overflow = "visible";
+    el.style.opacity = "1";
+    el.inert = false;
   });
 
   // A custom logo when branded; otherwise the inline MyAnalyst logomark (self-contained for html-to-image).
@@ -79,6 +91,12 @@ function prepareCapture(node: HTMLElement, title: string, meta: string, brand: B
   return () => {
     header.remove();
     for (const { el, prev } of hidden) el.style.display = prev;
+    for (const r of revealed) {
+      r.el.style.height = r.height;
+      r.el.style.overflow = r.overflow;
+      r.el.style.opacity = r.opacity;
+      r.el.inert = r.inert;
+    }
   };
 }
 
@@ -110,9 +128,14 @@ function triggerDownload(dataUrl: string, filename: string) {
   a.remove();
 }
 
+// Give revealed tab panels (and their freshly-resized ECharts canvases) a couple of frames to repaint
+// before we snapshot, so the exported report isn't missing charts from non-active tabs.
+const settle = () => new Promise((r) => setTimeout(r, 90));
+
 export async function exportPng(node: HTMLElement, datasetName: string, meta = "", brand?: BrandSettings): Promise<void> {
   const restore = prepareCapture(node, datasetName, meta, brand);
   try {
+    await settle();
     const dataUrl = await snapshot(node);
     triggerDownload(dataUrl, `${safeName(datasetName)}.png`);
   } finally {
@@ -125,6 +148,7 @@ export async function exportPdf(node: HTMLElement, datasetName: string, meta = "
   let dataUrl: string;
   let boundaries: number[];
   try {
+    await settle();
     boundaries = blockBoundaries(node);
     dataUrl = await snapshot(node);
   } finally {

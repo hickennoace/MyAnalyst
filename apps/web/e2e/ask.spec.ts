@@ -5,6 +5,9 @@ import { test, expect } from "@playwright/test";
 // heuristic. Either way an answer bubble appears.
 test("ask-your-data returns an answer", async ({ page }) => {
   await page.goto("/analyze?demo=1");
+  // Interactive tools live under the "Explore" tab in the redesigned dashboard.
+  await expect(page.getByRole("heading", { name: "Key metrics" })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Explore" }).click();
   await expect(page.getByRole("heading", { name: "Ask your data", level: 2 })).toBeVisible({ timeout: 30_000 });
 
   await page.getByLabel("Ask a question about your data").fill("give me a summary of this data");
