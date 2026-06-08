@@ -71,38 +71,43 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 ## 3b. Next wave — staying ahead (added 2026-06-08)
 
 > Phases A–D took us to parity-plus on the self-serve surface. This wave is about **out-thinking** them: the analyses a senior consultant *actually* does by hand, more rigor than a dashboard ever shows, and reach into where data really lives — **all without breaking the 100%-client-side / privacy-first line.** Ordered by value × leverage. Each item is buildable as a pure `src/lib` module + a dashboard card unless noted.
+>
+> **Status (2026-06-08): Phases E, F, H, I1 and G2 all shipped & live; G3 shipped earlier. Only the two heavy-dependency items remain — G1 (Parquet/PDF/OCR ingest) and I2 (in-browser WebGPU model) — awaiting a bundle-cost go/no-go.** Test suite 144→160 unit tests, all green; typecheck + build + smoke pass.
 
-### Phase E — Consultant-grade analysis (the biggest unmatched value)
-- **E1. Contribution / mix-shift decomposition** — when a total moves period-over-period, automatically attribute *how much* each segment, region, or product drove it ("Revenue rose 6.2% — North America +9pts, Enterprise tier −3pts on volume mix"). The single most common thing a human analyst is paid to explain. Pure client-side from data we already have. **Beats:** their dashboards show *that* a number changed; we explain *why*, by dimension. **Done-when:** any time-trend or two-dataset compare offers a one-click "what drove this?" breakdown that sums to the total.
-- **E2. What-if scenario simulator** — sliders on the regression drivers we already compute; drag a lever, see the projected change in the target with a confidence band. **Beats:** static benchmarking — this is interactive, demo-worthy, and sticky. **Done-when:** a "Scenario" card lets a user adjust any significant driver and read off the modeled outcome, with the math shown.
-- **E3. Goal-seek / target planner** — the inverse: "I want the target up 15% — what would each lever have to do?" Solves backward through the same model and ranks the most feasible paths. **Beats:** what a consultant whiteboards in a planning session. **Done-when:** enter a target, get ranked lever changes that reach it (or "not reachable from these factors").
-- **E4. Root-cause drill-down on anomalies** — click any flagged anomaly/outlier → auto-decompose which dimension and rows produced it, with the supporting evidence. **Beats:** their alerts say "off track"; we say "off track *because* store #14's labor cost doubled on Tue." **Done-when:** every anomaly card has a "diagnose" action that returns the contributing slice.
-- **E5. Open-text & survey analytics** — for free-text columns: client-side theme clustering, keyword extraction, and (LLM-optional) sentiment, surfaced as a card. **Beats:** no self-serve operator tool reads open-ended feedback; privacy makes it safe for HR/CSAT verbatims. **Done-when:** a dataset with a text column gets a "Themes & sentiment" card grounded in actual quotes.
+### Phase E — Consultant-grade analysis (the biggest unmatched value) ✅
+- **E1. Contribution / mix-shift decomposition** ✅ — `lib/contribution.ts` + "What drove the change" card: attributes the primary metric's period-over-period move to a dimension; per-segment deltas sum to the total, plus mix-shift (share gained/lost). **Done.**
+- **E2. What-if scenario simulator** ✅ — `DriverAnalysis.model` now carries the fitted coefficients + baselines; `lib/scenario.ts` + ScenarioCard project the target from sliders with a modelled range. **Done.**
+- **E3. Goal-seek / target planner** ✅ — `goalSeek()` inverts the same model; enter a target change → ranked, in-range-flagged lever moves. **Done.**
+- **E4. Root-cause drill-down on anomalies** ✅ — `detectAnomalies` attributes anomalous rows to the segment they cluster in (lift = outlier-share ÷ base-share), shown on the Anomalies card. **Done.**
+- **E5. Open-text & survey analytics** ✅ — `lib/text-analytics.ts` + Themes & sentiment card: bigram-preferring keyword themes with representative quotes + lexicon sentiment. **Done.**
 
-### Phase F — Rigor as the moat (trust beats features)
-- **F1. Significance everywhere** — "is this difference real?" badges on every comparison and group gap (CI + p-value, sample-size warnings), forecast confidence bands, and a clear "too few rows to trust" state. **Beats:** dashboards quote point numbers with false precision; we quantify uncertainty. **Done-when:** KPIs, comparisons, and forecasts all carry an honest confidence signal.
-- **F2. Caveat propagation** — the data-quality scorecard's findings flow *into* every downstream insight: an insight built on a 40%-missing column is visibly flagged. **Beats:** a polished report that silently hides a garbage-in problem. **Done-when:** any KPI/insight derived from a low-quality column shows an inline trust flag linking back to the scorecard.
-- **F3. Methodology appendix + reproducible recipe** — the export gains a "How this was computed" appendix (assumptions, tests, formulas), and the analysis can be saved as a self-contained recipe (JSON/HTML) that reproduces the same result on the same file. Pairs with the new not-financial-advice disclaimer. **Beats:** a black-box monthly PDF. **Done-when:** every exported report states its methods, and a saved recipe re-runs deterministically.
+### Phase F — Rigor as the moat (trust beats features) ✅
+- **F1. Significance everywhere** ✅ — forecast chart draws a 95% prediction interval (widens with horizon); dataset compare runs Welch's t-test per metric ("real" vs "n.s."); small-sample state surfaced. **Done.**
+- **F2. Caveat propagation** ✅ — `lib/caveats.ts` flows the data-quality findings into a "read with care" strip + a ⚠ on any KPI derived from a flagged column. **Done.**
+- **F3. Methodology appendix + reproducible recipe** ✅ — `lib/methodology.ts` + MethodologyCard: methods/assumptions/limitations (incl. the not-financial-advice disclaimer) kept in the export, a deterministic fingerprint, and a downloadable `.recipe.json`. **Done.**
 
 ### Phase G — Reach without a backend
-- **G1. Meet data where it lives** — Parquet (bundle-cost call), PDF-table extraction, paste-an-image-of-a-table (OCR), and multi-file drop. **Beats:** "export to CSV first" friction. **Done-when:** a user can drop a PDF/Parquet/image and get the same analysis pipeline.
-- **G2. Install & offline (PWA) + mobile polish** — installable, works fully offline (the ultimate privacy proof: no network at all), responsive on phones/tablets. **Beats:** a login-gated web dashboard you can't use on the floor. **Done-when:** Lighthouse PWA pass, offline analysis works, dashboard is usable at mobile widths.
-- **G3. Privacy-preserving "refresh" without our servers** — instead of C2's backend, let the user point at a Google Sheet/URL and re-run locally on each visit, with an optional self-hosted (their GitHub Action / cron) snapshot. **Beats:** their managed refresh — without us holding the data. **Done-when:** a saved source re-fetches and re-analyzes client-side on open.
+- **G1. Meet data where it lives** ◐ *(needs a heavy-dep go/no-go — §4)* — Parquet, PDF-table extraction, image-of-a-table (OCR), multi-file drop. Each pulls a sizeable new dependency (parquet-wasm / pdf.js / tesseract.js), so it's gated on a bundle-cost call.
+- **G2. Install & offline (PWA) + mobile polish** ✅ — web manifest (installable, maskable icon), service worker (network-first navigations + stale-while-revalidate assets, never caches `/api`), production registrar; analyzes data with no network once cached. **Done.**
+- **G3. Privacy-preserving "refresh" without our servers** ✅ *(shipped earlier — Google Sheet/URL re-fetch + local re-analyze).*
 
-### Phase H — The deliverable
-- **H1. Text-first multi-page PDF** — the long-deferred B2 nicety: a proper paginated consultant report (cover, exec summary, action plan, methodology), not just a screenshot. **Done-when:** export produces a multi-page, text-selectable PDF.
-- **H2. White-label / branded export** — drop in a logo and accent color for the report and presenter mode. **Beats:** their fixed branding. **Done-when:** a user can brand the exported deliverable.
-- **H3. Auto-generated slide deck** — turn the analysis into a short presentation (title, key findings, action plan, chart slides) exportable as PDF/PPTX-style. **Beats:** hand-building a readout deck. **Done-when:** one click yields a presentable deck from the spec.
+### Phase H — The deliverable ✅
+- **H1. Text-first multi-page PDF** ✅ — `lib/report-pdf.ts` composes a paginated, selectable consultant report (cover, exec summary, metrics, actions, findings, methodology) directly with jsPDF — not a screenshot. **Done.**
+- **H2. White-label / branded export** ✅ — `lib/brand.ts` + BrandEditor: name, accent, logo (local-only) applied to the report, deck, and image-export header. **Done.**
+- **H3. Auto-generated slide deck** ✅ — `exportDeckPdf` turns the spec into a landscape readout deck (cover + key-findings/actions/metrics slides + notes). **Done.**
 
 ### Phase I — Optional AI depth (privacy intact)
-- **I1. Bring-your-own-key LLM** — let power users plug their own provider key (stored locally only) for higher-reliability narration/planning, still metadata-only context. **Beats:** rate-limited free tier; zero extra cost to us, no privacy regression. **Done-when:** a user can supply a key in settings and the engine uses it client-side.
-- **I2. In-browser LLM (WebGPU / transformers.js)** — optional fully-offline narration with no network call at all — the strongest possible privacy claim. **Done-when:** a small local model can narrate the story/insights with zero requests, behind an opt-in.
+- **I1. Bring-your-own-key LLM** ✅ — `lib/llm-settings.ts` + AiKeyEditor: a user's own provider key (stored locally, off by default) threaded through the analyzer to the narrator; the `/api/insights` route prefers a per-request BYOK key over the env and never persists it. Metadata-only context unchanged. **Done.** *(Follow-up: extend BYOK to the Ask-your-data planner; today it still uses the server key.)*
+- **I2. In-browser LLM (WebGPU / transformers.js)** ◐ *(needs a heavy-dep go/no-go — §4)* — fully-offline narration with no network call at all. Pulls a large dependency + a model download, so it's gated on a bundle/UX call.
 
 ---
 
 ## 4. Explicitly deferred (need your decision)
-- **Any backend** (C2 alerts/scheduled refresh, D3 accounts): crosses today's 100%-client-side line. Worth it for monitoring/saved dashboards, but it's infra to build/run — **your go/no-go when we reach Phase C.**
-- **Heavy deps** (Parquet, DuckDB-WASM for exact huge-file analysis): bundle-size cost — decide per-feature.
+- **Heavy-dependency ingest & local model (G1, I2)** — the only wave-2 items not yet built, *because* they each add a sizeable new dependency and the project rule is "no deps without asking":
+  - **G1:** Parquet (`parquet-wasm`, ~MBs of WASM), PDF-table extraction (`pdf.js`), image-of-a-table OCR (`tesseract.js`, large + slow). Likely do them à la carte rather than all at once.
+  - **I2:** in-browser WebGPU model (`@huggingface/transformers` + a multi-hundred-MB model download) for zero-network narration.
+  - **Awaiting:** a per-feature bundle-cost go/no-go.
+- **Any backend** (C2 alerts/scheduled refresh, D3 accounts): crosses the 100%-client-side line. G3 already covers most of C2's value without a server.
 - **Their actual model** (POS/QuickBooks integrations, multi-tenant SaaS, sales team, human consulting): deliberately *not* pursued — that's their game, capital-heavy, and not our edge.
 
 ## 5. How we'll know we're winning
@@ -112,14 +117,12 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 - Privacy stays absolute: raw rows never leave the browser. This is the line we never cross.
 
 ## 6. What I need from you
-- **Now:** nothing blocking — the entire **Phase E** (contribution decomposition, what-if simulator, goal-seek, root-cause drill-down, open-text analytics) and **Phase F** (rigor/significance, caveat propagation, methodology) are pure client-side and can be built immediately. My recommended order: **E1 → E2 → F1** (highest consultant value, all reuse models we already compute).
-- **Bundle-cost calls (per feature):** Parquet (G1), PDF/image table extraction (G1), in-browser WebGPU model (I2) — each adds weight; I'll flag the cost before pulling the dep.
-- **One product call:** BYOK LLM (I1) — confirm you're happy letting power users supply their own key (stored locally only).
-- **Still deferred unless you reopen it:** any of *our* backend (C2 managed alerts, D3 cloud accounts). G3 offers a privacy-preserving alternative to C2 that needs no server.
+- **One decision (the only blocker left):** the **G1 / I2 heavy-dependency go/no-go.** Everything else in wave 2 is built and pushed. Pick which (if any) of these to pull a dep for: Parquet ingest, PDF-table extraction, image/OCR ingest, in-browser WebGPU model — or hold them all.
+- **Still deferred unless you reopen it:** any of *our* backend (C2 managed alerts, D3 cloud accounts). G3 already covers most of C2's value without a server.
 
 ---
 
-### Status: wave 1 shipped · wave 2 defined (2026-06-08)
-**Wave 1 (Phases A–D, client-side) is complete and live at myanalyst.net.** **Decision stands: MyAnalyst is 100% client-side / privacy-first** — so managed-backend items (**C2** alerts, **D3** cloud accounts) remain deferred; **G3** is the privacy-preserving way to get most of C2's value without a server.
+### Status: wave 1 shipped · wave 2 ~90% shipped (2026-06-08)
+**Wave 1 (Phases A–D, client-side) is complete and live at myanalyst.net.** **Decision stands: MyAnalyst is 100% client-side / privacy-first** — managed-backend items (**C2** alerts, **D3** cloud accounts) remain deferred; **G3** is the privacy-preserving alternative.
 
-**Wave 2 (Phases E–I, §3b) is the new plan-of-record for staying ahead.** It's deliberately weighted toward analyses a senior consultant does by hand (E) and toward rigor/trust (F), since that — not feature count — is where AI + privacy lets us out-execute a vertical operator-BI platform. Next up: **E1 (contribution/mix-shift decomposition).** Just-shipped: the not-financial-advice disclaimer (footer + dashboard), which folds into **F3**.
+**Wave 2 (Phases E–I, §3b): Phases E, F, H, plus G2 and I1 are shipped and pushed to `main`** — consultant-grade analysis (contribution decomposition, what-if/goal-seek, anomaly root-cause, open-text analytics), rigor/trust (significance everywhere, caveat propagation, methodology + reproducible recipe), the deliverable (text-first PDF report, white-label, slide deck), PWA/offline, and bring-your-own-key narration. Test suite at **160 unit tests**, all green; typecheck + build + smoke pass. **Only G1 (heavy-dep ingest) and I2 (in-browser model) remain — gated on the bundle-cost decision in §4.** Also open as a small follow-up: extend I1 BYOK to the Ask-your-data planner (today it uses the server key).
