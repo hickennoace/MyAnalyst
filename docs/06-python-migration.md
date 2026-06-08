@@ -103,8 +103,14 @@ fits or via the Phase 4b service.
 sale, monthly trend w/ partial-month trim, gross margin, top-seller share, best month), best-sellers.
 `_test_engine.py` (8 asserts) + `_demo.py` green.
 
-### Phase 2 — Full analysis parity  ⏳ NEXT
-Port the rest so the spec matches the TS `DashboardSpec` facts:
+### Phase 2 — Full analysis parity  ✅ DONE (engine), parity-script pending
+Shipped `_stats.py` (scipy correlations + Fisher CI + FDR; **statsmodels OLS** drivers w/ collinearity
+guard; ANOVA+eta²; chi-square+Cramér's V), `_forecast.py` (statsmodels Holt-Winters + band),
+`_timeseries.py` (monthly sum, MoM/YoY, OLS trend, STL seasonality), `_outliers.py` (skew vs anomaly),
+`_charts.py` (data series), `_insights.py` (grounded facts + templated narrative). `_engine.analyze`
+orchestrates all of it; 15 tests green. **Still TODO:** the TS↔Python parity diff script.
+
+Original scope (for reference):
 - `charts.py` — monthly revenue line, **revenue & units by product** bar, forecast line, frequency, scatter,
   correlation heatmap (return `{type, title, x, series}` data; the frontend builds ECharts options).
 - `stats.py` — correlations (scipy + FDR), **driver regression (statsmodels OLS** with β, p, R²),
