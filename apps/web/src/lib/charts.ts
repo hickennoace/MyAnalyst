@@ -2,7 +2,7 @@ import type { ChartSpec, ChartType, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
 import { maxOf, minOf, pearson } from "./stats";
 import { primaryMetric, sortByTime } from "./kpi";
-import { defaultHorizon, holtForecast } from "./forecast";
+import { defaultHorizon, forecastBand, holtForecast } from "./forecast";
 import {
   ANIMATION, INK, PALETTE, barSeries, categoryAxis, color, grid, legend, lineSeries, tooltip, valueAxis, vGradient,
 } from "./chart-theme";
@@ -177,12 +177,19 @@ function forecastChart(table: Table, profiles: ColumnProfile[], time: ColumnProf
   const actual: (number | null)[] = [...series, ...Array(horizon).fill(null)];
   const projected: (number | null)[] = [...Array(series.length - 1).fill(null), series[series.length - 1], ...fc.forecast];
 
+  // 95% prediction interval, drawn as a shaded band: a transparent "lower" base line plus a stacked
+  // "range" area on top of it (upper − lower). The band only spans the forecast steps; history is null.
+  const { lower, upper } = forecastBand(fc);
+  const lowerSeries: (number | null)[] = [...Array(series.length).fill(null), ...lower];
+  const rangeSeries: (number | null)[] = [...Array(series.length).fill(null), ...upper.map((u, i) => u - lower[i])];
+  const bandColor = color(3);
+
   return {
     id: "chart-forecast",
     type: "line",
     title: `${pm.name} forecast (+${horizon} periods)`,
-    subtitle: `Holt's linear trend · α=${fc.alpha}, β=${fc.beta}`,
-    rationale: "A long-enough time series → a short forward projection of the primary metric.",
+    subtitle: `Holt's linear trend · α=${fc.alpha}, β=${fc.beta} · shaded = 95% range`,
+    rationale: "A long-enough time series → a short forward projection of the primary metric, with a 95% prediction interval that widens with the horizon.",
     option: {
       ...ANIMATION,
       color: [color(0), color(3)],
@@ -192,6 +199,9 @@ function forecastChart(table: Table, profiles: ColumnProfile[], time: ColumnProf
       xAxis: categoryAxis(x, { boundaryGap: false }),
       yAxis: valueAxis(),
       series: [
+        // Band base (invisible) + band fill, stacked so the fill sits between lower and upper.
+        { name: "ci-lower", type: "line", stack: "ci", data: lowerSeries, lineStyle: { opacity: 0 }, symbol: "none", silent: true, tooltip: { show: false }, z: 1 },
+        { name: "ci-range", type: "line", stack: "ci", data: rangeSeries, lineStyle: { opacity: 0 }, symbol: "none", silent: true, tooltip: { show: false }, areaStyle: { color: bandColor, opacity: 0.14 }, z: 1 },
         lineSeries("actual", actual, 0, { area: true }),
         lineSeries("forecast", projected, 3, { dashed: true }),
       ],

@@ -252,6 +252,32 @@ export function olsSimple(xs: number[], ys: number[]): OlsResult | null {
   };
 }
 
+export interface TwoSampleResult {
+  meanDiff: number;
+  t: number;
+  df: number;
+  p: number; // two-sided
+  significant: boolean;
+  n1: number;
+  n2: number;
+}
+
+/** Welch's two-sample t-test (unequal variances): is the difference in means real? */
+export function welchTTest(a: number[], b: number[]): TwoSampleResult | null {
+  const xs = a.filter(Number.isFinite);
+  const ys = b.filter(Number.isFinite);
+  const n1 = xs.length, n2 = ys.length;
+  if (n1 < 2 || n2 < 2) return null;
+  const m1 = mean(xs), m2 = mean(ys);
+  const v1 = variance(xs), v2 = variance(ys);
+  const se2 = v1 / n1 + v2 / n2;
+  if (se2 === 0) return null;
+  const t = (m1 - m2) / Math.sqrt(se2);
+  const df = se2 ** 2 / ((v1 / n1) ** 2 / (n1 - 1) + (v2 / n2) ** 2 / (n2 - 1));
+  const p = studentTTwoSidedP(t, df);
+  return { meanDiff: m1 - m2, t, df, p, significant: Number.isFinite(p) && p < 0.05, n1, n2 };
+}
+
 export interface AnovaResult {
   f: number;
   df1: number;

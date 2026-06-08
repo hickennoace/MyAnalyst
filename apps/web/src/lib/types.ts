@@ -467,6 +467,13 @@ export interface QualityCheck {
   fix?: string;
 }
 
+/** A "read with care" flag on a column, propagated from the data-quality scorecard onto the analysis. */
+export interface Caveat {
+  column: string;
+  reason: string;
+  severity: "warn" | "bad";
+}
+
 /** An at-a-glance 0–100 health score for the dataset, with a letter grade and per-dimension breakdown. */
 export interface DataQuality {
   score: number; // 0..100
@@ -512,6 +519,10 @@ export interface DashboardSpec {
   contributions?: ContributionAnalysis[];
   /** Themes + sentiment for free-text columns (open-ended feedback, reviews, notes). */
   textAnalysis?: TextAnalysis[];
+  /** "Read with care" flags propagated from the data-quality scorecard onto the analysis. */
+  caveats?: Caveat[];
+  /** True when the dataset is small enough (n < 30) that estimates are unstable. */
+  smallSample?: boolean;
 }
 
 export interface DataStory {

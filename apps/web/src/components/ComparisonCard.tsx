@@ -60,12 +60,26 @@ export function ComparisonCard({ comparison, onClose }: { comparison: DatasetCom
                     <Delta pct={m.sumDeltaPct} />
                   </td>
                   <td className="py-1.5 text-right tabular-nums">
-                    <Delta pct={m.meanDeltaPct} />
+                    <span className="inline-flex items-center gap-1.5">
+                      <Delta pct={m.meanDeltaPct} />
+                      {m.meanSignificant !== undefined && (
+                        <span
+                          className={`rounded px-1 text-[10px] font-medium ${m.meanSignificant ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-700/60 text-slate-400"}`}
+                          title={m.meanP !== undefined ? `Welch's t-test p = ${m.meanP < 0.001 ? "<0.001" : m.meanP.toFixed(3)}` : undefined}
+                        >
+                          {m.meanSignificant ? "real" : "n.s."}
+                        </span>
+                      )}
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <p className="mt-2 text-[11px] text-slate-500">
+            “real” = the difference in averages is statistically significant (Welch’s t-test, p &lt; 0.05); “n.s.” = within what
+            chance could produce, so treat it as noise.
+          </p>
         </div>
       ) : (
         <p className="mt-3 text-xs text-slate-400">No shared numeric columns to compare. Make sure both files use the same column names.</p>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   benjaminiHochberg,
+  welchTTest,
   chiSquareIndependence,
   chiSquareP,
   describe as describeStats,
@@ -118,5 +119,27 @@ describe("multipleRegression", () => {
     expect(r.coefficients[0].coef).toBeCloseTo(2, 4);
     expect(r.coefficients[1].coef).toBeCloseTo(3, 4);
     expect(r.r2).toBeCloseTo(1, 6);
+  });
+});
+
+describe("welchTTest", () => {
+  it("finds a significant difference between clearly separated samples", () => {
+    const a = Array.from({ length: 40 }, (_, i) => 10 + (i % 5) * 0.1);
+    const b = Array.from({ length: 40 }, (_, i) => 20 + (i % 5) * 0.1);
+    const r = welchTTest(a, b)!;
+    expect(r.meanDiff).toBeCloseTo(-10, 1);
+    expect(r.significant).toBe(true);
+    expect(r.p).toBeLessThan(0.001);
+  });
+
+  it("does not flag two samples drawn from the same distribution", () => {
+    const a = [9, 10, 11, 10, 9, 11, 10, 9, 11, 10];
+    const b = [10, 9, 11, 10, 11, 9, 10, 11, 9, 10];
+    const r = welchTTest(a, b)!;
+    expect(r.significant).toBe(false);
+  });
+
+  it("returns null with too few values", () => {
+    expect(welchTTest([1], [2, 3])).toBeNull();
   });
 });

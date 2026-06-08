@@ -1,5 +1,6 @@
 import type { ColumnProfile, SemanticType, Table } from "./types";
 import { numericColumn, profileTable } from "./profile";
+import { welchTTest } from "./inference";
 
 // Compare two datasets (e.g. this month vs last, store A vs store B, you vs a benchmark): align the
 // shared numeric columns and report the biggest changes, ranked. Self-serve benchmarking, no
@@ -14,6 +15,9 @@ export interface MetricChange {
   meanA: number;
   meanB: number;
   meanDeltaPct: number | null;
+  /** Welch's t-test on the per-row values: is the difference in means statistically real? */
+  meanSignificant?: boolean;
+  meanP?: number;
 }
 
 export interface DatasetComparison {
@@ -49,6 +53,7 @@ export function compareDatasets(a: Table, b: Table, profilesA?: ColumnProfile[],
     if (!bCol) continue;
     const sa = sumMean(a, p.name);
     const sb = sumMean(b, bCol);
+    const test = welchTTest(numericColumn(a, p.name), numericColumn(b, bCol));
     metrics.push({
       metric: p.name,
       type: p.type,
@@ -58,6 +63,8 @@ export function compareDatasets(a: Table, b: Table, profilesA?: ColumnProfile[],
       meanA: sa.mean,
       meanB: sb.mean,
       meanDeltaPct: pctDelta(sa.mean, sb.mean),
+      meanSignificant: test?.significant,
+      meanP: test?.p,
     });
   }
   metrics.sort((x, y) => Math.abs(y.sumDeltaPct ?? -1) - Math.abs(x.sumDeltaPct ?? -1));

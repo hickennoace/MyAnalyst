@@ -1,6 +1,8 @@
 import type { Ref } from "react";
 import type { DashboardSpec, Table } from "@/lib/types";
 import { KpiCard } from "./KpiCard";
+import { CaveatStrip } from "./CaveatStrip";
+import { caveatForKpi } from "@/lib/caveats";
 import { Chart } from "./Chart";
 import { InsightCard } from "./InsightCard";
 import { ChartBuilder } from "./ChartBuilder";
@@ -51,6 +53,8 @@ export function DashboardView({
         </div>
       </div>
 
+      <CaveatStrip caveats={spec.caveats} smallSample={spec.smallSample} />
+
       <ExecutiveSummary spec={spec} />
 
       {spec.actions && spec.actions.length > 0 && (
@@ -96,7 +100,7 @@ export function DashboardView({
       <Section title="Key metrics" subtitle="Auto-selected for this dataset's shape and domain.">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {spec.kpis.slice(0, 8).map((kpi, i) => (
-            <KpiCard key={kpi.id} kpi={kpi} index={i} />
+            <KpiCard key={kpi.id} kpi={kpi} index={i} caveat={spec.caveats ? caveatForKpi(kpi, spec.caveats) : undefined} />
           ))}
         </div>
       </Section>

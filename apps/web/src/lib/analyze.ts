@@ -28,6 +28,7 @@ import { buildActionReport } from "./actions";
 import { analyzeTimeSeries } from "./timeseries";
 import { buildContributions } from "./contribution";
 import { buildTextAnalyses } from "./text-analytics";
+import { buildCaveats } from "./caveats";
 import { segmentRows } from "./segment";
 import { analyzeCohorts } from "./cohort";
 import { getInsightProvider } from "./insights";
@@ -131,6 +132,8 @@ export async function analyze(
     actions: buildActionReport(ctx, quality, profiles),
     contributions: contributions.length ? contributions : undefined,
     textAnalysis: textAnalysis.length ? textAnalysis : undefined,
+    caveats: (() => { const c = buildCaveats(profiles); return c.length ? c : undefined; })(),
+    smallSample: table.rowCount < 30 ? true : undefined,
   };
 }
 

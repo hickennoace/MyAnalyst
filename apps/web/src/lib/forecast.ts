@@ -12,6 +12,19 @@ export interface Forecast {
   /** last observed value and the final projected value, for convenience. */
   lastValue: number;
   projected: number;
+  /** standard deviation of the in-sample one-step residuals — the basis for prediction intervals. */
+  residualStd: number;
+}
+
+/**
+ * Prediction interval around the point forecast. Uncertainty grows with the horizon (√h), the standard
+ * widening for a random-walk-with-drift error process — honest about how much less we know further out.
+ */
+export function forecastBand(fc: Forecast, z = 1.96): { lower: number[]; upper: number[] } {
+  return {
+    lower: fc.forecast.map((v, h) => v - z * fc.residualStd * Math.sqrt(h + 1)),
+    upper: fc.forecast.map((v, h) => v + z * fc.residualStd * Math.sqrt(h + 1)),
+  };
 }
 
 function holt(series: number[], alpha: number, beta: number, horizon: number) {
@@ -47,6 +60,15 @@ export function holtForecast(series: number[], horizon: number): Forecast | null
     }
   }
 
+  // Residual std from the one-step fitted values (skip t=0, which is seeded, not predicted).
+  let sse = 0;
+  let m = 0;
+  for (let t = 1; t < clean.length; t++) {
+    sse += (clean[t] - best.fitted[t]) ** 2;
+    m++;
+  }
+  const residualStd = m > 1 ? Math.sqrt(sse / (m - 1)) : 0;
+
   return {
     fitted: best.fitted,
     forecast: best.forecast,
@@ -54,6 +76,7 @@ export function holtForecast(series: number[], horizon: number): Forecast | null
     beta: best.beta,
     lastValue: clean[clean.length - 1],
     projected: best.forecast[best.forecast.length - 1],
+    residualStd,
   };
 }
 
