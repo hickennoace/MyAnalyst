@@ -111,6 +111,8 @@ Every client-side, privacy-preserving item across Waves 1–4 is now shipped. Th
 
 If you want either, say so and I'll spec the minimal, privacy-respecting backend (e.g. metadata-only, client-side encryption, explicit opt-in) before building. Until then they stay deferred by design.
 
+> **Decision (2026-06-08): Daniel chose to KEEP C2 + D3 DEFERRED** — preserve the absolute 100%-client-side privacy moat. The roadmap is therefore COMPLETE for all non-backend work. Don't build a backend without a fresh, explicit go-ahead.
+
 ## 4. Explicitly deferred (need your decision)
 - **Heavy-dependency ingest & local model (G1, I2)** — ✅ **built (2026-06-08)** after the "go for all of them" call. All dynamically imported so the initial bundle is unchanged. Done with hyparquet (Parquet), pdf.js (PDF), tesseract.js (OCR), and `@huggingface/transformers` (WebGPU model).
 - **Any backend** (C2 alerts/scheduled refresh, D3 accounts): crosses the 100%-client-side line. G3 already covers most of C2's value without a server. Still deferred.
