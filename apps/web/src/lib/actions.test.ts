@@ -36,4 +36,32 @@ describe("buildActionReport (via analyze)", () => {
     expect(gap).toBeDefined();
     expect(gap!.detail).toMatch(/worth about/i);
   });
+
+  // A few customers carry most of revenue → the action plan should raise a concentration de-risk item.
+  function concentratedRevenue(): Table {
+    const weights = [50, 26, 13, 6, 3, 1, 1, 1, 1, 1]; // per-order revenue, heavily skewed to the first few
+    const rows: Record<string, unknown>[] = [];
+    const start = Date.UTC(2023, 0, 1);
+    let i = 0;
+    for (let c = 0; c < 10; c++) {
+      const orders = c < 3 ? 6 : 2;
+      for (let o = 0; o < orders; o++) {
+        rows.push({
+          Date: new Date(start + i * 86_400_000).toISOString().slice(0, 10),
+          Customer: `C${c}`,
+          Revenue: weights[c] * 100,
+        });
+        i++;
+      }
+    }
+    return { name: "rev.csv", columns: ["Date", "Customer", "Revenue"], rows, rowCount: rows.length };
+  }
+
+  it("raises a measure-based concentration de-risk action when revenue is skewed", async () => {
+    const spec = await analyze(concentratedRevenue(), { skipCharts: true });
+    const conc = spec.actions!.find((a) => a.basis.toLowerCase().includes("concentration (pareto)"));
+    expect(conc).toBeDefined();
+    expect(conc!.title).toMatch(/de-risk/i);
+    expect(conc!.detail).toMatch(/Gini/);
+  });
 });

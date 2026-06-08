@@ -88,9 +88,27 @@ export function buildActionReport(ctx: InsightContext, quality: DataQuality | un
     });
   }
 
-  // 5. Concentration risk — one category dominates.
+  // 5. Concentration risk on a MEASURE — a few categories carry most of the value (revenue, volume…).
+  //    Stronger and more actionable than the row-count version below, so it takes precedence.
+  const conc = ctx.concentration?.find((c) => c.level === "high") ?? ctx.concentration?.find((c) => c.level === "moderate" && !c.metricIsCount);
+  let addedMeasureConc = false;
+  if (conc && !conc.metricIsCount) {
+    addedMeasureConc = true;
+    out.push({
+      score: 0.5 + (conc.level === "high" ? 0.25 : 0.1) + conc.topShare * 0.15,
+      a: {
+        id: `act-conc-${conc.dimension}-${conc.metric}`,
+        title: `De-risk your dependence on a few ${conc.dimension}s`,
+        detail: `The top ${conc.paretoCount} ${conc.dimension}${conc.paretoCount === 1 ? "" : "s"} drive ${Math.round(conc.paretoShare * 100)}% of ${conc.metric}, and "${conc.segments[0].name}" alone is ${Math.round(conc.segments[0].share * 100)}% (Gini ${conc.gini.toFixed(2)}). Protect those accounts and grow the long tail so the business isn't hostage to a handful of ${conc.dimension}s.`,
+        impact: conc.level === "high" ? "high" : "medium",
+        basis: `Concentration (Pareto) of ${conc.metric} by ${conc.dimension}`,
+      },
+    });
+  }
+
+  // 5b. Concentration risk — one categorical value dominates the row count (e.g. most tickets are Support).
   const cat = ctx.categories[0];
-  if (cat && cat.top[0] && cat.top[0].pct >= 0.5) {
+  if (!addedMeasureConc && cat && cat.top[0] && cat.top[0].pct >= 0.5) {
     out.push({
       score: 0.45 + cat.top[0].pct * 0.2,
       a: {
