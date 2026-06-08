@@ -70,4 +70,7 @@ export const ANSWER_EVALS: AnswerEval[] = [
   // Revenue sorted 100,100,150,200,200,300 → median (150+200)/2 = 175.
   { name: "median of a metric", table: SALES, question: "median revenue", expect: ["median", "175"], forbid: ["1,050"] },
   { name: "count distinct values", table: SALES, question: "how many distinct regions are there", expect: ["2", "Region"] },
+  // Share-of-total + percentile (Wave 3): North = 600/1,050 = 57.1%; Units p90 = 26.
+  { name: "metric share of total", table: SALES, question: "what percent of revenue comes from North", expect: ["57.1%", "600"] },
+  { name: "percentile of a metric", table: SALES, question: "what is the 90th percentile of units", expect: ["90th percentile", "26"] },
 ];

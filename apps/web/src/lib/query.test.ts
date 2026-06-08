@@ -96,6 +96,41 @@ describe("answerQuestion", () => {
     expect(r.ok).toBe(false);
   });
 
+  // ── Share / percentage-of-total (Wave 3 W3.4) ─────────────────────────────────
+
+  it("computes a metric's share of total for a slice", () => {
+    // North revenue 600 of grand total 1,050 = 57.1%.
+    const r = answerQuestion("what percent of revenue comes from North", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("57.1%");
+    expect(r.answer).toContain("North");
+    expect(r.answer).toContain("600");
+  });
+
+  it("computes a row-count share when no metric is named", () => {
+    // 3 South rows of 6 = 50%.
+    const r = answerQuestion("what percentage of orders are in the South", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("50.0%");
+    expect(r.answer).toMatch(/\b3\b/);
+  });
+
+  // ── Percentiles & quartiles (Wave 3 W3.5) ─────────────────────────────────────
+
+  it("computes a percentile of a metric", () => {
+    // Units sorted 10,11,15,20,22,30 → p90 idx 4.5 → 22 + 0.5*(30-22) = 26.
+    const r = answerQuestion("what is the 90th percentile of units", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("26");
+    expect(r.answer.toLowerCase()).toContain("percentile");
+  });
+
+  it("maps 'top quartile' to the 75th percentile", () => {
+    const r = answerQuestion("top quartile of units", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer.toLowerCase()).toContain("75th percentile");
+  });
+
   // ── Filtered & conditional questions (Phase 1.1) ──────────────────────────────
 
   it("filters an aggregate by a categorical value", () => {

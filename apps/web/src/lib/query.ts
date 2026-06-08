@@ -21,6 +21,10 @@ export interface RichAnswer extends QueryAnswer {
 
 const CATEGORY_HINT = /(reason|category|type|status|segment|group|class|gender|channel|source|outcome|result|stage|priority|label|tag|product|region|country|state|city|department)/i;
 
+// "What share of the total is this slice?" — triggers the share/percentage-of-total branch. Kept
+// distinct from "percentile" (handled separately) so the two never collide.
+const SHARE_SIGNAL = /\bwhat\s+(?:%|percent|percentage|fraction|proportion|share)\b|\b(?:percent|percentage|proportion|fraction|share)\s+of\b|\bhow much of\b/;
+
 // "Ask your data" — a heuristic natural-language Q&A engine. No LLM, no key. It maps plain-English
 // questions to exact computations over the local data (aggregates, group-bys, rankings, correlation,
 // trends) and answers with the real numbers, optionally attaching a chart.
@@ -48,6 +52,24 @@ const AGG_WORDS: { agg: Agg; re: RegExp; label: string }[] = [
 /** Human label for an aggregator — used in answer prose so a median is never mislabelled a "total". */
 function labelForAgg(agg: Agg): string {
   return agg === "mean" ? "average" : agg === "sum" ? "total" : agg; // median/max/min read as their own name
+}
+
+/** Percentile via linear interpolation between order statistics (p in 0..100). */
+function percentile(values: number[], p: number): number {
+  const xs = values.filter(Number.isFinite).sort((a, b) => a - b);
+  if (xs.length === 0) return NaN;
+  if (xs.length === 1) return xs[0];
+  const idx = (Math.min(100, Math.max(0, p)) / 100) * (xs.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  return lo === hi ? xs[lo] : xs[lo] + (idx - lo) * (xs[hi] - xs[lo]);
+}
+
+/** "1st/2nd/3rd/Nth" ordinal for a whole number. */
+function ordinal(n: number): string {
+  const v = n % 100;
+  const suffix = v >= 11 && v <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th";
+  return `${n}${suffix}`;
 }
 
 /** Loose token match so a question word like "intense" resolves the column "Intensity", "calorie"
@@ -206,6 +228,62 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         ok: true,
         answer: `There ${n === 1 ? "is" : "are"} ${n.toLocaleString()} distinct ${target.name} value${n === 1 ? "" : "s"}${scope}.`,
         method: `Counted unique non-empty values of ${target.name} across ${rowsNote(view, table, filter)}.`,
+      };
+    }
+  }
+
+  // 0.3 Percentile / quartile of a metric: "90th percentile of price", "top quartile of revenue".
+  if (/\b(percentile|quartile|quantile)\b/.test(lower) || /\bp(\d{1,3})\b/.test(lower)) {
+    const m = mMetrics[0] ?? metrics[0];
+    if (m) {
+      let p = 75;
+      const pm =
+        lower.match(/(\d{1,3})\s*(?:st|nd|rd|th)?\s*(?:percentile|quantile)/) ||
+        lower.match(/\bp(\d{1,3})\b/);
+      if (pm) p = Math.min(100, Math.max(0, Number(pm[1])));
+      else if (/\bquartile\b/.test(lower)) p = /\b(bottom|lower|lowest|first|1st)\b/.test(lower) ? 25 : 75;
+      const v = percentile(numericColumn(view, m.name), p);
+      if (Number.isFinite(v)) {
+        return {
+          ok: true,
+          answer: `The ${ordinal(p)} percentile of ${m.name}${scope} is ${fmt(v, m)} — ${p}% of values fall at or below it.`,
+          method: `${ordinal(p)} percentile of ${m.name} across ${rowsNote(view, table, filter)} (linear interpolation between order statistics).`,
+        };
+      }
+    }
+  }
+
+  // 0.5 Share / percentage of total for a slice: "what % of revenue comes from North", "what
+  // percentage of orders are cancelled". Needs a slice (the filter); a named metric → metric share
+  // (slice total ÷ grand total), otherwise a row-count share. The slice's own column never doubles as
+  // the metric, so "% of revenue where revenue > 100" stays a count share, not a self-referential ratio.
+  if (SHARE_SIGNAL.test(lower) && filter) {
+    const shareMetric = mMetrics.find((m) => m.name !== filter.column);
+    if (shareMetric) {
+      const num = aggregate(numericColumn(view, shareMetric.name), "sum");
+      const den = aggregate(numericColumn(table, shareMetric.name), "sum");
+      if (Number.isFinite(num) && Number.isFinite(den) && den !== 0) {
+        const pct = (num / den) * 100;
+        let chart: ChartSpec | undefined;
+        try {
+          chart = buildChart(table, profiles, { type: "pie", x: filter.column, y: [shareMetric.name], aggregate: true });
+        } catch {
+          chart = undefined;
+        }
+        return {
+          ok: true,
+          answer: `${filter.label} accounts for ${pct.toFixed(1)}% of total ${shareMetric.name} — ${fmt(num, shareMetric)} of ${fmt(den, shareMetric)}.`,
+          chart,
+          method: `Divided ${shareMetric.name} ${filter.phrase} (${fmt(num, shareMetric)}) by the grand total (${fmt(den, shareMetric)}) across ${rowsNote(view, table, filter)}.`,
+        };
+      }
+    }
+    if (table.rowCount > 0) {
+      const pct = (view.rowCount / table.rowCount) * 100;
+      return {
+        ok: true,
+        answer: `Records ${filter.phrase} are ${pct.toFixed(1)}% of all rows — ${view.rowCount.toLocaleString()} of ${table.rowCount.toLocaleString()}.`,
+        method: `Counted rows ${filter.phrase} (${view.rowCount.toLocaleString()}) ÷ all ${table.rowCount.toLocaleString()} rows.`,
       };
     }
   }
