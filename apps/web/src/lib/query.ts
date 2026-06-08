@@ -1,6 +1,8 @@
 import type { ChartSpec, ChartType, ColumnProfile, Table } from "./types";
 import { numericColumn } from "./profile";
-import { maxOf, minOf, pearson, isRedundantCorrelation } from "./stats";
+import { maxOf, minOf, pearson, isRedundantCorrelation, zOutliers } from "./stats";
+import { welchTTest, multipleRegression } from "./inference";
+import { analyzeTimeSeries, cadenceNoun } from "./timeseries";
 import { aggregateCount, buildChart, buildComparisonChart, buildCrossTabChart, type ChartRequest } from "./charts";
 import { parseChartRequest } from "./nl-chart";
 import { sortByTime } from "./kpi";
@@ -164,6 +166,21 @@ function aggregate(values: number[], agg: Agg): number {
   }
 }
 
+/** Metric values for the rows matching a predicate (finite only) — the raw arrays a t-test needs. */
+function valuesWhere(table: Table, metric: string, pred: (row: Record<string, unknown>) => boolean): number[] {
+  const vals = numericColumn(table, metric);
+  const out: number[] = [];
+  table.rows.forEach((r, i) => {
+    if (pred(r) && Number.isFinite(vals[i])) out.push(vals[i]);
+  });
+  return out;
+}
+
+/** Format a p-value for prose: "< 0.001" for tiny values, else 3 decimals. */
+function fmtP(p: number): string {
+  return p < 0.001 ? "< 0.001" : `= ${p.toFixed(3)}`;
+}
+
 /** Group a metric by a dimension under the given aggregator → sorted [key, value] pairs (desc). */
 function groupBy(table: Table, dim: string, metric: string, agg: Agg): [string, number][] {
   const buckets = new Map<string, number[]>();
@@ -252,6 +269,31 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
   const subjectNouns = tokenize(lower).filter((w) => !RANK_STOP.has(w) && !profiles.some((p) => columnMatchesWord(w, p)));
   const rankingIntent =
     hasSuper && (mDims.length > 0 || /\b(which|each|per|category|type|kind|group|segment)\b/.test(lower) || subjectNouns.length > 0);
+
+  // W4.1 Significance testing: "is the difference in revenue between North and South significant / real?"
+  // Runs Welch's t-test on the two slices and gives a plain verdict. Detected before the plain comparison
+  // so a "significant?" question gets the test, not just the gap.
+  if (/(significan|statistic|by chance|real difference|reliable|p-?value|meaningful difference)/.test(lower)) {
+    const cmp = detectComparison(text, table, profiles);
+    if (cmp) {
+      const lv = valuesWhere(table, cmp.metric.name, cmp.left.predicate);
+      const rv = valuesWhere(table, cmp.metric.name, cmp.right.predicate);
+      const tt = welchTTest(lv, rv);
+      if (tt) {
+        const m1 = aggregate(lv, "mean");
+        const m2 = aggregate(rv, "mean");
+        const verdict = tt.significant
+          ? `This difference **is** statistically significant (p ${fmtP(tt.p)}), so it's unlikely to be random chance.`
+          : `This difference is **not** statistically significant (p ${fmtP(tt.p)}), so it could be random variation — treat it as suggestive, not proven.`;
+        return {
+          ok: true,
+          answer: `Average ${cmp.metric.name}: "${cmp.left.label}" ${fmt(m1, cmp.metric)} vs "${cmp.right.label}" ${fmt(m2, cmp.metric)} — a gap of ${fmt(Math.abs(m1 - m2), cmp.metric)}. ${verdict} (Based on ${tt.n1} vs ${tt.n2} records.)`,
+          chart: buildComparisonChart(cmp.metric.name, "mean", [[cmp.left.label, m1], [cmp.right.label, m2]]),
+          method: `Welch's two-sample t-test on ${cmp.metric.name} for "${cmp.left.label}" (n=${tt.n1}) vs "${cmp.right.label}" (n=${tt.n2}): t=${tt.t.toFixed(2)}, df=${tt.df.toFixed(0)}, two-sided p ${fmtP(tt.p)}.`,
+        };
+      }
+    }
+  }
 
   // Comparison questions ("North vs South revenue", "how does 2023 compare to 2022") — two slices of
   // the same dimension or two periods, answered with the gap, ratio and % difference plus a paired bar.
@@ -358,6 +400,78 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         chart: buildCrossTabChart(`${cap(what)} by ${dimA.name} × ${dimB.name}`, ct.xCats, ct.seriesNames, ct.matrix, ctMetric ? ctMetric.name : "count"),
         method: `Cross-tabbed ${ctMetric ? ctMetric.name : "rows"} by ${dimA.name} and ${dimB.name} (${ctMetric ? labelForAgg(agg) : "count"}) across ${rowsNote(view, table, filter)}, then ranked all ${ct.cells.length} cells.`,
       };
+    }
+  }
+
+  // W4.2 Drivers: "what drives revenue?", "what predicts price?" — multiple regression of the other
+  // numeric columns on the target; report the strongest standardized driver, significance, and R².
+  if (/\b(drives?|drivers?|predicts?|prediction|influences?|affects?|explains?|depends? on|biggest factor|key factor|what factor|drivers of)\b/.test(lower) && metrics.length >= 2) {
+    const target = mMetrics[0] ?? metrics[0];
+    const predictors = metrics.filter((m) => m.name !== target.name);
+    if (predictors.length >= 1) {
+      const X = predictors.map((p) => numericColumn(view, p.name));
+      const y = numericColumn(view, target.name);
+      const reg = multipleRegression(X, y, predictors.map((p) => p.name));
+      if (reg && reg.coefficients.length) {
+        const ranked = [...reg.coefficients].sort((a, b) => Math.abs(b.beta) - Math.abs(a.beta));
+        const top = ranked[0];
+        const sig = ranked.filter((c) => c.significant);
+        const sigNote = sig.length
+          ? `Statistically significant driver${sig.length > 1 ? "s" : ""}: ${sig.slice(0, 3).map((c) => c.name).join(", ")}.`
+          : `None of the factors reach statistical significance, so read this as directional.`;
+        const dir = top.beta >= 0 ? "higher" : "lower";
+        return {
+          ok: true,
+          answer: `The strongest driver of ${target.name} is ${top.name} (standardized β = ${top.beta.toFixed(2)}) — ${dir} ${top.name} goes with ${top.beta >= 0 ? "higher" : "lower"} ${target.name}, even after accounting for the other factors. Together the factors explain ${Math.round(reg.r2 * 100)}% of the variation in ${target.name} (R²)${scope}. ${sigNote}`,
+          chart: buildChart(view, profiles, { type: "scatter", x: top.name, y: [target.name] }),
+          method: `Multiple linear regression of ${target.name} on ${predictors.map((p) => p.name).join(", ")} across ${rowsNote(view, table, filter)}; drivers ranked by |standardized β|, R² = ${reg.r2.toFixed(2)}, model p ${fmtP(reg.fP)}.`,
+        };
+      }
+    }
+  }
+
+  // W4.3 Outliers / anomalies: "are there outliers in revenue?", "any unusual values?"
+  if (/\b(outliers?|anomal(?:y|ies|ous)|unusual|abnormal|extreme values?)\b/.test(lower)) {
+    const m = mMetrics[0] ?? metrics[0];
+    if (m) {
+      const outs = zOutliers(numericColumn(view, m.name), 3);
+      if (outs.length) {
+        const top = [...outs].sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
+        return {
+          ok: true,
+          answer: `${m.name} has ${outs.length} outlier${outs.length === 1 ? "" : "s"} beyond 3 standard deviations${scope}. The most extreme is ${fmt(top.value, m)} (${top.z > 0 ? "+" : ""}${top.z.toFixed(1)}σ from the mean). Extreme values like these can quietly skew averages — check they're real before trusting ${m.name} summaries.`,
+          chart: buildChart(view, profiles, { type: "histogram", x: m.name, y: [] }),
+          method: `Z-score outlier scan of ${m.name} across ${rowsNote(view, table, filter)} (flagging |z| > 3).`,
+        };
+      }
+      return {
+        ok: true,
+        answer: `No values in ${m.name} fall beyond 3 standard deviations${scope} — the distribution looks clean of extreme outliers.`,
+        method: `Z-score outlier scan of ${m.name} across ${rowsNote(view, table, filter)} (none with |z| > 3).`,
+      };
+    }
+  }
+
+  // W4.4 Time-grain trend: "monthly revenue trend", "revenue year over year". Buckets by detected
+  // cadence and reports latest / MoM / YoY / best & worst periods. Restricted to explicit grain words so
+  // generic "over time" stays with the simpler trend branch below.
+  if (time && /\b(monthly|quarterly|weekly|annual(?:ly)?|month over month|year over year|by month|by quarter|by year|by week|seasonal(?:ity)?|cadence|mom|yoy|per month|per quarter|each month)\b/.test(lower)) {
+    const m = mMetrics[0] ?? metrics[0];
+    if (m) {
+      const ts = analyzeTimeSeries(view, time.name, m.name);
+      if (ts) {
+        const noun = cadenceNoun(ts.cadence);
+        const mom = ts.changePct != null
+          ? `${ts.changePct >= 0 ? "up" : "down"} ${Math.abs(ts.changePct * 100).toFixed(1)}% vs the prior ${noun}`
+          : "with no prior period to compare";
+        const yoy = ts.yoyChangePct != null ? ` Year over year it's ${ts.yoyChangePct >= 0 ? "up" : "down"} ${Math.abs(ts.yoyChangePct * 100).toFixed(1)}%.` : "";
+        return {
+          ok: true,
+          answer: `${m.name} is tracked ${ts.cadence}${scope}. The latest period (${ts.latest.label}) totalled ${fmt(ts.latest.value, m)}, ${mom}.${yoy} Best ${noun}: ${ts.best.label} (${fmt(ts.best.value, m)}); weakest: ${ts.worst.label} (${fmt(ts.worst.value, m)}).`,
+          chart: buildChart(view, profiles, { type: "line", x: time.name, y: [m.name] }),
+          method: `Bucketed ${m.name} by ${ts.cadence} period across ${rowsNote(view, table, filter)} (${ts.periods.length} periods); reported latest, period-over-period and year-over-year change.`,
+        };
+      }
     }
   }
 

@@ -73,4 +73,7 @@ export const ANSWER_EVALS: AnswerEval[] = [
   // Share-of-total + percentile (Wave 3): North = 600/1,050 = 57.1%; Units p90 = 26.
   { name: "metric share of total", table: SALES, question: "what percent of revenue comes from North", expect: ["57.1%", "600"] },
   { name: "percentile of a metric", table: SALES, question: "what is the 90th percentile of units", expect: ["90th percentile", "26"] },
+  // Wave 4 statistical reasoning: significance (means 200 vs 150) and a clean outlier scan.
+  { name: "significance test means", table: SALES, question: "is revenue significantly different for North vs South", expect: ["significant", "200", "150"] },
+  { name: "outlier scan (clean)", table: SALES, question: "are there outliers in revenue", expect: ["standard deviations"] },
 ];

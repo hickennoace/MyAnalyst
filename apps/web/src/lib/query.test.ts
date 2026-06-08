@@ -412,3 +412,71 @@ describe("detectFilter", () => {
     expect(applyFilter(table, f!).rowCount).toBe(3);
   });
 });
+
+// ── Wave 4: consultant-grade reasoning in Q&A ───────────────────────────────────
+describe("Wave 4 — statistical reasoning", () => {
+  it("W4.1 runs a significance test on a two-group difference", () => {
+    const r = answerQuestion("is revenue significantly different for North vs South", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer.toLowerCase()).toContain("significant");
+    expect(r.answer).toContain("200"); // North mean
+    expect(r.answer).toContain("150"); // South mean
+    expect(r.method?.toLowerCase()).toContain("t-test");
+  });
+
+  it("W4.2 identifies the strongest driver via multiple regression", () => {
+    // Visits is deliberately NOT collinear with Spend (otherwise the design matrix is singular).
+    const rows = [
+      { Spend: 10, Visits: 100, Sales: 100 },
+      { Spend: 20, Visits: 40, Sales: 210 },
+      { Spend: 30, Visits: 75, Sales: 290 },
+      { Spend: 40, Visits: 30, Sales: 410 },
+      { Spend: 50, Visits: 90, Sales: 500 },
+      { Spend: 60, Visits: 55, Sales: 610 },
+      { Spend: 70, Visits: 20, Sales: 690 },
+      { Spend: 80, Visits: 65, Sales: 800 },
+    ];
+    const dt: Table = { name: "d.csv", columns: ["Spend", "Visits", "Sales"], rows, rowCount: rows.length };
+    const dp = profileTable(dt);
+    const r = answerQuestion("what drives sales", dt, dp);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("Spend"); // Sales ≈ 10 × Spend → Spend is the top driver
+    expect(r.answer.toLowerCase()).toContain("driver");
+    expect(r.method?.toLowerCase()).toContain("regression");
+  });
+
+  it("W4.3 finds an extreme outlier", () => {
+    const rows = Array.from({ length: 19 }, (_, i) => ({ V: 40 + i }));
+    rows.push({ V: 5000 });
+    const ot: Table = { name: "o.csv", columns: ["V"], rows, rowCount: rows.length };
+    const op = profileTable(ot);
+    const r = answerQuestion("are there any outliers in V", ot, op);
+    expect(r.ok).toBe(true);
+    expect(r.answer.toLowerCase()).toContain("outlier");
+    expect(r.answer).toContain("5,000");
+  });
+
+  it("W4.3 reports a clean column when there are no outliers", () => {
+    const r = answerQuestion("are there outliers in revenue", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer.toLowerCase()).toMatch(/no values|clean/);
+  });
+
+  it("W4.4 reports a monthly trend with period-over-period change", () => {
+    const rows = [
+      { Date: "2023-01-01", Rev: 100 },
+      { Date: "2023-02-01", Rev: 150 },
+      { Date: "2023-03-01", Rev: 200 },
+      { Date: "2023-04-01", Rev: 120 },
+      { Date: "2023-05-01", Rev: 250 },
+      { Date: "2023-06-01", Rev: 300 },
+    ];
+    const mt: Table = { name: "m.csv", columns: ["Date", "Rev"], rows, rowCount: rows.length };
+    const mp = profileTable(mt);
+    const r = answerQuestion("monthly revenue trend", mt, mp);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("2023-06");
+    expect(r.answer).toContain("20.0%"); // (300 - 250) / 250
+    expect(r.chart?.type).toBe("line");
+  });
+});

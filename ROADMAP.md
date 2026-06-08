@@ -102,6 +102,15 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 
 ---
 
+## 3e. The only remaining roadmap work is a product decision (not buildable without your call)
+
+Every client-side, privacy-preserving item across Waves 1–4 is now shipped. The **only** items left in this roadmap are the two that deliberately cross the "100%-client-side / raw rows never leave the browser" line — they can't be built without changing the product's core privacy promise, so they need an explicit go/no-go from you, not a guess:
+
+- **C2 — Managed alerts / scheduled refresh** (a small opt-in backend that re-fetches a source on a schedule and emails when a metric goes off-track). **G3 already delivers most of this value** (re-fetch a Google Sheet/URL and re-analyze locally) without a server.
+- **D3 — Optional encrypted cloud accounts** (save dashboards/sources across devices, client-encrypted). Needs auth + storage.
+
+If you want either, say so and I'll spec the minimal, privacy-respecting backend (e.g. metadata-only, client-side encryption, explicit opt-in) before building. Until then they stay deferred by design.
+
 ## 4. Explicitly deferred (need your decision)
 - **Heavy-dependency ingest & local model (G1, I2)** — ✅ **built (2026-06-08)** after the "go for all of them" call. All dynamically imported so the initial bundle is unchanged. Done with hyparquet (Parquet), pdf.js (PDF), tesseract.js (OCR), and `@huggingface/transformers` (WebGPU model).
 - **Any backend** (C2 alerts/scheduled refresh, D3 accounts): crosses the 100%-client-side line. G3 already covers most of C2's value without a server. Still deferred.
@@ -139,6 +148,19 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 - **W3.8 Planner repair loop** ✅ — a rejected first plan (bad intent / unknown column) triggers ONE repair attempt feeding the exact reason + valid column names back to the model before the heuristic fallback. Pure, tested `planRejectionReason()`.
 
 > **Wave 3 is COMPLETE.** Test suite **198 unit tests** + grounding evals, Playwright E2E, smoke — all green. The Ask-your-data engine now answers median / percentile / share-of-total / count-distinct / two-dimension breakdowns exactly and privately (no LLM round-trip), the LLM planner has median + a repair loop, and every AI answer carries a numeric grounding signal.
+
+---
+
+## 3d. Wave 4 — Consultant-grade reasoning in Q&A (added 2026-06-08)
+
+> Waves 1–3 made the answers broad, exact and trustworthy. Wave 4 makes them *think like a senior analyst*: it exposes the heavy statistics the engine already computes (Welch's t-test, multiple regression, outlier detection, time-series MoM/YoY) directly through plain-English Ask-your-data — so a non-technical user can ask "is this difference real?", "what drives revenue?", "are there outliers?", "what's the monthly trend?" and get a rigorous, grounded answer with no LLM round-trip. 100% client-side; reuses `inference.ts` / `stats.ts` / `timeseries.ts`.
+
+- **W4.1 Significance testing** — a comparison question with "significant / real / by chance / reliable" runs **Welch's t-test** on the two slices and states the means, the gap, the p-value, and a plain verdict ("IS / is NOT statistically significant"). **Beats:** a dashboard that shows a gap but never tells you if it's real.
+- **W4.2 "What drives / predicts X"** — "what drives revenue?" fits a **multiple regression** of the other numeric columns on the target and reports the strongest standardized driver (β), which factors are significant, and the R² (how much is explained). **Beats:** their human consultant's headline analysis — automated and instant.
+- **W4.3 Outlier / anomaly Q&A** — "are there outliers in price?" runs **z-score outlier detection** and names how many, the most extreme value and its σ-distance (or confirms the column is clean). Ties into the caveat that outliers skew averages.
+- **W4.4 Time-grain trend** — "monthly revenue trend", "year over year" buckets by detected **cadence** and reports the latest period, MoM change, YoY change, and best/worst periods, with a line chart.
+
+> **Wave 4 is COMPLETE (2026-06-08).** All four are live in `answerQuestion` (`query.ts`), reusing `welchTTest` / `multipleRegression` / `zOutliers` / `analyzeTimeSeries`, each unit-tested with hand-verified numbers and falling back cleanly when the data can't support it (too few rows, one group, collinear predictors, no time column). Test suite **205 unit tests** + grounding evals + Playwright E2E + smoke, all green. Ask-your-data now answers "is this real?", "what drives X?", "any outliers?", and "what's the monthly trend?" with proper statistics — no LLM round-trip.
 
 ---
 
