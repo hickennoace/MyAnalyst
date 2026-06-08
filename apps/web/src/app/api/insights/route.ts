@@ -22,7 +22,10 @@ const OPENAI_COMPAT_BASES: Record<string, string> = {
 // without also setting LLM_MODEL silently sent an invalid model id.)
 const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: "claude-haiku-4-5",
-  groq: "llama-3.3-70b-versatile",
+  // gpt-oss-120b is the strongest writer in Groq's free PRODUCTION tier (120B, vs the 70B llama).
+  // It's a reasoning model — `applyReasoning()` keeps the thinking minimal + hidden so it stays fast
+  // and never leaks into the JSON. Override with LLM_MODEL=llama-3.3-70b-versatile to revert.
+  groq: "openai/gpt-oss-120b",
   openai: "gpt-4o-mini",
   gemini: "gemini-2.5-flash",
   openrouter: "meta-llama/llama-3.3-70b-instruct",
@@ -57,7 +60,7 @@ export async function POST(req: Request) {
   const callLLM = (system: string, user: string, opts?: CallOpts) =>
     provider === "anthropic"
       ? callAnthropic(apiKey, model || "claude-haiku-4-5", system, user, opts)
-      : callOpenAICompat(provider, apiKey, model || "llama-3.3-70b-versatile", system, user, opts);
+      : callOpenAICompat(provider, apiKey, model || "openai/gpt-oss-120b", system, user, opts);
 
   // Task: humanize — rewrite the deterministic conclusions in a warm, human tone (numbers preserved).
   if (body && typeof body === "object" && (body as { task?: string }).task === "humanize") {
@@ -326,6 +329,18 @@ interface CallOpts {
   maxTokens?: number;
 }
 
+// Groq's gpt-oss models are reasoning models. We want the *quality* of the bigger model without the
+// downsides: keep the thinking minimal (`low`) and hidden (`hidden`) so it never leaks into the JSON or
+// prose, and floor `max_tokens` high enough that the hidden reasoning can't starve the visible output
+// (reasoning tokens count against the budget). No-op for any other provider/model.
+function applyReasoning(provider: Provider, model: string, body: Record<string, unknown>, maxTokens: number): void {
+  if (provider === "groq" && /gpt-oss/i.test(model)) {
+    body.reasoning_effort = "low";
+    body.reasoning_format = "hidden";
+    body.max_tokens = Math.max(maxTokens, 1400);
+  }
+}
+
 // Rate limits (429) and transient 5xx are common on free tiers. Retry a couple of times with a short,
 // capped backoff (honoring Retry-After) so a brief per-minute limit doesn't drop us to the templated
 // fallback. Caps keep us well within the serverless function timeout; a hard daily-quota 429 will still
@@ -381,19 +396,22 @@ async function callOpenAICompat(
 ): Promise<string> {
   const base = process.env.LLM_BASE_URL?.trim() || OPENAI_COMPAT_BASES[provider];
   if (!base) throw new Error(`No base URL for provider "${provider}". Set LLM_BASE_URL.`);
+  const maxTokens = opts?.maxTokens ?? 2048;
+  const reqBody: Record<string, unknown> = {
+    model,
+    temperature: opts?.temperature ?? 0.3,
+    max_tokens: maxTokens,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+  };
+  applyReasoning(provider, model, reqBody, maxTokens);
   const res = await fetchWithRetry(`${base}/chat/completions`, {
     method: "POST",
     headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model,
-      temperature: opts?.temperature ?? 0.3,
-      max_tokens: opts?.maxTokens ?? 2048,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
+    body: JSON.stringify(reqBody),
   });
   if (!res.ok) throw new Error(`${provider} ${res.status}: ${await res.text()}`);
   const data = await res.json();
@@ -433,19 +451,22 @@ async function streamLLM(
 
   const baseUrl = process.env.LLM_BASE_URL?.trim() || OPENAI_COMPAT_BASES[provider];
   if (!baseUrl) throw new Error(`No base URL for provider "${provider}". Set LLM_BASE_URL.`);
+  const maxTokens = opts?.maxTokens ?? 2048;
+  const reqBody: Record<string, unknown> = {
+    model,
+    temperature: opts?.temperature ?? 0.3,
+    max_tokens: maxTokens,
+    stream: true,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+  };
+  applyReasoning(provider, model, reqBody, maxTokens);
   const upstream = await fetchWithRetry(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model,
-      temperature: opts?.temperature ?? 0.3,
-      max_tokens: opts?.maxTokens ?? 2048,
-      stream: true,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
+    body: JSON.stringify(reqBody),
   });
   if (!upstream.ok || !upstream.body) throw new Error(`${provider} ${upstream.status}: ${await upstream.text()}`);
   return sseToText(upstream.body, (j) => {
