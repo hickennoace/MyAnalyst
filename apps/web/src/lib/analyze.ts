@@ -33,6 +33,7 @@ import { segmentRows } from "./segment";
 import { analyzeCohorts } from "./cohort";
 import { getInsightProvider } from "./insights";
 import { llmEnabled, sharpenStory } from "./insights/humanize";
+import type { LlmConfig } from "./llm-settings";
 
 // Pipeline orchestrator: Table -> full DashboardSpec. Mirrors docs/01-architecture.md stages 2..7,
 // but runs locally in the browser for the Vercel-first MVP.
@@ -43,6 +44,8 @@ export async function analyze(
     userContext?: string;
     cleaned?: CleanResult;
     onStage?: (stage: string) => void;
+    /** Optional bring-your-own-key LLM config; routes the narrator through the user's own provider. */
+    llm?: LlmConfig;
     /** Skip chart construction. Chart `option` objects carry function formatters that can't be
      *  structured-cloned across a Web Worker boundary, so the worker skips them and the main
      *  thread (analyze-client) builds the charts after receiving the spec. */
@@ -89,7 +92,7 @@ export async function analyze(
   const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
   ctx.userContext = opts.userContext?.trim() || undefined;
   stage("Writing insights");
-  const provider = getInsightProvider();
+  const provider = getInsightProvider(opts.llm);
   const rawInsights = await provider.generate(ctx);
   // Quality filter: keep only meaningful insights (always keep the summary); drop
   // low-confidence "probably noise" items so the dashboard shows high-quality answers.
@@ -99,14 +102,14 @@ export async function analyze(
   // Read the data's own subject/story so findings stay connected to what it's about.
   // Heuristic first; if the LLM is enabled, sharpen it (metadata-only — never raw rows).
   let story = buildDataStory(rawTable.name, table.rowCount, profiles, domain, ctx.userContext);
-  if (llmEnabled()) {
+  if (llmEnabled(opts.llm)) {
     story = await sharpenStory(story, {
       datasetName: rawTable.name,
       domain: domain.domain,
       rowCount: table.rowCount,
       columns: profiles.map((p) => ({ name: p.name, role: p.role, type: p.type })),
       userContext: ctx.userContext,
-    });
+    }, opts.llm);
   }
 
   return {

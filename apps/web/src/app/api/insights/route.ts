@@ -33,20 +33,25 @@ const ALLOWED_KIND = new Set<Insight["kind"]>(["summary", "trend", "correlation"
 const ALLOWED_CONF = new Set<Insight["confidence"]>(["high", "medium", "low"]);
 
 export async function POST(req: Request) {
-  const provider = (process.env.LLM_PROVIDER ?? "groq") as Provider;
-  const apiKey = process.env.LLM_API_KEY?.trim();
-  const model = process.env.LLM_MODEL?.trim() || DEFAULT_MODELS[provider] || "";
-
-  // No key → signal the client to use its local templated narrator / original conclusions.
-  if (!apiKey) {
-    return NextResponse.json({ insights: [], conclusions: [], provider: "none" });
-  }
-
   let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  // Bring-your-own-key: when the client supplies a `byok` block (its key, stored only on that device),
+  // we use it for this single request instead of the server env — and never log or persist it. Lets a
+  // power user get higher-reliability narration at zero cost to us, with no change to the privacy
+  // boundary (still metadata-only context). Falls back to the server-configured key when absent.
+  const byok = (body && typeof body === "object" ? (body as { byok?: { provider?: string; apiKey?: string; model?: string } }).byok : undefined) ?? undefined;
+  const provider = ((byok?.provider || process.env.LLM_PROVIDER) ?? "groq") as Provider;
+  const apiKey = (byok?.apiKey?.trim() || process.env.LLM_API_KEY?.trim()) ?? "";
+  const model = (byok?.model?.trim() || process.env.LLM_MODEL?.trim()) || DEFAULT_MODELS[provider] || "";
+
+  // No key (neither BYOK nor server) → signal the client to use its local templated narrator.
+  if (!apiKey) {
+    return NextResponse.json({ insights: [], conclusions: [], provider: "none" });
   }
 
   const callLLM = (system: string, user: string, opts?: CallOpts) =>

@@ -1,5 +1,6 @@
 import type { DashboardSpec, SemanticType, Table } from "./types";
 import type { AnalyzeMessage } from "./analyze.worker";
+import type { LlmConfig } from "./llm-settings";
 
 // Drives the analysis off the main thread via a Web Worker, reporting real per-stage progress.
 // Falls back to running on the main thread if workers aren't available (very old browsers / SSR).
@@ -13,14 +14,15 @@ export function runAnalysis(
   table: Table,
   userContext: string | undefined,
   onStage?: (stage: string) => void,
-  typeOverrides?: Record<string, SemanticType>
+  typeOverrides?: Record<string, SemanticType>,
+  llm?: LlmConfig
 ): Promise<AnalysisResult> {
   return new Promise((resolve, reject) => {
     let worker: Worker;
     try {
       worker = new Worker(new URL("./analyze.worker.ts", import.meta.url), { type: "module" });
     } catch {
-      runOnMainThread(table, userContext, onStage, typeOverrides).then(resolve, reject);
+      runOnMainThread(table, userContext, onStage, typeOverrides, llm).then(resolve, reject);
       return;
     }
 
@@ -55,11 +57,11 @@ export function runAnalysis(
       if (settled) return;
       // The worker failed to even start/run — fall back to the main thread so analysis still works.
       cleanup();
-      runOnMainThread(table, userContext, onStage, typeOverrides).then(resolve, reject);
+      runOnMainThread(table, userContext, onStage, typeOverrides, llm).then(resolve, reject);
       e.preventDefault?.();
     };
 
-    worker.postMessage({ table, userContext, typeOverrides });
+    worker.postMessage({ table, userContext, typeOverrides, llm });
   });
 }
 
@@ -67,12 +69,13 @@ async function runOnMainThread(
   table: Table,
   userContext: string | undefined,
   onStage?: (stage: string) => void,
-  typeOverrides?: Record<string, SemanticType>
+  typeOverrides?: Record<string, SemanticType>,
+  llm?: LlmConfig
 ): Promise<AnalysisResult> {
   const [{ analyze }, { cleanTable }] = await Promise.all([import("./analyze"), import("./clean")]);
   onStage?.("Cleaning & normalizing");
   const cleaned = cleanTable(table, typeOverrides);
-  const spec = await analyze(table, { userContext, cleaned, onStage });
+  const spec = await analyze(table, { userContext, cleaned, llm, onStage });
   if (table.sampledFrom) cleaned.table.sampledFrom = table.sampledFrom;
   return { spec, table: cleaned.table };
 }

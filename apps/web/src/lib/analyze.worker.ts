@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import type { DashboardSpec, SemanticType, Table } from "./types";
+import type { LlmConfig } from "./llm-settings";
 import { analyze } from "./analyze";
 import { cleanTable } from "./clean";
 
@@ -13,6 +14,8 @@ export interface AnalyzeRequest {
   userContext?: string;
   /** User-pinned column types from the column controls (overrides auto-detection). */
   typeOverrides?: Record<string, SemanticType>;
+  /** Optional bring-your-own-key LLM config (passed through to the narrator). */
+  llm?: LlmConfig;
 }
 
 export type AnalyzeMessage =
@@ -23,7 +26,7 @@ export type AnalyzeMessage =
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
 ctx.onmessage = async (e: MessageEvent<AnalyzeRequest>) => {
-  const { table, userContext, typeOverrides } = e.data;
+  const { table, userContext, typeOverrides, llm } = e.data;
   const post = (m: AnalyzeMessage) => ctx.postMessage(m);
   try {
     post({ type: "progress", stage: "Cleaning & normalizing" });
@@ -31,6 +34,7 @@ ctx.onmessage = async (e: MessageEvent<AnalyzeRequest>) => {
     const spec = await analyze(table, {
       userContext,
       cleaned,
+      llm,
       onStage: (stage) => post({ type: "progress", stage }),
       // Charts carry function formatters that can't be cloned back to the main thread; the client
       // rebuilds them there. Everything else in the spec is plain, cloneable data.

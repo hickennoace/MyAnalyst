@@ -1,4 +1,5 @@
 import type { InsightProvider } from "../types";
+import type { LlmConfig } from "../llm-settings";
 import { TemplatedInsightProvider } from "./templated";
 import { LlmInsightProvider } from "./llm";
 
@@ -12,8 +13,10 @@ import { LlmInsightProvider } from "./llm";
 // The privacy boundary — only the metadata-only InsightContext crosses the wire — is enforced by the
 // InsightProvider interface and the /api/insights route, regardless of which provider is active.
 
-export function getInsightProvider(): InsightProvider {
-  const enabled =
-    typeof process !== "undefined" && process.env.NEXT_PUBLIC_LLM_ENABLED === "1";
-  return enabled ? new LlmInsightProvider() : new TemplatedInsightProvider();
+export function getInsightProvider(byok?: LlmConfig): InsightProvider {
+  // A user's own key (BYOK) switches the LLM narrator on regardless of the server flag; otherwise the
+  // env flag governs the server-key path. No key anywhere → the local templated narrator.
+  const envEnabled = typeof process !== "undefined" && process.env.NEXT_PUBLIC_LLM_ENABLED === "1";
+  if (byok) return new LlmInsightProvider(byok);
+  return envEnabled ? new LlmInsightProvider() : new TemplatedInsightProvider();
 }

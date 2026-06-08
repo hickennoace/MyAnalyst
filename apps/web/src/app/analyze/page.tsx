@@ -10,7 +10,9 @@ import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
 import { exportDeckPdf, exportReportPdf } from "@/lib/report-pdf";
 import { loadBrand } from "@/lib/brand";
+import { activeLlmConfig } from "@/lib/llm-settings";
 import { BrandEditor } from "@/components/BrandEditor";
+import { AiKeyEditor } from "@/components/AiKeyEditor";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
 import { compareDatasets, type DatasetComparison } from "@/lib/compare-datasets";
@@ -56,6 +58,7 @@ export default function AnalyzePage() {
   const compareInputRef = useRef<HTMLInputElement>(null);
   const [presenting, setPresenting] = useState(false);
   const [branding, setBranding] = useState(false);
+  const [aiKeyOpen, setAiKeyOpen] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [jobDesc, setJobDesc] = useState("");
@@ -192,7 +195,7 @@ export default function AnalyzePage() {
       // so the UI never freezes even on a 200k-row file — and the progress here reflects the
       // worker's REAL stage transitions instead of a timed animation.
       setStage("Cleaning & normalizing");
-      const { spec: result, table: cleaned } = await runAnalysis(analyzedTbl, jobDesc, (s) => setStage(s), ov);
+      const { spec: result, table: cleaned } = await runAnalysis(analyzedTbl, jobDesc, (s) => setStage(s), ov, activeLlmConfig() ?? undefined);
       setTable(cleaned);
       setSpec(result);
       setExcluded(excl);
@@ -425,6 +428,13 @@ export default function AnalyzePage() {
                 ✦ Brand
               </button>
               <button
+                onClick={() => setAiKeyOpen(true)}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
+                title="Use your own LLM key to sharpen the narration"
+              >
+                ✦ AI
+              </button>
+              <button
                 onClick={reset}
                 className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400"
               >
@@ -566,6 +576,7 @@ export default function AnalyzePage() {
 
         {presenting && spec && <PresenterMode spec={spec} onClose={() => setPresenting(false)} />}
         {branding && <BrandEditor onClose={() => setBranding(false)} />}
+        {aiKeyOpen && <AiKeyEditor onClose={() => setAiKeyOpen(false)} />}
 
         {comparison && (
           <div className="mb-6">
