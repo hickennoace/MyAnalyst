@@ -12,9 +12,11 @@ export interface LlmConfig {
   model?: string;
 }
 
-/** Persisted shape, including the on/off toggle. */
+/** Persisted shape, including the on/off toggle and the on-device (WebGPU) option. */
 export interface LlmSettings extends LlmConfig {
   enabled: boolean;
+  /** Run an on-device model (transformers.js + WebGPU) instead of calling a provider — zero network. */
+  localModel?: boolean;
 }
 
 const KEY = "quantia:llm";
@@ -28,7 +30,7 @@ export const LLM_PROVIDERS: { id: LlmProvider; label: string; placeholder: strin
 ];
 
 export function loadLlmSettings(): LlmSettings {
-  const fallback: LlmSettings = { enabled: false, provider: "groq", apiKey: "", model: "" };
+  const fallback: LlmSettings = { enabled: false, provider: "groq", apiKey: "", model: "", localModel: false };
   if (typeof localStorage === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(KEY);
@@ -40,10 +42,16 @@ export function loadLlmSettings(): LlmSettings {
       provider,
       apiKey: typeof p.apiKey === "string" ? p.apiKey : "",
       model: typeof p.model === "string" ? p.model : "",
+      localModel: !!p.localModel,
     };
   } catch {
     return fallback;
   }
+}
+
+/** Whether the on-device (WebGPU) narrator is switched on. */
+export function localModelEnabled(): boolean {
+  return loadLlmSettings().localModel === true;
 }
 
 export function saveLlmSettings(s: LlmSettings): void {

@@ -2,14 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { LLM_PROVIDERS, loadLlmSettings, saveLlmSettings, type LlmProvider, type LlmSettings } from "@/lib/llm-settings";
+import { webgpuAvailable } from "@/lib/local-llm";
 
-// Bring-your-own-key editor. The key is stored only on this device and sent solely with the analysis
-// request to sharpen the narration; the data context remains metadata-only. Off by default.
+// AI narration settings. Two zero-cost-to-us options, both off by default:
+//  • Bring-your-own-key — your provider key, stored on this device, sent only with the analysis request
+//    (metadata-only context, never raw rows).
+//  • On-device model — transformers.js + WebGPU; narration runs fully in your browser with no network.
 
 export function AiKeyEditor({ onClose }: { onClose: () => void }) {
-  const [s, setS] = useState<LlmSettings>({ enabled: false, provider: "groq", apiKey: "", model: "" });
+  const [s, setS] = useState<LlmSettings>({ enabled: false, provider: "groq", apiKey: "", model: "", localModel: false });
+  const [gpu, setGpu] = useState(true);
 
-  useEffect(() => setS(loadLlmSettings()), []);
+  useEffect(() => {
+    setS(loadLlmSettings());
+    setGpu(webgpuAvailable());
+  }, []);
 
   const update = (patch: Partial<LlmSettings>) => {
     const next = { ...s, ...patch };
@@ -31,8 +38,26 @@ export function AiKeyEditor({ onClose }: { onClose: () => void }) {
           analysis request — the context stays metadata-only (never your raw rows).
         </p>
 
+        {/* On-device option — the strongest privacy story; no key needed. */}
         <label className="mt-4 flex items-center justify-between text-xs text-slate-300">
-          <span>Enable AI narration</span>
+          <span>Run on-device (WebGPU) <span className="text-slate-500">— no network</span></span>
+          <input
+            type="checkbox"
+            checked={!!s.localModel}
+            disabled={!gpu}
+            onChange={(e) => update({ localModel: e.target.checked })}
+            className="h-4 w-4 accent-blue-500"
+          />
+        </label>
+        {s.localModel && (
+          <p className="mt-1 text-[10px] text-slate-500">A small model (~0.5B) downloads once on first use, then runs fully in your browser. Takes a moment to warm up.</p>
+        )}
+        {!gpu && <p className="mt-1 text-[10px] text-amber-400/80">This browser doesn’t expose WebGPU — on-device mode is unavailable here.</p>}
+
+        <div className="my-3 border-t border-slate-800" />
+
+        <label className="flex items-center justify-between text-xs text-slate-300">
+          <span>Use my provider key instead</span>
           <input
             type="checkbox"
             checked={s.enabled}

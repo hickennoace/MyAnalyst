@@ -10,7 +10,8 @@ import { sampleTable } from "@/lib/sample";
 import { exportPdf, exportPng } from "@/lib/export";
 import { exportDeckPdf, exportReportPdf } from "@/lib/report-pdf";
 import { loadBrand } from "@/lib/brand";
-import { activeLlmConfig } from "@/lib/llm-settings";
+import { activeLlmConfig, localModelEnabled } from "@/lib/llm-settings";
+import { localNarrateStory, webgpuAvailable } from "@/lib/local-llm";
 import { BrandEditor } from "@/components/BrandEditor";
 import { AiKeyEditor } from "@/components/AiKeyEditor";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
@@ -200,6 +201,31 @@ export default function AnalyzePage() {
       setSpec(result);
       setExcluded(excl);
       setTypeOverrides(ov);
+
+      // On-device narration (opt-in, WebGPU): sharpen the story locally with ZERO network, after the
+      // dashboard is already up. Fire-and-forget so it never blocks rendering; patches the story in place.
+      if (localModelEnabled() && webgpuAvailable() && result.story) {
+        setToast({ text: "Warming the on-device model… (first run downloads it once)", tone: "info" });
+        localNarrateStory(
+          {
+            datasetName: result.datasetName,
+            domain: result.domain.domain,
+            rowCount: result.rowCount,
+            columns: result.profiles.map((p) => ({ name: p.name, role: p.role, type: p.type })),
+            userContext: jobDesc || undefined,
+          },
+          result.story.summary
+        )
+          .then((text) => {
+            if (text) {
+              setSpec((prev) => (prev && prev.story ? { ...prev, story: { ...prev.story, summary: text, source: "llm" }, narrator: "llm" } : prev));
+              setToast({ text: "✓ Story sharpened on-device — no network used.", tone: "info" });
+            } else {
+              setToast(null);
+            }
+          })
+          .catch(() => setToast(null));
+      }
       try {
         await saveAnalysis(result, cleaned);
         setHistory(await listHistory());
