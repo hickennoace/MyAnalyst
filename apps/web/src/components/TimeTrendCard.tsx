@@ -73,6 +73,14 @@ export function TimeTrendCard({ analyses, profiles }: { analyses: TimeSeriesAnal
               <span>Best: {a.best.label} ({fmt(a.best.value, p)})</span>
               <span>Worst: {a.worst.label} ({fmt(a.worst.value, p)})</span>
             </div>
+
+            {a.seasonality && (
+              <p className="mt-2 rounded-lg bg-violet-500/10 px-2.5 py-1.5 text-[11px] leading-snug text-violet-200">
+                <span className="font-semibold">Seasonal pattern:</span> peaks in {a.seasonality.peak.label}{" "}
+                (+{Math.round((a.seasonality.peak.index - 1) * 100)}% vs the {a.seasonality.unit} average), lowest in{" "}
+                {a.seasonality.trough.label} ({Math.round((a.seasonality.trough.index - 1) * 100)}%).
+              </p>
+            )}
           </div>
         );
       })}

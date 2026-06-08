@@ -340,6 +340,29 @@ export interface TimeSeriesAnalysis {
   movingAvg: (number | null)[];
   best: PeriodPoint;
   worst: PeriodPoint;
+  /** Recurring within-cycle pattern (e.g. month-of-year, weekday), when ≥2 full cycles are present. */
+  seasonality?: SeasonPattern;
+}
+
+/** One position in a seasonal cycle (e.g. "December", "Q4", "Monday") and its index vs the average. */
+export interface SeasonIndex {
+  label: string;
+  /** average metric value at this cycle position. */
+  avg: number;
+  /** avg ÷ overall average (1 = on par, >1 = above-average season). */
+  index: number;
+}
+
+/** A recurring seasonal pattern: which positions in the cycle run hot/cold, and how strongly. */
+export interface SeasonPattern {
+  /** the cycle unit — "month", "quarter", or "weekday". */
+  unit: "month" | "quarter" | "weekday";
+  /** every cycle position in order, with its seasonal index. */
+  indices: SeasonIndex[];
+  peak: SeasonIndex;
+  trough: SeasonIndex;
+  /** peak.index − trough.index — the amplitude of the swing. */
+  strength: number;
 }
 
 // ── Contribution / mix-shift decomposition ────────────────────────────────────

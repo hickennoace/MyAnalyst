@@ -536,9 +536,12 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
           ? `${ts.changePct >= 0 ? "up" : "down"} ${Math.abs(ts.changePct * 100).toFixed(1)}% vs the prior ${noun}`
           : "with no prior period to compare";
         const yoy = ts.yoyChangePct != null ? ` Year over year it's ${ts.yoyChangePct >= 0 ? "up" : "down"} ${Math.abs(ts.yoyChangePct * 100).toFixed(1)}%.` : "";
+        const seas = ts.seasonality
+          ? ` Seasonally, it peaks in ${ts.seasonality.peak.label} (+${Math.round((ts.seasonality.peak.index - 1) * 100)}% vs the ${ts.seasonality.unit} average) and is lowest in ${ts.seasonality.trough.label} (${Math.round((ts.seasonality.trough.index - 1) * 100)}%).`
+          : "";
         return {
           ok: true,
-          answer: `${m.name} is tracked ${ts.cadence}${scope}. The latest period (${ts.latest.label}) totalled ${fmt(ts.latest.value, m)}, ${mom}.${yoy} Best ${noun}: ${ts.best.label} (${fmt(ts.best.value, m)}); weakest: ${ts.worst.label} (${fmt(ts.worst.value, m)}).`,
+          answer: `${m.name} is tracked ${ts.cadence}${scope}. The latest period (${ts.latest.label}) totalled ${fmt(ts.latest.value, m)}, ${mom}.${yoy}${seas} Best ${noun}: ${ts.best.label} (${fmt(ts.best.value, m)}); weakest: ${ts.worst.label} (${fmt(ts.worst.value, m)}).`,
           chart: buildChart(view, profiles, { type: "line", x: time.name, y: [m.name] }),
           method: `Bucketed ${m.name} by ${ts.cadence} period across ${rowsNote(view, table, filter)} (${ts.periods.length} periods); reported latest, period-over-period and year-over-year change.`,
         };

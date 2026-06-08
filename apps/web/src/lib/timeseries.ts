@@ -1,5 +1,8 @@
-import type { Cadence, PeriodPoint, Table, TimeSeriesAnalysis } from "./types";
+import type { Cadence, PeriodPoint, SeasonIndex, SeasonPattern, Table, TimeSeriesAnalysis } from "./types";
 import { numericColumn } from "./profile";
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Richer time-series analysis: detect the data's natural cadence (daily…yearly), aggregate a metric
 // into those periods, and compute period-over-period change (incl. year-over-year when a full season is
@@ -78,6 +81,57 @@ export function periodKey(d: Date, cadence: Cadence): string {
   return bucketLabel(d, cadence);
 }
 
+/**
+ * Find a recurring within-cycle pattern (month-of-year, quarter-of-year, or weekday) by averaging the
+ * metric at each cycle position across the data and comparing to the overall average. Only claims a
+ * pattern when there are ≥2 full cycles, every position is covered, and the swing is real (peak ≥15%
+ * above average). Pure; returns undefined when there's no clear seasonality. Exported for testing.
+ */
+export function detectSeasonality(periods: PeriodPoint[], cadence: Cadence): SeasonPattern | undefined {
+  let unit: SeasonPattern["unit"];
+  let cycle: number;
+  let position: (label: string) => { order: number; name: string } | null;
+  if (cadence === "monthly") {
+    unit = "month"; cycle = 12;
+    position = (l) => { const m = Number(l.slice(5, 7)); return m >= 1 && m <= 12 ? { order: m - 1, name: MONTHS[m - 1] } : null; };
+  } else if (cadence === "quarterly") {
+    unit = "quarter"; cycle = 4;
+    position = (l) => { const q = Number(l.slice(l.indexOf("Q") + 1)); return q >= 1 && q <= 4 ? { order: q - 1, name: `Q${q}` } : null; };
+  } else if (cadence === "daily") {
+    unit = "weekday"; cycle = 7;
+    position = (l) => { const d = new Date(l + "T00:00:00Z"); if (Number.isNaN(d.getTime())) return null; const w = d.getUTCDay(); return { order: w, name: WEEKDAYS[w] }; };
+  } else {
+    return undefined; // weekly/yearly: within-cycle seasonality is noisy or undefined
+  }
+
+  if (periods.length < 2 * cycle) return undefined;
+
+  const buckets = new Map<number, { name: string; sum: number; count: number }>();
+  for (const p of periods) {
+    const pos = position(p.label);
+    if (!pos || !Number.isFinite(p.value)) continue;
+    const b = buckets.get(pos.order) ?? { name: pos.name, sum: 0, count: 0 };
+    b.sum += p.value; b.count += 1;
+    buckets.set(pos.order, b);
+  }
+  if (buckets.size < cycle) return undefined; // require every position to be observed
+
+  const overall = [...buckets.values()].reduce((s, b) => s + b.sum, 0) / [...buckets.values()].reduce((s, b) => s + b.count, 0);
+  if (!Number.isFinite(overall) || overall === 0) return undefined;
+
+  const indices: SeasonIndex[] = [...buckets.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, b]) => ({ label: b.name, avg: b.sum / b.count, index: b.sum / b.count / overall }));
+
+  let peak = indices[0];
+  let trough = indices[0];
+  for (const s of indices) { if (s.index > peak.index) peak = s; if (s.index < trough.index) trough = s; }
+  // Require a real swing — a flat profile isn't "seasonal".
+  if (peak.index < 1.15) return undefined;
+
+  return { unit, indices, peak, trough, strength: peak.index - trough.index };
+}
+
 export function analyzeTimeSeries(table: Table, timeCol: string, metricName: string): TimeSeriesAnalysis | undefined {
   const vals = numericColumn(table, metricName);
   const points: { t: number; v: number }[] = [];
@@ -124,5 +178,7 @@ export function analyzeTimeSeries(table: Table, timeCol: string, metricName: str
     if (p.value < worst.value) worst = p;
   }
 
-  return { metric: metricName, cadence, periods, latest, previous, changePct, yoyChangePct, movingAvg, best, worst };
+  const seasonality = detectSeasonality(periods, cadence);
+
+  return { metric: metricName, cadence, periods, latest, previous, changePct, yoyChangePct, movingAvg, best, worst, seasonality };
 }
