@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { LLM_PROVIDERS, loadLlmSettings, saveLlmSettings, type LlmProvider, type LlmSettings } from "@/lib/llm-settings";
 import { webgpuAvailable } from "@/lib/local-llm";
+import { Portal } from "./Portal";
 
 // AI narration settings. Two zero-cost-to-us options, both off by default:
 //  • Bring-your-own-key — your provider key, stored on this device, sent only with the analysis request
@@ -27,6 +28,7 @@ export function AiKeyEditor({ onClose }: { onClose: () => void }) {
   const placeholder = LLM_PROVIDERS.find((p) => p.id === s.provider)?.placeholder ?? "";
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
@@ -106,5 +108,6 @@ export function AiKeyEditor({ onClose }: { onClose: () => void }) {
         <p className="mt-3 text-[10px] text-slate-600">Re-run the analysis after changing this for it to take effect.</p>
       </div>
     </div>
+    </Portal>
   );
 }

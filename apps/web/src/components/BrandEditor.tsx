@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_BRAND, loadBrand, saveBrand, type BrandSettings } from "@/lib/brand";
+import { Portal } from "./Portal";
 
 // Small white-label editor: company name, accent colour, and an optional logo for exported
 // deliverables (report PDF / slide deck / image header). Persists to localStorage only.
@@ -27,6 +28,7 @@ export function BrandEditor({ onClose }: { onClose: () => void }) {
   };
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
@@ -70,5 +72,6 @@ export function BrandEditor({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

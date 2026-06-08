@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DashboardSpec } from "@/lib/types";
 import { buildExecutiveSummary } from "@/lib/report";
+import { Portal } from "./Portal";
 
 // Full-screen presenter mode: the dashboard's key story as large, keyboard-navigable slides — for
 // walking a room through the findings. ← / → / space to move, Esc to exit. Renders from the spec.
@@ -55,6 +56,7 @@ export function PresenterMode({ spec, onClose }: { spec: DashboardSpec; onClose:
   const s = slides[i] ?? slides[0];
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-slate-950 to-slate-900 text-slate-100" role="dialog" aria-modal="true" aria-label="Presenter mode">
       <div className="flex items-center justify-between px-6 py-4 text-xs text-slate-500">
         <span>
@@ -94,5 +96,6 @@ export function PresenterMode({ spec, onClose }: { spec: DashboardSpec; onClose:
         </button>
       </div>
     </div>
+    </Portal>
   );
 }
