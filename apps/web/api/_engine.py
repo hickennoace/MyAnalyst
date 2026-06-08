@@ -20,6 +20,7 @@ import _stats as _st
 import _outliers as _ol
 import _charts as _ch
 import _insights as _ins
+import _segments as _sg
 
 # ─────────────────────────── Profiling: type + role per column ───────────────────────────
 
@@ -411,6 +412,8 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
             outliers.append(o)
     outliers.sort(key=lambda x: x["count"], reverse=True)
 
+    segments = _sg.segment_rows(df, profiles)
+
     spec: dict[str, Any] = {
         "engine": "python",
         "rowCount": n,
@@ -422,6 +425,7 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
         "forecast": forecast,
         "stats": stats_block,
         "outliers": outliers[:5],
+        "segments": segments,
     }
     spec["charts"] = _ch.build_charts(df, profiles, {
         "revenue": revenue, "bestsellers": bs, "monthly": monthly, "forecast": forecast,

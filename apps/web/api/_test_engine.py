@@ -57,6 +57,7 @@ check("monthly trend computed", spec.get("trend") is not None and "slopeP" in sp
 check("stats: correlations + group comparisons", "correlations" in spec["stats"] and "groupComparisons" in spec["stats"])
 check("charts: revenue-by-product + forecast", any("Revenue by" in c["title"] for c in spec["charts"]) and any("forecast" in c["title"].lower() for c in spec["charts"]))
 check("grounded facts built (>=5)", len(spec.get("facts", [])) >= 5)
+check("k-means segments found", spec.get("segments") is not None and len(spec["segments"]["segments"]) >= 2)
 check("no tautological 'Cost drives Price' driver", not (spec["stats"].get("drivers") and spec["stats"]["drivers"]["drivers"][0]["name"] == "Cost"))
 import json
 from analyze import _jsonable

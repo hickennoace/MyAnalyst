@@ -76,6 +76,13 @@ def build_facts(spec: dict) -> list[dict]:
         add("fact-corr", f"{c['a']} and {c['b']} move together (r={c['r']:.2f}, {c['strength']}) — "
             f"association, not proven cause.", "correlation")
 
+    seg = spec.get("segments")
+    if seg and len(seg.get("segments", [])) > 1:
+        biggest = seg["segments"][0]
+        add("fact-segments", f"The data splits into {seg['k']} natural groups (clustered on "
+            f"{', '.join(seg['features'])}); the largest is \"{biggest['label']}\" "
+            f"({biggest['sharePct']:.0f}% of rows).", "segments")
+
     o = next((x for x in spec.get("outliers", []) if x), None)
     if o:
         if o["kind"] == "skew":
