@@ -4,6 +4,7 @@ import { HeroChart } from "@/components/HeroChart";
 import { HeroField } from "@/components/HeroField";
 import { Magnetic } from "@/components/Magnetic";
 import { Tilt } from "@/components/Tilt";
+import { Stagger, StaggerItem, Float } from "@/components/Motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
@@ -97,35 +98,45 @@ export default function Landing() {
 
         {/* ── Hero ── */}
         <section className="grid items-center gap-12 pt-12 pb-16 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24">
-          <div className="fade-up">
-            <h1 className="display text-[2.6rem] leading-[1.06] text-[var(--ink)] sm:text-[3.7rem]">
-              Turn a spreadsheet into an{" "}
-              <span className="lp-accent">explained dashboard</span>
-            </h1>
-            <p className="mt-6 max-w-lg text-[1.05rem] leading-relaxed text-[var(--muted)]">
-              MyAnalyst cleans your data, runs real statistics, and explains what it means —
-              automatically. Upload a spreadsheet and get a clear, trustworthy dashboard in
-              seconds, with the rigor of a working data scientist.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Magnetic>
-                <Link href="/analyze" className="lp-cta">
-                  Analyze your data
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </Link>
-              </Magnetic>
-              <Magnetic>
-                <Link href="/analyze?demo=1" className="lp-ghost">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5"><path d="M7 5v14l11-7z" /></svg>
-                  Try a live sample
-                </Link>
-              </Magnetic>
-            </div>
-            <p className="mt-5 text-[0.82rem] text-[var(--faint)]">No account · no upload · your data never leaves this page.</p>
-          </div>
+          <Stagger mount>
+            <StaggerItem>
+              <h1 className="display text-[2.6rem] leading-[1.06] text-[var(--ink)] sm:text-[3.7rem]">
+                Turn a spreadsheet into an{" "}
+                <span className="lp-accent">explained dashboard</span>
+              </h1>
+            </StaggerItem>
+            <StaggerItem>
+              <p className="mt-6 max-w-lg text-[1.05rem] leading-relaxed text-[var(--muted)]">
+                MyAnalyst cleans your data, runs real statistics, and explains what it means —
+                automatically. Upload a spreadsheet and get a clear, trustworthy dashboard in
+                seconds, with the rigor of a working data scientist.
+              </p>
+            </StaggerItem>
+            <StaggerItem>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Magnetic>
+                  <Link href="/analyze" className="lp-cta">
+                    Analyze your data
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </Link>
+                </Magnetic>
+                <Magnetic>
+                  <Link href="/analyze?demo=1" className="lp-ghost">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5"><path d="M7 5v14l11-7z" /></svg>
+                    Try a live sample
+                  </Link>
+                </Magnetic>
+              </div>
+            </StaggerItem>
+            <StaggerItem>
+              <p className="mt-5 text-[0.82rem] text-[var(--faint)]">No account · no upload · your data never leaves this page.</p>
+            </StaggerItem>
+          </Stagger>
 
-          {/* Chart panel */}
-          <Tilt>
+          {/* Chart panel — entrance, gentle idle float, and pointer tilt. */}
+          <Reveal>
+           <Float distance={6} duration={7}>
+            <Tilt>
             <div className="lp-panel lp-panel-glow overflow-hidden p-4">
               <div className="flex items-center justify-between border-b border-[var(--line)] px-1 pb-3">
                 <span className="lp-tape text-[var(--muted)]">revenue.csv · 12 periods</span>
@@ -143,7 +154,9 @@ export default function Landing() {
                 ))}
               </div>
             </div>
-          </Tilt>
+            </Tilt>
+           </Float>
+          </Reveal>
         </section>
       </div>
 

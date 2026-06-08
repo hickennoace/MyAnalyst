@@ -1,43 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 
-// Reveals its children with a fade-up the first time they scroll into view.
+// Reveals its children with a physics-based fade-up the first time they scroll into view.
+// Framer Motion handles the IntersectionObserver (whileInView + viewport once) and a spring settle;
+// reduced-motion users get the content immediately with no transform.
 export function Reveal({
   children,
   delay = 0,
   className = "",
 }: {
   children: React.ReactNode;
+  /** Stagger offset in milliseconds (kept for API compatibility with the old component). */
   delay?: number;
   className?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.12 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+  const reduce = useReducedMotion();
+  if (reduce) return <div className={className}>{children}</div>;
 
   return (
-    <div ref={ref} className={`reveal ${visible ? "reveal-in" : ""} ${className}`} style={{ animationDelay: `${delay}ms` }}>
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 26 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.18 }}
+      transition={{ type: "spring", stiffness: 120, damping: 20, delay: delay / 1000 }}
+    >
       {children}
-    </div>
+    </motion.div>
   );
 }

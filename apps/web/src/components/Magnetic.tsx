@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { motion, useMotionValue, useSpring, useReducedMotion } from "framer-motion";
 
-// Wraps an element so it gently follows the pointer when hovered (a "magnetic" pull), then springs
-// back on leave. Pure CSS-transition smoothing + a transform write on move — no libraries. The wrapper
-// is display:inline-block so it can hug a button/link. Respects prefers-reduced-motion (no-op).
+// Wraps an element so it springs toward the pointer when hovered (a "magnetic" pull) and settles back
+// on leave, with a gentle whileHover lift + whileTap press so buttons feel physical. Framer Motion
+// springs drive the x/y motion values. Respects prefers-reduced-motion (no pull, no transform).
 export function Magnetic({
   children,
   strength = 0.35,
@@ -15,34 +16,39 @@ export function Magnetic({
   className?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const reduce = useRef(false);
-
-  useEffect(() => {
-    reduce.current = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  }, []);
+  const reduce = useReducedMotion();
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const x = useSpring(mx, { stiffness: 220, damping: 18, mass: 0.4 });
+  const y = useSpring(my, { stiffness: 220, damping: 18, mass: 0.4 });
 
   function onMove(e: React.PointerEvent) {
     const el = ref.current;
-    if (!el || reduce.current) return;
+    if (!el || reduce) return;
     const r = el.getBoundingClientRect();
-    const x = (e.clientX - (r.left + r.width / 2)) * strength;
-    const y = (e.clientY - (r.top + r.height / 2)) * strength;
-    el.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
+    mx.set((e.clientX - (r.left + r.width / 2)) * strength);
+    my.set((e.clientY - (r.top + r.height / 2)) * strength);
   }
 
   function onLeave() {
-    const el = ref.current;
-    if (el) el.style.transform = "";
+    mx.set(0);
+    my.set(0);
   }
 
+  if (reduce) return <span className={`inline-block ${className}`}>{children}</span>;
+
   return (
-    <span
+    <motion.span
       ref={ref}
       onPointerMove={onMove}
       onPointerLeave={onLeave}
-      className={`inline-block transition-transform duration-300 ease-out will-change-transform ${className}`}
+      style={{ x, y }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: "spring", stiffness: 400, damping: 22 }}
+      className={`inline-block will-change-transform ${className}`}
     >
       {children}
-    </span>
+    </motion.span>
   );
 }

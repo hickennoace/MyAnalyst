@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } from "framer-motion";
 
-// Wraps an element with a subtle 3D tilt that tracks the pointer, plus a soft highlight that follows
-// the cursor. Pure CSS transforms — no libraries. Respects prefers-reduced-motion (stays flat).
+// Wraps an element with a spring-smoothed 3D tilt that tracks the pointer, plus a soft highlight that
+// follows the cursor (via the --mx/--my CSS vars the panel styles read). Framer Motion springs make the
+// tilt feel weighted instead of instant. Respects prefers-reduced-motion (stays flat).
 export function Tilt({
   children,
   max = 7,
@@ -14,36 +16,44 @@ export function Tilt({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const reduce = useRef(false);
+  const reduce = useReducedMotion();
 
-  useEffect(() => {
-    reduce.current = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  }, []);
+  // -0.5..0.5 pointer position, spring-smoothed, mapped to rotation degrees.
+  const px = useMotionValue(0);
+  const py = useMotionValue(0);
+  const sx = useSpring(px, { stiffness: 150, damping: 18, mass: 0.5 });
+  const sy = useSpring(py, { stiffness: 150, damping: 18, mass: 0.5 });
+  const rotateY = useTransform(sx, (v) => v * max);
+  const rotateX = useTransform(sy, (v) => -v * max);
 
   function onMove(e: React.PointerEvent) {
     const el = ref.current;
-    if (!el || reduce.current) return;
+    if (!el || reduce) return;
     const r = el.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width - 0.5;
-    const py = (e.clientY - r.top) / r.height - 0.5;
-    el.style.transform = `perspective(1000px) rotateY(${(px * max).toFixed(2)}deg) rotateX(${(-py * max).toFixed(2)}deg)`;
-    el.style.setProperty("--mx", `${((px + 0.5) * 100).toFixed(1)}%`);
-    el.style.setProperty("--my", `${((py + 0.5) * 100).toFixed(1)}%`);
+    const nx = (e.clientX - r.left) / r.width - 0.5;
+    const ny = (e.clientY - r.top) / r.height - 0.5;
+    px.set(nx);
+    py.set(ny);
+    el.style.setProperty("--mx", `${((nx + 0.5) * 100).toFixed(1)}%`);
+    el.style.setProperty("--my", `${((ny + 0.5) * 100).toFixed(1)}%`);
   }
 
   function onLeave() {
-    const el = ref.current;
-    if (el) el.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg)";
+    px.set(0);
+    py.set(0);
   }
 
+  if (reduce) return <div className={className}>{children}</div>;
+
   return (
-    <div
+    <motion.div
       ref={ref}
       onPointerMove={onMove}
       onPointerLeave={onLeave}
-      className={`transition-transform duration-300 ease-out will-change-transform ${className}`}
+      style={{ rotateX, rotateY, transformPerspective: 1000 }}
+      className={`will-change-transform ${className}`}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

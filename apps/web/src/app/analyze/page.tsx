@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import type { DashboardSpec, SemanticType, Table } from "@/lib/types";
 import { parseFile, type SourceInfo } from "@/lib/parse";
@@ -583,7 +584,12 @@ export default function AnalyzePage() {
             context to maximize the conclusions, then start deliberately. */}
         {!spec && pending && (
           <div className="space-y-4">
-            <div className="card space-y-5 p-5 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: "spring", stiffness: 120, damping: 20 }}
+              className="card space-y-5 p-5 sm:p-6"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-100">Ready to analyze — does this look right?</h2>
@@ -696,15 +702,18 @@ export default function AnalyzePage() {
                 <button onClick={cancelPending} className="text-sm text-slate-400 transition hover:text-slate-200">
                   ← Choose a different file
                 </button>
-                <button
+                <motion.button
                   onClick={handleStartAnalysis}
                   disabled={stagingSource}
+                  whileHover={{ scale: stagingSource ? 1 : 1.035 }}
+                  whileTap={{ scale: stagingSource ? 1 : 0.97 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
                   className="btn-shine rounded-xl bg-blue-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400 disabled:opacity-50"
                 >
                   🚀 Start analyzing
-                </button>
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
 
