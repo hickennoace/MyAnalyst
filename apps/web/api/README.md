@@ -29,14 +29,28 @@ On car-sales data it leads with **Total revenue · Transactions · Gross margin 
 Top Brand share · Avg sale · Best month** — and it does NOT: treat price as a stock series, sum customer
 age, call a sales file "financial", or pad the KPIs with `Average CustomerAge`.
 
-## Run it
+## Layout (Vercel Python Function)
+
+Lives in the Vercel deploy root (`apps/web`) so it ships as a serverless function:
+
+| File | Role |
+|---|---|
+| `analyze.py` | the **`/api/analyze`** route — `POST {csv}` or `{columns, rows}` → analysis spec (JSON) |
+| `_engine.py` | the pandas engine (underscore = private module, not a route) |
+| `_demo.py`, `_test_engine.py` | dev only (underscore = not routed) |
+| `requirements.txt` | Vercel installs these for the function (pandas/numpy/scipy) |
+
+Vercel routes `/api/*.py` to Python functions; Next.js keeps `app/api/*` — they don't collide.
+Note Vercel's **4.5 MB request-body limit**: the frontend will sample large files before POSTing.
+
+## Run it (local)
 
 ```bash
-py analysis/demo.py        # smart KPIs on synthetic car-sales data
-py analysis/test_engine.py # assertions (domain, revenue≠cost, margin, no-noise KPIs)
+py apps/web/api/_demo.py        # smart KPIs on synthetic car-sales data
+py apps/web/api/_test_engine.py # assertions (domain, revenue≠cost, margin, no-noise KPIs)
 ```
 
-Requires `pandas numpy scipy` (`pip install -r analysis/requirements.txt`).
+Requires `pandas numpy scipy` (`pip install -r apps/web/api/requirements.txt`).
 
 ## Design notes
 

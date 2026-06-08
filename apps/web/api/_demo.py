@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from engine import analyze
+from _engine import analyze
 
 MODELS = [
     ("Toyota", "Corolla", 24000, 19000, 0.26),

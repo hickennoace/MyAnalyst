@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import pandas as pd
 
-from engine import analyze, detect_domain, profile, revenue_metric, is_transaction_grain
+from _engine import analyze, detect_domain, profile, revenue_metric, is_transaction_grain
 
 
 def car_sales(n=400, with_cost=True, seed=1):
