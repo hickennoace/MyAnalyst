@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { DashboardSpec } from "@/lib/types";
 import { decodeSpec } from "@/lib/share";
 import { DashboardView } from "@/components/DashboardView";
+import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
@@ -115,8 +116,9 @@ export default function ViewPage() {
           </>
         )}
 
-        <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-          MyAnalyst · Shared dashboards are encoded in the link itself — nothing is stored on a server.
+        <footer className="mt-16 space-y-2 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
+          <p>MyAnalyst · Shared dashboards are encoded in the link itself — nothing is stored on a server.</p>
+          <p className="text-slate-500">{DISCLAIMER_TEXT}</p>
         </footer>
       </div>
     </main>

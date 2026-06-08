@@ -6,6 +6,7 @@ import { Magnetic } from "@/components/Magnetic";
 import { Tilt } from "@/components/Tilt";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
+import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 
 // Marketing landing page. Static (server component) for fast first paint + SEO.
 // Aesthetic: "Refined Light" — clean near-white SaaS canvas, a single indigo
@@ -250,15 +251,18 @@ export default function Landing() {
           </Reveal>
         </section>
 
-        <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--line)] py-8">
-          <div className="flex items-center gap-3">
-            <BrandMark className="h-8 w-8" />
-            <span className="text-[0.82rem] text-[var(--faint)]">© 2026 MyAnalyst · autonomous statistical analysis</span>
+        <footer className="border-t border-[var(--line)] py-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <BrandMark className="h-8 w-8" />
+              <span className="text-[0.82rem] text-[var(--faint)]">© 2026 MyAnalyst · autonomous statistical analysis</span>
+            </div>
+            <div className="flex items-center gap-6">
+              <Link href="/analyze" className="lp-link">Analyzer</Link>
+              <Link href="/privacy" className="lp-link">Privacy</Link>
+            </div>
           </div>
-          <div className="flex items-center gap-6">
-            <Link href="/analyze" className="lp-link">Analyzer</Link>
-            <Link href="/privacy" className="lp-link">Privacy</Link>
-          </div>
+          <p className="mt-6 max-w-3xl text-[0.72rem] leading-relaxed text-[var(--faint)]">{DISCLAIMER_TEXT}</p>
         </footer>
       </div>
     </main>

@@ -16,6 +16,7 @@ import { ActionPlanCard } from "./ActionPlanCard";
 import { domainFocus } from "@/lib/domain-pack";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
+import { Disclaimer } from "./Disclaimer";
 
 // The dashboard body, rendered identically by the live analyzer (/analyze) and the read-only
 // shared view (/view). Everything renders from the DashboardSpec alone; the interactive chart
@@ -156,6 +157,8 @@ export function DashboardView({
           </div>
         </Section>
       )}
+
+      <Disclaimer />
 
       {table && (
         <Section title="Ask your data" subtitle={`${domainFocus(spec.domain.domain)} Ask in plain English — grounded in your real numbers.`} exclude>

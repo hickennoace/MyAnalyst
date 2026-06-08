@@ -19,6 +19,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { PrivacyBadge } from "@/components/PrivacyBadge";
 import { DashboardView } from "@/components/DashboardView";
+import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ColumnControls } from "@/components/ColumnControls";
 import { HistoryList } from "@/components/HistoryList";
@@ -546,8 +547,9 @@ export default function AnalyzePage() {
           </ErrorBoundary>
         )}
 
-        <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-          MyAnalyst · Analysis runs locally in your browser. Insight narration is pluggable.
+        <footer className="mt-16 space-y-2 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
+          <p>MyAnalyst · Analysis runs locally in your browser. Insight narration is pluggable.</p>
+          <p className="text-slate-500">{DISCLAIMER_TEXT}</p>
         </footer>
       </div>
     </main>
