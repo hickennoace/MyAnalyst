@@ -267,6 +267,8 @@ function buildSuggestions(profiles: ColumnProfile[]): string[] {
   const topVal = dims[0]?.topValues?.[0]?.value;
   if (metrics[0] && dims[0] && topVal) out.push(`total ${metrics[0].name} for ${topVal}`);
   else if (dims[0] && metrics[0]) out.push(`which ${dims[0].name} has the highest ${metrics[0].name}`);
+  const groupCol = profiles.find((p) => (p.role === "dimension" || p.role === "identifier") && p.distinctCount >= 4);
+  if (metrics[0] && groupCol) out.push(`how concentrated is ${metrics[0].name} across ${groupCol.name}`);
   if (metrics.length >= 2) out.push(`correlation between ${metrics[0].name} and ${metrics[1].name}`);
   if (time && metrics[0]) out.push(`how did ${metrics[0].name} change over time`);
   return out.slice(0, 5);

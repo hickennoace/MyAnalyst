@@ -37,6 +37,9 @@ export function buildMethodology(spec: DashboardSpec): MethodologySection[] {
   if (spec.timeAnalysis?.length) methods.push("Trends aggregate the metric into its natural cadence with a moving average and period-over-period (and year-over-year where a full season exists) change.");
   if (spec.segmentation) methods.push(`Segments come from k-means clustering (k = ${spec.segmentation.k}) on the standardized numeric columns, with a fixed seed for reproducibility.`);
   if (spec.cohorts) methods.push("Cohort retention groups entities by their first period and tracks the share still active in each later period.");
+  if (spec.relationships) methods.push("The relationship explorer is the full pairwise Pearson-correlation matrix; each pair carries a two-sided significance test and a Fisher-z 95% confidence interval, with near-perfect/derived pairs flagged.");
+  if (spec.concentration?.length) methods.push("Concentration (Pareto) sums a measure by category, sorts descending, then reports the cumulative share, the count of categories reaching 80%, the Gini coefficient, and the HHI.");
+  if (spec.rfm) methods.push(`RFM scores each ${spec.rfm.entity} on Recency, Frequency, and Monetary value into 1–5 quintiles (recency measured back from ${spec.rfm.asOf}), then maps the scores to named value segments.`);
   if (spec.anomalies?.length) methods.push("Anomalies are values more than 3 standard deviations from the mean (|z| > 3); root-cause attribution compares each segment's outlier share to its base rate (lift).");
   if (spec.textAnalysis?.length) methods.push("Open-text themes are the most frequent phrases (bigrams preferred); sentiment is a lexicon estimate with simple negation handling — directional, not definitive.");
   sections.push({ heading: "Statistical methods", items: methods });

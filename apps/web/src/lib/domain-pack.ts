@@ -28,6 +28,8 @@ export function domainSuggestions(domain: Domain, profiles: ColumnProfile[]): st
   const m = metrics[0]?.name;
   const m2 = metrics[1]?.name;
   const d = dims[0]?.name;
+  // A column with enough distinct values to have a "vital few" story (a category or an entity id).
+  const groupCol = profiles.find((p) => (p.role === "dimension" || p.role === "identifier") && p.distinctCount >= 4)?.name;
 
   const out: string[] = [];
   const add = (s?: string | false) => {
@@ -43,14 +45,15 @@ export function domainSuggestions(domain: Domain, profiles: ColumnProfile[]): st
       break;
     case "sales-operational":
       if (d && m) add(`which ${d} has the highest ${m}`);
+      if (m && groupCol) add(`how concentrated is ${m} across ${groupCol}`);
       if (m && d) add(`average ${m} by ${d}`);
       if (time && m) add(`how did ${m} change over time`);
       if (m && m2) add(`correlation between ${m} and ${m2}`);
-      if (d) add(`most common ${d}`);
       break;
     case "marketing":
       if (d && m) add(`which ${d} has the highest ${m}`);
       if (m && m2) add(`correlation between ${m} and ${m2}`);
+      if (m && groupCol) add(`how concentrated is ${m} across ${groupCol}`);
       if (m && d) add(`average ${m} by ${d}`);
       if (time && m) add(`how did ${m} change over time`);
       break;
@@ -64,6 +67,7 @@ export function domainSuggestions(domain: Domain, profiles: ColumnProfile[]): st
       if (m) add(`total ${m}`);
       if (m && d) add(`average ${m} by ${d}`);
       if (d && m) add(`which ${d} has the highest ${m}`);
+      if (m && groupCol) add(`how concentrated is ${m} across ${groupCol}`);
       if (m && m2) add(`correlation between ${m} and ${m2}`);
       if (time && m) add(`how did ${m} change over time`);
   }
