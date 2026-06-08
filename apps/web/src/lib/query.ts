@@ -34,14 +34,21 @@ export interface QueryAnswer {
   method?: string;
 }
 
-type Agg = "sum" | "mean" | "max" | "min";
+type Agg = "sum" | "mean" | "max" | "min" | "median";
 
 const AGG_WORDS: { agg: Agg; re: RegExp; label: string }[] = [
+  // Median is listed first so "median X" wins outright (it's a distinct middle-value stat, not a mean).
+  { agg: "median", re: /\bmedian\b/, label: "median" },
   { agg: "sum", re: /\b(total|sum|combined|altogether)\b/, label: "total" },
   { agg: "mean", re: /\b(average|avg|mean|typical)\b/, label: "average" },
   { agg: "max", re: /\b(max|maximum|highest|largest|biggest|most|peak)\b/, label: "maximum" },
   { agg: "min", re: /\b(min|minimum|lowest|smallest|least)\b/, label: "minimum" },
 ];
+
+/** Human label for an aggregator — used in answer prose so a median is never mislabelled a "total". */
+function labelForAgg(agg: Agg): string {
+  return agg === "mean" ? "average" : agg === "sum" ? "total" : agg; // median/max/min read as their own name
+}
 
 /** Loose token match so a question word like "intense" resolves the column "Intensity", "calorie"
  *  resolves "Calories", "duration" resolves "Duration (min)", etc. */
@@ -102,6 +109,7 @@ const RANK_STOP = new Set([
 /** Pick sum vs mean for a ranking: averages for rate/score-like metrics (intensity, price, rating),
  *  sums for additive quantities (revenue, units) — unless the question says otherwise. */
 function chooseAgg(metric: ColumnProfile, lower: string): Agg {
+  if (/\bmedian\b/.test(lower)) return "median";
   if (/\b(average|avg|mean|typical|per)\b/.test(lower)) return "mean";
   if (/\b(total|sum|combined|overall|aggregate)\b/.test(lower)) return "sum";
   return RATE_LIKE.test(metric.name) ? "mean" : "sum";
@@ -122,6 +130,11 @@ function aggregate(values: number[], agg: Agg): number {
     case "mean": return xs.reduce((a, b) => a + b, 0) / xs.length;
     case "max": return maxOf(xs);
     case "min": return minOf(xs);
+    case "median": {
+      const s = [...xs].sort((a, b) => a - b);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+    }
   }
 }
 
@@ -181,6 +194,21 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     return { ok: false, answer: `No records match ${filter.label}. Try a different value or range.` };
   }
   const scope = filter ? ` ${filter.phrase}` : "";
+
+  // 0. Count distinct values of a column: "how many unique products", "number of distinct regions".
+  // Only fires when a real column is named (so a plain "how many records" still falls to the row count).
+  const wantsDistinct = /\b(distinct|unique)\b/.test(lower) || (/\bdifferent\b/.test(lower) && /\b(how many|number of|count)\b/.test(lower));
+  if (wantsDistinct) {
+    const target = resolveCols(text, profiles)[0];
+    if (target) {
+      const n = distinctCount(view, target.name);
+      return {
+        ok: true,
+        answer: `There ${n === 1 ? "is" : "are"} ${n.toLocaleString()} distinct ${target.name} value${n === 1 ? "" : "s"}${scope}.`,
+        method: `Counted unique non-empty values of ${target.name} across ${rowsNote(view, table, filter)}.`,
+      };
+    }
+  }
 
   // 1. Row count.
   if (/\b(how many|number of|count of|count)\b/.test(lower) && (/\b(row|record|entr|data point|observation)/.test(lower) || filter)) {
@@ -275,12 +303,12 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
       if (ranked.length) {
         const ordered = wantLowest ? [...ranked].reverse() : ranked;
         const top = ordered[0];
-        const aggLabel = agg === "mean" ? "average" : "total";
+        const aggLabel = labelForAgg(agg);
         return {
           ok: true,
           answer: `By ${aggLabel} ${metric.name}, ${dim.name} "${top[0]}" is ${wantLowest ? "lowest" : "highest"} at ${fmt(top[1], metric)}${scope}.`,
           chart: agg === "sum" ? buildChart(view, profiles, { type: "bar", x: dim.name, y: [metric.name], aggregate: true }) : undefined,
-          method: `${agg === "mean" ? "Averaged" : "Summed"} ${metric.name} by ${dim.name} across ${rowsNote(view, table, filter)}, then ranked ${wantLowest ? "ascending" : "descending"} (${ranked.length} groups).`,
+          method: `Took the ${aggLabel} ${metric.name} by ${dim.name} across ${rowsNote(view, table, filter)}, then ranked ${wantLowest ? "ascending" : "descending"} (${ranked.length} groups).`,
         };
       }
     }
@@ -370,6 +398,17 @@ const FILTER_STOP = new Set([
 function coerceNum(v: unknown): number {
   if (typeof v === "number") return v;
   return parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, ""));
+}
+
+/** Exact count of distinct non-empty values of a column (uncapped — this is the answer, not a sample). */
+function distinctCount(table: Table, col: string): number {
+  const seen = new Set<string>();
+  for (const r of table.rows) {
+    const v = r[col];
+    if (v === null || v === undefined || v === "") continue;
+    seen.add(String(v));
+  }
+  return seen.size;
 }
 
 /** Distinct non-empty values of a column (capped, for matching against the question). */
@@ -616,7 +655,7 @@ export function validatePlan(raw: unknown, profiles: ColumnProfile[]): QueryPlan
   const INTENTS = new Set(["metric", "groupRank", "groupAggregate", "aggregate", "compare", "trend", "correlation", "count", "distribution", "describe"]);
   if (!INTENTS.has(r.intent as string)) return undefined;
   const name = (n: unknown): string | null => colByName(n, profiles)?.name ?? null;
-  const AGG = new Set<Agg>(["sum", "mean", "max", "min"]);
+  const AGG = new Set<Agg>(["sum", "mean", "max", "min", "median"]);
   const plan: QueryPlan = { intent: r.intent as QueryPlan["intent"] };
   plan.metric = name(r.metric);
   plan.metric2 = name(r.metric2);

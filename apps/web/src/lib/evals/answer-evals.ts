@@ -66,4 +66,8 @@ export const ANSWER_EVALS: AnswerEval[] = [
   { name: "numeric filter", table: SALES, question: "total revenue where revenue is over 150", expect: ["700"], forbid: ["1,050"] },
   // Comparison (Phase 1.2).
   { name: "comparison", table: SALES, question: "compare revenue North vs South", expect: ["600", "450"] },
+  // Median + count-distinct (Wave 3): exact, private answers without an LLM round-trip.
+  // Revenue sorted 100,100,150,200,200,300 → median (150+200)/2 = 175.
+  { name: "median of a metric", table: SALES, question: "median revenue", expect: ["median", "175"], forbid: ["1,050"] },
+  { name: "count distinct values", table: SALES, question: "how many distinct regions are there", expect: ["2", "Region"] },
 ];

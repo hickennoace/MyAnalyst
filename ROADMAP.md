@@ -97,7 +97,7 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 - **H3. Auto-generated slide deck** ✅ — `exportDeckPdf` turns the spec into a landscape readout deck (cover + key-findings/actions/metrics slides + notes). **Done.**
 
 ### Phase I — Optional AI depth (privacy intact) ✅
-- **I1. Bring-your-own-key LLM** ✅ — `lib/llm-settings.ts` + AiKeyEditor: a user's own provider key (stored locally, off by default) threaded through the analyzer to the narrator; the `/api/insights` route prefers a per-request BYOK key over the env and never persists it. Metadata-only context unchanged. **Done.** *(Follow-up: extend BYOK to the Ask-your-data planner; today it still uses the server key.)*
+- **I1. Bring-your-own-key LLM** ✅ — `lib/llm-settings.ts` + AiKeyEditor: a user's own provider key (stored locally, off by default) threaded through the analyzer to the narrator; the `/api/insights` route prefers a per-request BYOK key over the env and never persists it. Metadata-only context unchanged. **Done** — BYOK is now threaded through the Ask-your-data planner and answer calls too (`query.ts` sends `byok: activeLlmConfig()`), so a user's own key powers every AI surface.
 - **I2. In-browser LLM (WebGPU / transformers.js)** ✅ — `lib/local-llm.ts` runs Qwen2.5-0.5B-Instruct in-browser via WebGPU; opt-in toggle, lazy-loaded (weights cached after first download), zero network at inference. After analysis the page sharpens the story locally and degrades silently if WebGPU/model is unavailable. **Especially valuable on the free Groq tier — uses no API quota.** **Done.**
 
 ---
@@ -116,7 +116,27 @@ Each item says **why it beats them** and **done-when**. ✅ = done.
 ## 6. What I need from you
 - **Nothing blocking — wave 2 is fully shipped.** Worth a manual pass on the new heavy-ingest paths with real files when convenient (a real Parquet, a tabular PDF, a screenshot of a table) and a try of on-device mode on a WebGPU browser, since those can't be unit-tested headlessly.
 - **Still deferred unless you reopen it:** any of *our* backend (C2 managed alerts, D3 cloud accounts). G3 already covers most of C2's value without a server.
-- **Small follow-up:** extend I1 BYOK to the Ask-your-data planner (today it uses the server key).
+- **Small follow-up:** *(done)* BYOK now powers the Ask-your-data planner + answer, not just the narrator.
+
+---
+
+## 3c. Wave 3 — Bug-fix & AI-quality (added 2026-06-08)
+
+> Waves 1–2 made the product broad and deep. Wave 3 tightens it: kill papercut bugs, and make the **AI answer more questions exactly and privately** so we lean on the (free-tier) LLM less and stay grounded more. Every item here keeps the 100%-client-side line. Ordered by value × leverage.
+
+### Shipped (2026-06-08)
+- **Cleanup — accidental root npm cruft removed** ✅ — a stray root `package.json`/`package-lock.json`/`node_modules` (declaring only `@huggingface/transformers`, already declared in `apps/web`) was deleted. Same class of accident as the earlier `headroom-ai` removal. The real dependency graph lives in `apps/web`.
+- **W3.1 Median in Ask-your-data** ✅ — `median` is now a first-class aggregator in the deterministic engine (`aggregate()`, `AGG_WORDS`, `chooseAgg`) and in the LLM query-planner (`validatePlan` + the planner prompt). "median revenue", "median price by region" answer exactly, with no LLM call. **Beats:** a dashboard's fixed sum/avg tiles — and the free-tier LLM never gets touched for a stat we can compute.
+- **W3.2 Count-distinct** ✅ — "how many unique products / number of distinct regions" now answers with the exact cardinality (`distinctCount`), only when a real column is named (a plain "how many records" still returns the row count).
+- **W3.3 Aggregator-label bug fixed** ✅ — group rankings used a binary `mean ? "average" : "total"` label, so a median (or max/min) ranking was mislabelled a "total". Now a shared `labelForAgg()` names every aggregator correctly. Guarded by a regression test.
+- *Tests:* +7 unit + 2 grounding evals → **178 unit tests**; typecheck + build + smoke green.
+
+### Next (prioritized, all deterministic/client-side unless noted)
+- **W3.4 Share / percentage-of-total** — "what % of revenue comes from North", "share of orders that are cancelled". Compute group total ÷ grand total; attach a pie/share chart. Highest-value gap remaining in Q&A. **Done-when:** scoped % answers exactly, with the numerator/denominator shown in `method`.
+- **W3.5 Percentiles & quartiles** — "90th percentile of price", "top-quartile customers". Reuse the sorted-array path from median. **Done-when:** p25/p50/p75/p90 answerable and grounded.
+- **W3.6 Numeric grounding verifier (AI trust)** — extract the numbers from an LLM answer and classify each as grounded (present in the evidence payload, or a transparent derivation: difference/ratio/%/share, within a rounding tolerance) vs. unverifiable; surface a subtle "✓ grounded" / "⚠ unverified figure" signal. Pure-function + heavily unit-tested to keep false positives near zero. Directly serves the §3b "rigor is the moat" thesis. **Done-when:** the verifier flags an injected hallucinated number in tests and never flags a legitimately-derived one.
+- **W3.7 Two-dimension group-bys** — "revenue by region and product". Cross-tab + heatmap/stacked-bar. **Done-when:** a 2-key breakdown answers with the top cell and a matrix chart.
+- **W3.8 Planner repair loop** — when the LLM returns a plan that fails validation, do one cheap repair pass (echo the rejected fields) before falling back to the heuristic. **Done-when:** malformed-plan recovery measurably lifts the answer rate on the eval set.
 
 ---
 

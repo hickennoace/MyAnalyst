@@ -48,6 +48,49 @@ describe("answerQuestion", () => {
     expect(r.answer).toContain("6");
   });
 
+  // ── Median aggregation ────────────────────────────────────────────────────────
+
+  it("computes the median of a metric (even count → mean of the two middles)", () => {
+    // Revenue sorted: 100, 100, 150, 200, 200, 300 → median = (150 + 200) / 2 = 175.
+    const r = answerQuestion("median revenue", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("175");
+    expect(r.answer.toLowerCase()).toContain("median");
+    // Must NOT collapse to the generic total/average summary.
+    expect(r.answer).not.toContain("1,050");
+  });
+
+  it("ranks groups by median when asked", () => {
+    // North revenue sorted: 100, 200, 300 → median 200; South: 100, 150, 200 → median 150.
+    const r = answerQuestion("highest median revenue by region", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("North");
+    expect(r.answer.toLowerCase()).toContain("median");
+    // The label must say "median", never mislabel a median as a "total".
+    expect(r.answer.toLowerCase()).not.toContain("total");
+  });
+
+  // ── Count distinct ────────────────────────────────────────────────────────────
+
+  it("counts distinct values of a named column", () => {
+    const r = answerQuestion("how many distinct regions are there", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toMatch(/\b2\b/); // North, South
+    expect(r.answer).toContain("Region");
+  });
+
+  it("answers 'unique' phrasing too", () => {
+    const r = answerQuestion("number of unique regions", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toMatch(/\b2\b/);
+  });
+
+  it("does not hijack a plain row count as a distinct count", () => {
+    const r = answerQuestion("how many records are there", table, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("6"); // still the row count, not a distinct count
+  });
+
   it("fails gracefully on nonsense", () => {
     const r = answerQuestion("what is the meaning of life", table, profiles);
     expect(r.ok).toBe(false);
