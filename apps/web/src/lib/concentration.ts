@@ -104,6 +104,11 @@ function groupTotals(table: Table, dimName: string, metricValues: number[] | nul
   return totals;
 }
 
+/** Concentration of one measure (or row count) across one named column — for targeted NL questions. */
+export function concentrationFor(table: Table, dimName: string, metric: { name: string; values: number[] } | null): Concentration | null {
+  return profileTotals(dimName, metric ? metric.name : "row count", !metric, groupTotals(table, dimName, metric ? metric.values : null));
+}
+
 /**
  * Find the most concentrated (measure × category) views in the dataset. Picks the best measure for each
  * candidate category column, scores by Gini (most uneven = most interesting), and returns the top few —

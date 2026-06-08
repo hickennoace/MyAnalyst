@@ -6,6 +6,7 @@ import { analyzeTimeSeries, cadenceNoun } from "./timeseries";
 import { aggregateCount, buildChart, buildComparisonChart, buildCrossTabChart, type ChartRequest } from "./charts";
 import { parseChartRequest } from "./nl-chart";
 import { sortByTime } from "./kpi";
+import { concentrationFor } from "./concentration";
 import { activeLlmConfig } from "./llm-settings";
 import { verifyAnswerGrounding, type GroundingResult } from "./grounding";
 
@@ -30,6 +31,8 @@ const CATEGORY_HINT = /(reason|category|type|status|segment|group|class|gender|c
 // "What share of the total is this slice?" — triggers the share/percentage-of-total branch. Kept
 // distinct from "percentile" (handled separately) so the two never collide.
 const SHARE_SIGNAL = /\bwhat\s+(?:%|percent|percentage|fraction|proportion|share)\b|\b(?:percent|percentage|proportion|fraction|share)\s+of\b|\bhow much of\b/;
+// Concentration / Pareto phrasing: "80–20", "how concentrated", "the vital few", "top N drive most of …".
+const CONCENTRATION_SIGNAL = /(concentrat|pareto|\b80\s*[\/\- ]\s*20\b|vital few|lion'?s share|how (?:concentrated|spread out)|top \w+\b[^?]*\b(?:account|make up|drive|driving|represent|come from|comes from|generate)|\b(?:drive|drives|account for|accounts for|generate|generates|make up|makes up|represent|represents)\s+(?:most|the most|the bulk|the majority)\b|(?:most|majority|bulk) of [a-z %]+ (?:come|comes) from)/;
 
 // "Ask your data" — a heuristic natural-language Q&A engine. No LLM, no key. It maps plain-English
 // questions to exact computations over the local data (aggregates, group-bys, rankings, correlation,
@@ -383,6 +386,36 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     }
   }
 
+  // 0.6 Concentration / Pareto: "how concentrated is revenue across customers?", "do the top products
+  // drive most of sales?", "what's the 80–20 on spend by channel?". Aggregates the measure by the named
+  // category and reports the vital-few share + Gini. Exact and groundable; reuses the concentration lib.
+  if (CONCENTRATION_SIGNAL.test(lower)) {
+    const groupCols = profiles.filter((p) => p.role === "dimension" || p.role === "identifier");
+    const dim = resolveCols(text, groupCols)[0] ?? mDims[0];
+    if (dim) {
+      const metric = mMetrics.find((m) => m.name !== dim.name);
+      const conc = concentrationFor(view, dim.name, metric ? { name: metric.name, values: numericColumn(view, metric.name) } : null);
+      if (conc) {
+        const measure = conc.metricIsCount ? "the rows" : conc.metric;
+        const biggest = conc.segments[0];
+        const lvl =
+          conc.level === "high"
+            ? "That's heavy concentration — a few names carry the whole figure, which is a risk worth watching."
+            : conc.level === "moderate"
+              ? "That's moderate concentration."
+              : "It's fairly evenly spread.";
+        return {
+          ok: true,
+          answer: `The top ${conc.paretoCount} of ${conc.distinct} ${dim.name}${conc.paretoCount === 1 ? "" : "s"} (${(conc.paretoPctOfCategories * 100).toFixed(0)}% of them) account for ${(conc.paretoShare * 100).toFixed(0)}% of ${measure}${scope}. The single largest, "${biggest.name}", is ${(biggest.share * 100).toFixed(0)}% on its own. ${lvl} (Gini ${conc.gini.toFixed(2)}.)`,
+          chart: metric
+            ? buildChart(view, profiles, { type: "bar", x: dim.name, y: [metric.name], aggregate: true })
+            : buildChart(view, profiles, { type: "bar", x: dim.name, y: [], count: true }),
+          method: `Aggregated ${measure} by ${dim.name} across ${rowsNote(view, table, filter)}, sorted descending, then measured the cumulative (Pareto) share and the Gini coefficient (${conc.gini.toFixed(2)}).`,
+        };
+      }
+    }
+  }
+
   // 0.7 Two-dimension breakdown: "revenue by region and product", "orders by status and channel".
   // Runs before the single-dimension ranking/aggregate so two named dimensions aren't collapsed to one.
   if (mDims.length >= 2 && mDims[0].name !== mDims[1].name && /\b(by|across|split|grouped|breakdown|broken down)\b/.test(lower)) {
@@ -515,6 +548,26 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
 
   // 2. Correlation / relationship.
   if (/correlat|relationship|related|associat|vs\.?|versus/.test(lower)) {
+    // "What's most correlated with revenue?" — one metric named → find its strongest (non-redundant) correlate.
+    if (mMetrics.length === 1 && metrics.length >= 2) {
+      const a = mMetrics[0];
+      let best: { col: ColumnProfile; r: number } | undefined;
+      for (const other of metrics) {
+        if (other.name === a.name) continue;
+        const r = pearson(numericColumn(view, a.name), numericColumn(view, other.name));
+        if (Number.isFinite(r) && !isRedundantCorrelation(a.name, other.name, r) && (!best || Math.abs(r) > Math.abs(best.r))) best = { col: other, r };
+      }
+      if (best) {
+        const strength = Math.abs(best.r) > 0.7 ? "strongly" : Math.abs(best.r) > 0.4 ? "moderately" : "weakly";
+        const dir = best.r > 0 ? "positively" : "negatively";
+        return {
+          ok: true,
+          answer: `Among your numbers, ${a.name} is most ${strength} ${dir} related to ${best.col.name} (r = ${best.r.toFixed(2)})${scope}. ${best.r > 0 ? "They tend to rise together" : "As one rises, the other tends to fall"} — but that's association, not proof of cause.`,
+          chart: buildChart(view, profiles, { type: "scatter", x: a.name, y: [best.col.name] }),
+          method: `Pearson correlation of ${a.name} against each other numeric column across ${rowsNote(view, table, filter)}; reported the strongest, excluding near-duplicate columns.`,
+        };
+      }
+    }
     const ms = mMetrics.length >= 2 ? mMetrics : metrics;
     if (ms.length >= 2) {
       const [a, b] = ms;

@@ -479,4 +479,42 @@ describe("Wave 4 — statistical reasoning", () => {
     expect(r.answer).toContain("20.0%"); // (300 - 250) / 250
     expect(r.chart?.type).toBe("line");
   });
+
+  // Concentration / Pareto over a skewed measure across ≥4 categories.
+  function paretoTable(): Table {
+    const per: Record<string, number> = { A: 60, B: 20, C: 12, D: 5, E: 3 };
+    const rows: Record<string, unknown>[] = [];
+    for (const [Product, Sales] of Object.entries(per)) for (let i = 0; i < 3; i++) rows.push({ Product, Sales: Sales / 3 });
+    return { name: "p.csv", columns: ["Product", "Sales"], rows, rowCount: rows.length };
+  }
+
+  it("answers a concentration / 80–20 question with the Pareto share and Gini", () => {
+    const pt = paretoTable();
+    const pp = profileTable(pt);
+    const r = answerQuestion("how concentrated is Sales across Product?", pt, pp);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toMatch(/account for/i);
+    expect(r.answer).toMatch(/Gini/i);
+    expect(r.answer).toContain('"A"'); // the dominant product is called out
+    expect(r.chart?.type).toBe("bar");
+    expect(r.method).toMatch(/Pareto/i);
+  });
+
+  it("answers 'do the top products drive most of sales' as concentration", () => {
+    const pt = paretoTable();
+    const r = answerQuestion("do the top products drive most of Sales", pt, profileTable(pt));
+    expect(r.ok).toBe(true);
+    expect(r.answer).toMatch(/top \d+ of 5 Products/i);
+  });
+
+  it("finds the strongest correlate of a single named metric", () => {
+    // Sales tracks Spend strongly but with enough noise to stay below the 0.98 "redundant/derived" cutoff;
+    // Noise is unrelated. So the strongest *real* correlate of Spend should be Sales.
+    const rows = Array.from({ length: 30 }, (_, i) => ({ Spend: i, Sales: i + (((i * 31) % 23) - 11), Noise: (i * 7) % 5 }));
+    const t: Table = { name: "c.csv", columns: ["Spend", "Sales", "Noise"], rows, rowCount: rows.length };
+    const r = answerQuestion("what is most correlated with Spend?", t, profileTable(t));
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("Sales"); // Sales tracks Spend far more than Noise
+    expect(r.chart?.type).toBe("scatter");
+  });
 });
