@@ -51,6 +51,22 @@ check("Top product KPI present", any(n.startswith("Top ") for n in names))
 check("NO 'Average CustomerAge' KPI (attribute noise dropped)", "Average CustomerAge" not in names)
 check("best-seller story computed", spec["bestSellers"] is not None and spec["bestSellers"]["topRevenue"]["name"] in ("Corolla", "S-Class", "F-150", "X5"))
 
+# Phase 2 — full analysis sections.
+check("Holt-Winters forecast computed", spec.get("forecast") is not None and "method" in spec["forecast"])
+check("monthly trend computed", spec.get("trend") is not None and "slopeP" in spec["trend"])
+check("stats: correlations + group comparisons", "correlations" in spec["stats"] and "groupComparisons" in spec["stats"])
+check("charts: revenue-by-product + forecast", any("Revenue by" in c["title"] for c in spec["charts"]) and any("forecast" in c["title"].lower() for c in spec["charts"]))
+check("grounded facts built (>=5)", len(spec.get("facts", [])) >= 5)
+check("no tautological 'Cost drives Price' driver", not (spec["stats"].get("drivers") and spec["stats"]["drivers"]["drivers"][0]["name"] == "Cost"))
+import json
+from analyze import _jsonable
+try:
+    json.dumps(spec, default=_jsonable)
+    check("full spec is JSON-serializable", True)
+except Exception as exc:  # noqa: BLE001
+    print("FAIL  json:", exc)
+    check.failed += 1
+
 # No-revenue survey-ish frame keeps rate-like averages.
 survey = pd.DataFrame({"Respondent": range(60), "NPS Score": np.random.default_rng(0).integers(0, 11, 60),
                        "Satisfaction": np.random.default_rng(1).integers(1, 6, 60)})

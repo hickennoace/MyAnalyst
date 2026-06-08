@@ -44,3 +44,26 @@ bs = spec["bestSellers"]
 if bs:
     print(f"\nBEST SELLER dim: {bs['dimension']}  |  top revenue: {bs['topRevenue']['name']} "
           f"({bs['topRevenue']['revenueShare']*100:.0f}%)  |  top units: {bs['topUnits']['name']}")
+
+fc = spec.get("forecast")
+if fc:
+    print(f"\nFORECAST ({fc['method']}): next-month revenue change {fc['changePct']*100:+.1f}% "
+          f"(seasonal={fc['seasonal']})")
+st = spec.get("stats", {})
+if st.get("drivers"):
+    d = st["drivers"]
+    lead = d["drivers"][0]
+    print(f"DRIVER (OLS R^2={d['r2']:.2f}): {lead['name']} beta={lead['beta']:.2f} p={lead['p']:.3f}")
+if st.get("correlations"):
+    c = st["correlations"][0]
+    print(f"TOP CORRELATION: {c['a']}~{c['b']} r={c['r']:.2f} p={c['p']:.3g} sig={c.get('significant')}")
+print(f"\nCHARTS: {[c['title'] for c in spec['charts']]}")
+print("\nFACTS (the LLM concludes from these):")
+for f in spec["facts"][:10]:
+    print(f"  - {f['text']}")
+
+# JSON serialization must succeed (numpy/NaN safe) for the Vercel handler.
+import json
+from analyze import _jsonable
+blob = json.dumps(spec, default=_jsonable)
+print(f"\nJSON OK: {len(blob):,} bytes")

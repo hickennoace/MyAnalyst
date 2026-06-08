@@ -14,6 +14,13 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+import _timeseries as _ts
+import _forecast as _fc
+import _stats as _st
+import _outliers as _ol
+import _charts as _ch
+import _insights as _ins
+
 # ─────────────────────────── Profiling: type + role per column ───────────────────────────
 
 CURRENCY_HINT = re.compile(r"(price|cost|revenue|sales|amount|amt|total|spend|profit|fee|salary|wage|usd|eur|gbp|paid|charge|value)", re.I)
@@ -366,10 +373,60 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
     bs = best_sellers(df, profiles, revenue, qty)
     kpis = compute_kpis(df, profiles, domain["domain"], bs)
 
-    return {
+    metric_names = [m["name"] for m in _metrics(profiles)]
+    time_col = _time_col(profiles)
+
+    # Time series + Holt-Winters forecast on revenue summed per month.
+    monthly = None
+    trend = None
+    forecast = None
+    if revenue and time_col:
+        labels, values = _ts.monthly_sum(df, time_col["name"], revenue["name"])
+        if len(values):
+            monthly = (labels, values)
+            series = _ts.trim_partial_tail(values)
+            trend = _ts.trend_analysis(labels[: len(series)], series, f"monthly {revenue['name'].lower()}")
+            if trend is not None:
+                trend["seasonalityStrength"] = _ts.seasonality_strength(series, 12)
+            period = 12 if len(series) >= 24 else None
+            forecast = _fc.forecast_series(series, _fc.default_horizon(len(series)), period)
+
+    # Rigorous inference (scipy + statsmodels).
+    stats_block: dict[str, Any] = {}
+    if len(metric_names) >= 2:
+        stats_block["correlations"] = _st.correlations(df, metric_names)
+    if len(metric_names) >= 3:
+        target = revenue["name"] if revenue else metric_names[0]
+        drivers = _st.driver_analysis(df, metric_names, target)
+        if drivers:
+            stats_block["drivers"] = drivers
+    stats_block["groupComparisons"] = _st.group_comparisons(df, profiles, metric_names)
+    stats_block["associations"] = _st.associations(df, profiles)
+
+    # Outliers — skewed segment vs isolated anomaly.
+    outliers = []
+    for m in _metrics(profiles):
+        o = _ol.analyze_column_outliers(m["name"], pd.to_numeric(df[m["name"]], errors="coerce"))
+        if o:
+            outliers.append(o)
+    outliers.sort(key=lambda x: x["count"], reverse=True)
+
+    spec: dict[str, Any] = {
+        "engine": "python",
         "rowCount": n,
         "domain": domain,
         "columns": [{"name": p["name"], "type": p["type"], "role": p["role"]} for p in profiles],
         "kpis": kpis,
         "bestSellers": bs,
+        "trend": trend,
+        "forecast": forecast,
+        "stats": stats_block,
+        "outliers": outliers[:5],
     }
+    spec["charts"] = _ch.build_charts(df, profiles, {
+        "revenue": revenue, "bestsellers": bs, "monthly": monthly, "forecast": forecast,
+        "correlations": stats_block.get("correlations", []), "metric_names": metric_names,
+    })
+    spec["facts"] = _ins.build_facts(spec)
+    spec["narrative"] = _ins.templated_narrative(spec["facts"])
+    return spec

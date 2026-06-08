@@ -11,9 +11,23 @@ from http.server import BaseHTTPRequestHandler
 from io import StringIO
 import json
 
+import numpy as np
 import pandas as pd
 
 from _engine import analyze
+
+
+def _jsonable(o):
+    """Make numpy scalars/arrays and NaN JSON-serializable."""
+    if isinstance(o, np.integer):
+        return int(o)
+    if isinstance(o, np.floating):
+        return None if np.isnan(o) else float(o)
+    if isinstance(o, np.ndarray):
+        return o.tolist()
+    if isinstance(o, float) and o != o:  # NaN
+        return None
+    return str(o)
 
 
 class handler(BaseHTTPRequestHandler):
@@ -42,7 +56,7 @@ class handler(BaseHTTPRequestHandler):
         self._send(204, None)
 
     def _send(self, code: int, obj):
-        body = b"" if obj is None else json.dumps(obj, default=str).encode("utf-8")
+        body = b"" if obj is None else json.dumps(obj, default=_jsonable).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
