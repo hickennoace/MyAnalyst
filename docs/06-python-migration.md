@@ -159,8 +159,17 @@ Original scope:
 - Flip `NEXT_PUBLIC_ENGINE=python` on `main`; keep TS one release as rollback; then deprecate.
 
 ### Phase 6 — Beyond parity (Python-only wins)
-SARIMAX/auto-ARIMA forecasting, proper OLS inference everywhere, STL seasonality, normality-aware
-mean-vs-median, IsolationForest anomalies, larger datasets server-side, exportable Python "recipe".
+SARIMAX/auto-ARIMA forecasting, normality-aware mean-vs-median, IsolationForest anomalies, larger datasets
+server-side, exportable Python "recipe". **Already landed beyond core parity:** k-means segmentation
+(`_segments.py`, scipy.cluster), RFM (`_rfm.py`), STL seasonality strength, and **statsmodels made optional**
+— driver analysis falls back to a numpy lstsq OLS (scipy t/F for p-values/CIs) and the forecast to a linear
+trend, so the engine deploys and works even if statsmodels can't be installed (the 250 MB swing factor).
+
+### ⚠️ Deploy gate (only thing blocking cutover)
+The Vercel preview build must be confirmed (CLI deploy hit the free 100/day cap on 2026-06-09). If
+pandas+scipy+statsmodels exceeds 250 MB, **drop `statsmodels` from `requirements.txt`** — the engine already
+runs fully without it (numpy/scipy fallbacks). Then validate `/analyze-py` on the deploy and flip
+`NEXT_PUBLIC_ENGINE=python`.
 
 ---
 
