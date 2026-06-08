@@ -52,6 +52,24 @@ export function AnomalyCard({ anomalies, profiles }: { anomalies: OutlierFact[];
                   );
                 })}
               </div>
+              {a.breakdown && a.breakdown.length > 0 && (
+                <div className="mt-2.5 border-t border-slate-800 pt-2">
+                  <p className="text-[11px] font-medium text-slate-400">Most concentrated in</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {a.breakdown.map((b, i) => (
+                      <li key={i} className="flex items-center justify-between gap-2 text-[11px]">
+                        <span className="truncate text-slate-300" title={`${b.dimension}: ${b.value}`}>
+                          <span className="text-slate-500">{b.dimension}:</span> {b.value}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-slate-400">
+                          {Math.round(b.outlierShare * 100)}% of anomalies
+                          <span className="ml-1 rounded bg-amber-500/15 px-1 text-amber-300">{b.lift.toFixed(1)}× expected</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           );
         })}

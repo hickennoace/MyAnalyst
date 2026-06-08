@@ -228,6 +228,22 @@ export interface OutlierFact {
   column: string;
   count: number;
   examples: { index: number; value: number; z: number }[];
+  /** Root-cause hint: dimension values the anomalous rows concentrate in, vs their baseline share. */
+  breakdown?: OutlierBreakdown[];
+}
+
+/** One over-represented segment among a metric's anomalous rows. */
+export interface OutlierBreakdown {
+  dimension: string;
+  value: string;
+  /** number of anomalous rows in this segment. */
+  count: number;
+  /** share of the anomalous rows in this segment, 0..1. */
+  outlierShare: number;
+  /** share of all rows in this segment, 0..1. */
+  baseShare: number;
+  /** outlierShare / baseShare — >1 means anomalies cluster here more than chance. */
+  lift: number;
 }
 
 export interface ForecastFact {
@@ -411,6 +427,29 @@ export interface CohortAnalysis {
   periodCount: number;
 }
 
+// ── Open-text / survey analytics ───────────────────────────────────────────────
+
+/** One recurring theme (keyword or phrase) in a free-text column, with a representative quote. */
+export interface TextTerm {
+  term: string;
+  count: number;
+  /** share of responses mentioning it, 0..1. */
+  share: number;
+  /** a representative verbatim containing the term (truncated). */
+  sample?: string;
+}
+
+/** Themes + sentiment extracted from a free-text column (verbatims, feedback, reviews). */
+export interface TextAnalysis {
+  column: string;
+  responseCount: number;
+  avgWords: number;
+  /** top themes (phrases preferred over their component words), most frequent first. */
+  terms: TextTerm[];
+  /** lexicon sentiment split (shares) + mean score in [-1, 1] (undefined if no sentiment words found). */
+  sentiment?: { positive: number; neutral: number; negative: number; score: number };
+}
+
 // ── Data-quality scorecard ────────────────────────────────────────────────────
 
 /** One dimension of the data-quality score (completeness, uniqueness, …). */
@@ -471,6 +510,8 @@ export interface DashboardSpec {
   actions?: ActionItem[];
   /** "What drove the change" — period-over-period movement of the primary metric, attributed by dimension. */
   contributions?: ContributionAnalysis[];
+  /** Themes + sentiment for free-text columns (open-ended feedback, reviews, notes). */
+  textAnalysis?: TextAnalysis[];
 }
 
 export interface DataStory {

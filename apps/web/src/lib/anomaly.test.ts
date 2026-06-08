@@ -22,4 +22,18 @@ describe("detectAnomalies", () => {
     const t: Table = { name: "b.csv", columns: ["Region", "Amount"], rows, rowCount: rows.length };
     expect(detectAnomalies(t, profileTable(t)).length).toBe(0);
   });
+
+  it("attributes anomalies to the segment they cluster in", () => {
+    const rows: Record<string, unknown>[] = [];
+    // 60 tidy rows split across three stores...
+    for (let i = 0; i < 60; i++) rows.push({ Store: ["A", "B", "C"][i % 3], Sales: 100 + (i % 7) });
+    // ...then a burst of extreme values, all from store C.
+    for (let i = 0; i < 5; i++) rows.push({ Store: "C", Sales: 5000 + i });
+    const t: Table = { name: "c.csv", columns: ["Store", "Sales"], rows, rowCount: rows.length };
+    const sales = detectAnomalies(t, profileTable(t)).find((a) => a.column === "Sales")!;
+    expect(sales.breakdown).toBeDefined();
+    expect(sales.breakdown![0].dimension).toBe("Store");
+    expect(sales.breakdown![0].value).toBe("C");
+    expect(sales.breakdown![0].lift).toBeGreaterThan(1); // over-represented vs its base rate
+  });
 });

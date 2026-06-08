@@ -1,12 +1,14 @@
 import type {
   Association,
   CategoryFact,
+  ColumnProfile,
   CorrelationPair,
   DashboardSpec,
   DriverAnalysis,
   ForecastFact,
   GroupComparison,
   InsightContext,
+  OutlierBreakdown,
   OutlierFact,
   RegressionResult,
   Table,
@@ -25,6 +27,7 @@ import { computeDataQuality } from "./quality";
 import { buildActionReport } from "./actions";
 import { analyzeTimeSeries } from "./timeseries";
 import { buildContributions } from "./contribution";
+import { buildTextAnalyses } from "./text-analytics";
 import { segmentRows } from "./segment";
 import { analyzeCohorts } from "./cohort";
 import { getInsightProvider } from "./insights";
@@ -76,6 +79,8 @@ export async function analyze(
   // "What drove the change" — attribute the primary metric's period-over-period move to a dimension.
   const pmForContrib = primaryMetric(profiles);
   const contributions = timeCol && pmForContrib ? buildContributions(table, profiles, pmForContrib.name) : [];
+  // Themes + sentiment for any free-text columns (open-ended feedback, reviews, notes).
+  const textAnalysis = buildTextAnalyses(table, profiles);
 
   stage("Running statistics");
   const charts = opts.skipCharts ? [] : recommendCharts(table, profiles);
@@ -125,12 +130,14 @@ export async function analyze(
     cohorts,
     actions: buildActionReport(ctx, quality, profiles),
     contributions: contributions.length ? contributions : undefined,
+    textAnalysis: textAnalysis.length ? textAnalysis : undefined,
   };
 }
 
 /** Per-metric unusual values (|z| > 3), strongest first — the metadata behind the Anomalies card. */
 export function detectAnomalies(table: Table, profiles: ReturnType<typeof profileTable>): OutlierFact[] {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const dims = profiles.filter((p) => p.role === "dimension" && p.distinctCount >= 2 && p.distinctCount <= 50);
   const out: OutlierFact[] = [];
   for (const m of metrics) {
     const ex = zOutliers(numericColumn(table, m.name), 3);
@@ -139,10 +146,47 @@ export function detectAnomalies(table: Table, profiles: ReturnType<typeof profil
         column: m.name,
         count: ex.length,
         examples: [...ex].sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 4),
+        breakdown: anomalyBreakdown(table, dims, ex.map((e) => e.index)),
       });
     }
   }
   return out.sort((a, b) => b.count - a.count).slice(0, 6);
+}
+
+/**
+ * Root-cause hint for a metric's anomalous rows: across the categorical dimensions, find the segment
+ * where the anomalies cluster most disproportionately (highest lift = outlier-share ÷ base-share), so
+ * the card can say "most of these came from store #14" instead of just "12 anomalies". Metadata-only.
+ */
+function anomalyBreakdown(table: Table, dims: ColumnProfile[], indices: number[]): OutlierBreakdown[] | undefined {
+  if (indices.length < 3 || dims.length === 0) return undefined;
+  const idxSet = new Set(indices);
+  const n = table.rowCount;
+  let best: OutlierBreakdown[] = [];
+  let bestLift = 1.3; // require meaningful over-representation before we claim a cause
+  for (const dim of dims) {
+    const baseCount = new Map<string, number>();
+    const outCount = new Map<string, number>();
+    table.rows.forEach((r, i) => {
+      const key = String(r[dim.name] ?? "—");
+      baseCount.set(key, (baseCount.get(key) ?? 0) + 1);
+      if (idxSet.has(i)) outCount.set(key, (outCount.get(key) ?? 0) + 1);
+    });
+    const rows: OutlierBreakdown[] = [];
+    for (const [value, oc] of outCount) {
+      if (oc < 2) continue;
+      const outlierShare = oc / indices.length;
+      const baseShare = (baseCount.get(value) ?? 0) / n;
+      const lift = baseShare > 0 ? outlierShare / baseShare : Infinity;
+      rows.push({ dimension: dim.name, value, count: oc, outlierShare, baseShare, lift });
+    }
+    rows.sort((a, b) => b.lift - a.lift || b.count - a.count);
+    if (rows.length && rows[0].lift > bestLift) {
+      bestLift = rows[0].lift;
+      best = rows.slice(0, 2);
+    }
+  }
+  return best.length ? best : undefined;
 }
 
 /** Assemble the metadata-only context for insight generation. NEVER includes raw rows. */

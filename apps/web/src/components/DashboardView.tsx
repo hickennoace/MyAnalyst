@@ -9,6 +9,7 @@ import { QualityCard } from "./QualityCard";
 import { AnomalyCard } from "./AnomalyCard";
 import { TimeTrendCard } from "./TimeTrendCard";
 import { ContributionCard } from "./ContributionCard";
+import { ThemesCard } from "./ThemesCard";
 import { SegmentCard } from "./SegmentCard";
 import { DriverCard } from "./DriverCard";
 import { ScenarioCard } from "./ScenarioCard";
@@ -157,6 +158,12 @@ export function DashboardView({
       {spec.segmentation && spec.segmentation.segments.length > 1 && (
         <Section title="Natural segments" subtitle="Groups the data falls into on its own — and what defines each.">
           <SegmentCard segmentation={spec.segmentation} profiles={spec.profiles} />
+        </Section>
+      )}
+
+      {spec.textAnalysis && spec.textAnalysis.length > 0 && (
+        <Section title="Themes &amp; sentiment" subtitle="What people actually wrote — the recurring topics in your open-text responses, with sentiment and real quotes.">
+          <ThemesCard analyses={spec.textAnalysis} />
         </Section>
       )}
 
