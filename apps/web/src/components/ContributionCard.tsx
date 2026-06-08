@@ -75,7 +75,10 @@ export function ContributionCard({ analysis, profiles }: { analysis: Contributio
                 </div>
               </div>
               <p className="col-span-2 -mt-0.5 text-[10px] text-slate-500">
-                {Math.abs(s.contributionPct * 100) >= 1
+                {/* Show the share-of-change only when it's a sensible figure. Offsetting segments make
+                    delta/totalDelta exceed 100% legitimately (e.g. 120%), but a near-flat total can blow
+                    it up to absurd values — past ~300% fall back to the plain status word. */}
+                {Math.abs(s.contributionPct) >= 0.01 && Math.abs(s.contributionPct) <= 3
                   ? `${(s.contributionPct * 100).toFixed(0)}% of the change`
                   : statusLabel[s.status]}
                 {Math.abs(shareShift) >= 0.02 && (

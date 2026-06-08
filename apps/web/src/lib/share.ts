@@ -20,7 +20,24 @@ export async function decompress<T>(payload: string): Promise<T> {
   return JSON.parse(json) as T;
 }
 
-export const encodeSpec = (spec: DashboardSpec): Promise<string> => compress(spec);
+/**
+ * Strip raw free-text excerpts before a spec leaves the device in a shareable link. The open-text
+ * `sample` quotes are verbatim respondent text (possible PII); the rest of the spec is aggregate
+ * metadata. A shared link reconstructs the dashboard without the quotes, while the live in-browser
+ * analysis (and local history, which never leaves the device) keep them — upholding "raw rows never leave".
+ */
+export function redactForShare(spec: DashboardSpec): DashboardSpec {
+  if (!spec.textAnalysis?.length) return spec;
+  return {
+    ...spec,
+    textAnalysis: spec.textAnalysis.map((t) => ({
+      ...t,
+      terms: t.terms.map(({ sample: _sample, ...rest }) => rest),
+    })),
+  };
+}
+
+export const encodeSpec = (spec: DashboardSpec): Promise<string> => compress(redactForShare(spec));
 export const decodeSpec = (payload: string): Promise<DashboardSpec> => decompress<DashboardSpec>(payload);
 
 // ── gzip via CompressionStream, with a no-compression fallback for older browsers ────────────────

@@ -77,12 +77,17 @@ export function analyzeText(table: Table, column: string): TextAnalysis | undefi
     const toks = tokenize(resp);
     tokensByResp.push(toks);
     wordTotal += toks.length;
-    const content = toks.filter((t) => !STOPWORDS.has(t) && t.length > 2);
+    const isContent = (t: string) => !STOPWORDS.has(t) && t.length > 2;
+    const content = toks.filter(isContent);
     const seenUni = new Set<string>();
     for (const t of content) if (!seenUni.has(t)) { uni.set(t, (uni.get(t) ?? 0) + 1); seenUni.add(t); }
+    // Bigrams must be ADJACENT in the original text (both content words) — building them from the
+    // compacted `content` array would join words that weren't next to each other ("good slow" from
+    // "...good but slow..."), surfacing phrases nobody actually wrote.
     const seenBi = new Set<string>();
-    for (let i = 0; i < content.length - 1; i++) {
-      const g = `${content[i]} ${content[i + 1]}`;
+    for (let i = 0; i < toks.length - 1; i++) {
+      if (!isContent(toks[i]) || !isContent(toks[i + 1])) continue;
+      const g = `${toks[i]} ${toks[i + 1]}`;
       if (!seenBi.has(g)) { bi.set(g, (bi.get(g) ?? 0) + 1); seenBi.add(g); }
     }
     const sc = scoreSentiment(toks);

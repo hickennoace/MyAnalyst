@@ -35,6 +35,17 @@ describe("analyzeText", () => {
     expect(a.terms.some((t) => t.term === "customer service")).toBe(true);
   });
 
+  it("does not invent bigrams from words that were never adjacent", () => {
+    // "good" and "service" are separated by a stopword in every response — "good service" must NOT
+    // appear as a theme (only adjacent content-word pairs should), but "customer service" (adjacent) can.
+    const rows = Array.from({ length: 8 }, (_, i) => ({ Comment: `the customer service was good but the food was ${i % 2 ? "cold" : "late"}` }));
+    const a = analyzeText({ name: "f", columns: ["Comment"], rows, rowCount: rows.length }, "Comment")!;
+    const terms = a.terms.map((t) => t.term);
+    expect(terms).not.toContain("good food"); // not adjacent (separated by "but the")
+    expect(terms).not.toContain("service good"); // not adjacent (separated by "was")
+    expect(terms).toContain("customer service"); // genuinely adjacent
+  });
+
   it("separates positive and negative sentiment", () => {
     const a = analyzeText(feedbackTable(), "Comment")!;
     expect(a.sentiment).toBeDefined();

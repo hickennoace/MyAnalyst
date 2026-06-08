@@ -125,9 +125,11 @@ export function buildContributions(table: Table, profiles: ColumnProfile[], metr
   for (const dim of dims.slice(0, 5)) {
     const a = decomposeChange(table, time.name, metricName, dim.name);
     if (!a || Math.abs(a.totalDelta) < 1e-9) continue;
-    // "Concentration": the largest single segment's share of the total change. A decomposition that
-    // pins most of the move on one or two segments tells a sharper story than an even spread.
-    const spread = Math.max(...a.segments.map((s) => Math.abs(s.contributionPct)));
+    // "Concentration": how much of the GROSS movement one segment accounts for, in [0,1]. We divide by
+    // the sum of |delta| (not by totalDelta) so near-cancelling segments — where totalDelta is tiny and
+    // delta/totalDelta explodes to absurd percentages — don't get ranked as the sharpest story.
+    const gross = a.segments.reduce((s, x) => s + Math.abs(x.delta), 0);
+    const spread = gross > 0 ? Math.max(...a.segments.map((s) => Math.abs(s.delta))) / gross : 0;
     out.push({ a, spread });
   }
   out.sort((x, y) => y.spread - x.spread);

@@ -4,6 +4,7 @@ import { maxOf, minOf, pearson, isRedundantCorrelation } from "./stats";
 import { aggregateCount, buildChart, buildComparisonChart, type ChartRequest } from "./charts";
 import { parseChartRequest } from "./nl-chart";
 import { sortByTime } from "./kpi";
+import { activeLlmConfig } from "./llm-settings";
 
 // ── AI-enhanced answers ────────────────────────────────────────────────────────
 // When the optional LLM is enabled (NEXT_PUBLIC_LLM_ENABLED=1), `answerQuestionAI` keeps the exact
@@ -782,6 +783,9 @@ const CONTEXT_KEY = "quantia:context";
 
 /** Whether the optional server-side LLM narrator is switched on (the key itself stays server-side). */
 function llmOn(): boolean {
+  // A user's own key (BYOK) enables the AI path regardless of the server flag — same rule as the
+  // dashboard narrator. query.ts runs on the main thread, so localStorage (activeLlmConfig) is available.
+  if (activeLlmConfig()) return true;
   return typeof process !== "undefined" && process.env.NEXT_PUBLIC_LLM_ENABLED === "1";
 }
 
@@ -1137,7 +1141,7 @@ async function planQuestion(question: string, table: Table, profiles: ColumnProf
     const res = await fetch("/api/insights", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ task: "plan", question, schema, conversation }),
+      body: JSON.stringify({ task: "plan", question, schema, conversation, byok: activeLlmConfig() ?? undefined }),
     });
     if (!res.ok) return undefined;
     const data = (await res.json()) as { plan?: unknown };
@@ -1210,7 +1214,7 @@ async function runAnswerAI(
       const res = await fetch("/api/insights", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ task: "answer", stream: true, ...evidence }),
+        body: JSON.stringify({ task: "answer", stream: true, ...evidence, byok: activeLlmConfig() ?? undefined }),
       });
       if (res.ok && res.body) {
         const reader = res.body.getReader();
@@ -1246,7 +1250,7 @@ async function runAnswerAI(
     const res = await fetch("/api/insights", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ task: "answer", ...evidence }),
+      body: JSON.stringify({ task: "answer", ...evidence, byok: activeLlmConfig() ?? undefined }),
     });
     if (res.ok) {
       const data = (await res.json()) as { answer?: string; followups?: string[]; chart?: unknown };

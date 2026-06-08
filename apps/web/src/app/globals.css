@@ -468,3 +468,11 @@ body:has(.lp) { background: #ffffff; }
 }
 .page-transition { animation: pageEnter 0.42s cubic-bezier(0.21, 0.6, 0.35, 1) both; }
 @media (prefers-reduced-motion: reduce) { .page-transition { animation: none !important; } }
+
+/* Native print (Ctrl+P / Save as PDF) bypasses the JS export, so reveal every dashboard tab panel —
+   inactive ones are clipped to height:0 on screen — and drop the tab bar + interactive-only sections,
+   matching what the in-app PNG/PDF export produces. */
+@media print {
+  [data-tab-panel] { height: auto !important; overflow: visible !important; opacity: 1 !important; }
+  [data-export-exclude] { display: none !important; }
+}
