@@ -2,8 +2,9 @@
 // forecasts that can look like guidance, so we make it explicit wherever analysis is shown:
 // `banner` sits inside the dashboard (and is kept in PNG/PDF exports), `line` goes in footers.
 
-export const DISCLAIMER_TEXT =
-  "MyAnalyst is not financial or investment advice. These figures, forecasts, and insights are generated automatically from your data and may be incomplete or wrong — verify everything with a qualified professional before acting on it.";
+import { DISCLAIMER_TEXT } from "@/lib/disclaimer";
+
+export { DISCLAIMER_TEXT };
 
 export function Disclaimer({ variant = "banner" }: { variant?: "banner" | "line" }) {
   if (variant === "line") {

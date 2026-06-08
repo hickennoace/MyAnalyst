@@ -22,6 +22,7 @@ import { domainFocus } from "@/lib/domain-pack";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
 import { Disclaimer } from "./Disclaimer";
+import { MethodologyCard } from "./MethodologyCard";
 
 // The dashboard body, rendered identically by the live analyzer (/analyze) and the read-only
 // shared view (/view). Everything renders from the DashboardSpec alone; the interactive chart
@@ -186,6 +187,10 @@ export function DashboardView({
           </div>
         </Section>
       )}
+
+      <Section title="How this was computed" subtitle="Methods, assumptions, and limitations — plus a reproducible recipe. The transparency a consultant report carries.">
+        <MethodologyCard spec={spec} />
+      </Section>
 
       <Disclaimer />
 
