@@ -204,17 +204,29 @@ export function deriveConclusions(ctx: InsightContext): Conclusion[] {
     });
   }
 
-  // 8. Outliers.
+  // 8. Distribution shape / outliers.
   const o = ctx.outliers[0];
   if (o && o.count > 0 && out.length < 6) {
-    out.push({
-      confidence: "medium",
-      basis: `outliers in ${o.column}`,
-      text:
-        `A few ${o.column} values are unusually high or low (${o.count} of them). ` +
-        `Oddball values like these can quietly throw off the averages, so it's worth checking whether they're real or just typos before trusting any ${o.column} numbers.`,
-      detail: `${o.count} value${o.count === 1 ? "" : "s"} far outside the normal range (beyond 3 standard deviations).`,
-    });
+    if (o.kind === "skew" && o.median !== undefined && o.mean !== undefined) {
+      const side = o.direction === "low" ? "low" : "high";
+      out.push({
+        confidence: "medium",
+        basis: `${o.column} distribution`,
+        text:
+          `${o.column} isn't evenly spread — it's ${side === "high" ? "right" : "left"}-skewed. Most ${o.column} sits around ${num(o.median)}, but a ${side} tail of ${o.count} drags the average to ${num(o.mean)}. ` +
+          `Use the median (${num(o.median)}) as the "typical" value, and treat that tail as its own segment rather than letting it distort the average.`,
+        detail: `Skewness ${o.skew?.toFixed(2)}; ${o.count} value${o.count === 1 ? "" : "s"} beyond 3σ, almost all on the ${side} side.`,
+      });
+    } else {
+      out.push({
+        confidence: "medium",
+        basis: `outliers in ${o.column}`,
+        text:
+          `A few ${o.column} values sit far apart from the rest (${o.count} of them). ` +
+          `Isolated values like these are often typos or glitches, so it's worth checking whether they're real before trusting any ${o.column} numbers.`,
+        detail: `${o.count} value${o.count === 1 ? "" : "s"} far outside the normal range (beyond 3 standard deviations).`,
+      });
+    }
   }
 
   // Quality filter: surface only meaningful findings. Drop low-confidence

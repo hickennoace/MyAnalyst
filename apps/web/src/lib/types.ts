@@ -237,6 +237,32 @@ export interface OutlierFact {
   examples: { index: number; value: number; z: number }[];
   /** Root-cause hint: dimension values the anomalous rows concentrate in, vs their baseline share. */
   breakdown?: OutlierBreakdown[];
+  /** "skew" = a heavy one-sided tail / real segment (use the median); "anomaly" = isolated suspect points. */
+  kind?: "skew" | "anomaly";
+  /** which side(s) the extreme values sit on. */
+  direction?: "high" | "low" | "both";
+  /** population skewness of the column (>0 right-tailed). */
+  skew?: number;
+  mean?: number;
+  median?: number;
+  /** extreme count ÷ finite count. */
+  share?: number;
+}
+
+/** Full outlier classification for a numeric column. */
+export interface OutlierAnalysis {
+  column: string;
+  count: number;
+  share: number;
+  kind: "skew" | "anomaly";
+  direction: "high" | "low" | "both";
+  skew: number;
+  mean: number;
+  median: number;
+  std: number;
+  examples: { index: number; value: number; z: number }[];
+  /** all extreme row indices (for root-cause breakdown), not just the displayed examples. */
+  indices: number[];
 }
 
 /** One over-represented segment among a metric's anomalous rows. */

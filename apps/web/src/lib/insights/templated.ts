@@ -209,19 +209,33 @@ export class TemplatedInsightProvider implements InsightProvider {
       });
     }
 
-    // 9. Outliers — a quick data-quality flag.
+    // 9. Distribution shape & outliers. A skewed column (a premium price tier) is reported as SHAPE — use
+    //    the median, not "check if these are errors". Only genuinely isolated points get the data-quality flag.
     const o = ctx.outliers[0];
     if (o && o.count > 0) {
       const ex = o.examples[0];
-      out.push({
-        id: `ins-outlier-${o.column}`,
-        kind: "outlier",
-        confidence: "medium",
-        cites: [`outlier:${o.column}`],
-        text:
-          `${o.column} has ${o.count} unusually extreme value${o.count === 1 ? "" : "s"}${ex ? ` (the most extreme is ${fmt(ex.value)})` : ""}. ` +
-          `These can quietly skew the averages — check whether they're real before trusting ${o.column} figures.`,
-      });
+      if (o.kind === "skew" && o.median !== undefined && o.mean !== undefined) {
+        const side = o.direction === "low" ? "low" : "high";
+        out.push({
+          id: `ins-skew-${o.column}`,
+          kind: "outlier",
+          confidence: "high",
+          cites: [`outlier:${o.column}`],
+          text:
+            `${o.column} is ${side === "high" ? "right" : "left"}-skewed: most values sit near the median (${fmt(o.median)}), but a ${side}-end tail of ${o.count} pulls the average to ${fmt(o.mean)}. ` +
+            `That tail is likely a real ${side === "high" ? "premium" : "low-end"} segment, not errors — use the median (${fmt(o.median)}) as the "typical" ${o.column}, and segment the tail rather than averaging it away.`,
+        });
+      } else {
+        out.push({
+          id: `ins-outlier-${o.column}`,
+          kind: "outlier",
+          confidence: "medium",
+          cites: [`outlier:${o.column}`],
+          text:
+            `${o.column} has ${o.count} isolated extreme value${o.count === 1 ? "" : "s"}${ex ? ` (the most extreme is ${fmt(ex.value)})` : ""} that sit apart from the rest. ` +
+            `A handful of points like these are often typos or glitches — worth checking they're real before trusting ${o.column}'s average.`,
+        });
+      }
     }
 
     return out.slice(0, 8);

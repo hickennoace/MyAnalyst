@@ -19,7 +19,8 @@ import { cleanTable, type CleanResult } from "./clean";
 import { detectDomain } from "./domain";
 import { computeKpis, primaryMetric, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
-import { isRedundantCorrelation, zOutliers } from "./stats";
+import { isRedundantCorrelation } from "./stats";
+import { analyzeColumnOutliers } from "./outliers";
 import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAnova, olsSimple, pearsonTest } from "./inference";
 import { defaultHorizon, forecastSeries } from "./forecast";
 import { buildDataStory } from "./story";
@@ -158,13 +159,21 @@ export function detectAnomalies(table: Table, profiles: ReturnType<typeof profil
   const dims = profiles.filter((p) => p.role === "dimension" && p.distinctCount >= 2 && p.distinctCount <= 50);
   const out: OutlierFact[] = [];
   for (const m of metrics) {
-    const ex = zOutliers(numericColumn(table, m.name), 3);
-    if (ex.length) {
+    const a = analyzeColumnOutliers(m.name, numericColumn(table, m.name), 3);
+    // The anomalies card is for genuine ANOMALIES (isolated, possibly-wrong points) — a skewed segment
+    // (a premium price tier) isn't an anomaly, so it's excluded here and explained as skew in the insights.
+    if (a && a.kind === "anomaly") {
       out.push({
-        column: m.name,
-        count: ex.length,
-        examples: [...ex].sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 4),
-        breakdown: anomalyBreakdown(table, dims, ex.map((e) => e.index)),
+        column: a.column,
+        count: a.count,
+        examples: a.examples,
+        kind: a.kind,
+        direction: a.direction,
+        skew: a.skew,
+        mean: a.mean,
+        median: a.median,
+        share: a.share,
+        breakdown: anomalyBreakdown(table, dims, a.indices),
       });
     }
   }
@@ -402,11 +411,11 @@ function buildInsightContext(
   }
   associations.sort((a, b) => Number(b.significant) - Number(a.significant) || b.cramersV - a.cramersV);
 
-  // Outliers per metric.
+  // Outliers per metric — classified as a skewed segment (use the median) vs isolated anomalies.
   const outliers: OutlierFact[] = [];
   for (const m of metrics) {
-    const ex = zOutliers(numericColumn(table, m.name), 3);
-    if (ex.length) outliers.push({ column: m.name, count: ex.length, examples: ex.slice(0, 3) });
+    const a = analyzeColumnOutliers(m.name, numericColumn(table, m.name), 3);
+    if (a) outliers.push({ column: a.column, count: a.count, examples: a.examples, kind: a.kind, direction: a.direction, skew: a.skew, mean: a.mean, median: a.median, share: a.share });
   }
   outliers.sort((a, b) => b.count - a.count);
 
