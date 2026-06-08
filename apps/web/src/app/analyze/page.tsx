@@ -379,7 +379,7 @@ export default function AnalyzePage() {
               <input
                 ref={compareInputRef}
                 type="file"
-                accept=".csv,.tsv,.txt,.xlsx,.xls,.json,.sqlite,.sqlite3,.db,.db3"
+                accept=".csv,.tsv,.txt,.xlsx,.xls,.json,.sqlite,.sqlite3,.db,.db3,.parquet,.pq,.pdf,.png,.jpg,.jpeg,.webp"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];

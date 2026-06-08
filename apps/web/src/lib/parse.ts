@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import type { Table } from "./types";
+import { itemsToTable, type PositionedToken } from "./table-extract";
 
 /** Live progress while streaming a large delimited file. */
 export interface ParseProgress {
@@ -35,6 +36,9 @@ function single(table: Table): ParseResult {
 const MAX_EXCEL_BYTES = 50 * 1024 * 1024; // 50 MB
 const MAX_JSON_BYTES = 120 * 1024 * 1024; // 120 MB
 const MAX_SQLITE_BYTES = 100 * 1024 * 1024; // 100 MB (loaded whole into a WASM SQLite engine)
+const MAX_PARQUET_BYTES = 200 * 1024 * 1024; // 200 MB (read whole into memory by hyparquet)
+const MAX_PDF_BYTES = 30 * 1024 * 1024; // 30 MB (text-positioned extraction)
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20 MB (OCR)
 
 /** Parse an uploaded File (CSV / TSV / TXT / JSON / XLSX / XLS / SQLite) into a normalized Table plus
  *  the list of its analyzable sources. `sourceId` targets a specific sheet/table (else a sensible
@@ -60,6 +64,26 @@ export async function parseFile(
       );
     }
     return single(await parseJson(file));
+  }
+  if (ext === "parquet" || ext === "pq") {
+    if (file.size > MAX_PARQUET_BYTES) {
+      throw new Error(
+        `This Parquet file is ${(file.size / 1048576).toFixed(0)} MB. It's read whole into memory, so it's capped at ${MAX_PARQUET_BYTES / 1048576} MB. Export a subset to CSV for larger files.`
+      );
+    }
+    return single(await parseParquet(file));
+  }
+  if (ext === "pdf") {
+    if (file.size > MAX_PDF_BYTES) {
+      throw new Error(`This PDF is ${(file.size / 1048576).toFixed(0)} MB — capped at ${MAX_PDF_BYTES / 1048576} MB for table extraction. Try a smaller file or export the table to CSV.`);
+    }
+    return single(await parsePdf(file));
+  }
+  if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "webp") {
+    if (file.size > MAX_IMAGE_BYTES) {
+      throw new Error(`This image is ${(file.size / 1048576).toFixed(0)} MB — capped at ${MAX_IMAGE_BYTES / 1048576} MB for OCR.`);
+    }
+    return single(await parseImage(file, onProgress));
   }
   if (ext === "sqlite" || ext === "sqlite3" || ext === "db" || ext === "db3") {
     if (file.size > MAX_SQLITE_BYTES) {
@@ -119,6 +143,117 @@ async function parseSqlite(file: File, tableId?: string): Promise<ParseResult> {
   } finally {
     db.close();
   }
+}
+
+// Parquet (.parquet): read with hyparquet — a pure-JS reader (no WASM), dynamically imported so it only
+// loads when someone opens a Parquet file. We read up to SAMPLE_CAP rows and flag the rest as sampled.
+async function parseParquet(file: File): Promise<Table> {
+  const { parquetReadObjects, parquetMetadataAsync, toJson } = await import("hyparquet");
+  const ab = await file.arrayBuffer();
+  const buffer = { byteLength: ab.byteLength, slice: (start: number, end?: number) => ab.slice(start, end) };
+  let total = 0;
+  try {
+    const meta = await parquetMetadataAsync(buffer);
+    total = Number(meta.num_rows ?? 0);
+  } catch {
+    // metadata read failed — fall through; reading objects will surface a clearer error if truly broken
+  }
+  const rowEnd = total > 0 ? Math.min(total, SAMPLE_CAP) : SAMPLE_CAP;
+  let raw: Record<string, unknown>[];
+  try {
+    raw = (await parquetReadObjects({ file: buffer, rowStart: 0, rowEnd })) as Record<string, unknown>[];
+  } catch {
+    throw new Error("That Parquet file couldn't be read. It may be corrupt or use an unsupported encoding.");
+  }
+  if (!raw.length) throw new Error("No rows found in that Parquet file.");
+
+  // Columns = union of keys across the first rows; flatten nested/BigInt values to readable strings.
+  const columns: string[] = [];
+  for (const r of raw.slice(0, 200)) for (const k of Object.keys(r)) if (!columns.includes(k)) columns.push(k);
+  const rows = raw.map((r) => {
+    const out: Record<string, unknown> = {};
+    for (const c of columns) {
+      const v = toJson(r[c]);
+      out[c] = v !== null && typeof v === "object" ? JSON.stringify(v) : (v ?? null);
+    }
+    return out;
+  });
+  return {
+    name: file.name,
+    columns,
+    rows,
+    rowCount: rows.length,
+    sampledFrom: total > rows.length ? total : undefined,
+  };
+}
+
+// PDF (.pdf): extract positioned text with pdf.js (dynamically imported), then reconstruct a table from
+// token coordinates. Best-effort — works well on real tabular PDFs, less so on heavily-formatted ones.
+async function parsePdf(file: File): Promise<Table> {
+  const pdfjs = await import("pdfjs-dist");
+  // Bundler-resolved worker URL (Turbopack/webpack understand new URL(..., import.meta.url)).
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+
+  const data = new Uint8Array(await file.arrayBuffer());
+  const doc = await pdfjs.getDocument({ data }).promise;
+  const tokens: PositionedToken[] = [];
+  let yOffset = 0;
+  const maxPages = Math.min(doc.numPages, 15); // cap work on huge PDFs
+  for (let p = 1; p <= maxPages; p++) {
+    const page = await doc.getPage(p);
+    const viewport = page.getViewport({ scale: 1 });
+    const content = await page.getTextContent();
+    for (const item of content.items) {
+      if (!("str" in item)) continue;
+      const it = item as { str: string; width: number; transform: number[] };
+      if (!it.str.trim()) continue;
+      // Stack pages downward (PDF y grows upward) so a table spanning pages stays in order.
+      tokens.push({ x: it.transform[4], y: it.transform[5] + yOffset, str: it.str, width: it.width });
+    }
+    yOffset -= viewport.height + 20;
+  }
+  return itemsToTable(tokens, file.name);
+}
+
+// Image (.png/.jpg/.webp): OCR with tesseract.js, then reconstruct a table. Prefers per-word bounding
+// boxes (positioned reconstruction); falls back to splitting text lines on multi-space gaps. The OCR
+// engine + language data download on first use (the one network touch in this path).
+async function parseImage(file: File, onProgress?: (p: ParseProgress) => void): Promise<Table> {
+  const Tesseract = await import("tesseract.js");
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error("Couldn't read that image."));
+    r.readAsDataURL(file);
+  });
+  const { data } = await Tesseract.recognize(dataUrl, "eng", {
+    logger: (m: { status: string; progress: number }) => {
+      if (m.status === "recognizing text") onProgress?.({ rows: 0, bytes: Math.round((m.progress || 0) * file.size), totalBytes: file.size });
+    },
+  });
+
+  const words = (data as { words?: { text: string; bbox: { x0: number; y0: number; x1: number; y1: number } }[] }).words ?? [];
+  if (words.length >= 4) {
+    // image y grows downward → negate so the top row sorts first in itemsToTable
+    const tokens: PositionedToken[] = words
+      .filter((w) => w.text.trim())
+      .map((w) => ({ x: w.bbox.x0, y: -w.bbox.y0, str: w.text, width: w.bbox.x1 - w.bbox.x0 }));
+    return itemsToTable(tokens, file.name);
+  }
+
+  // Fallback: split recognized lines on runs of 2+ spaces.
+  const lines = (data.text || "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const rows = lines.map((l) => l.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean)).filter((r) => r.length >= 2);
+  if (rows.length < 2) throw new Error("Couldn't read a table from that image. A clearer screenshot or a CSV export will work better.");
+  const target = rows[0].length;
+  const headers = rows[0].map((h, i) => h || `Column ${i + 1}`);
+  const dataRows = rows.slice(1).map((cells) => {
+    const o: Record<string, unknown> = {};
+    headers.forEach((h, i) => (o[h] = cells[i] ?? ""));
+    return o;
+  });
+  void target;
+  return { name: file.name, columns: headers, rows: dataRows, rowCount: dataRows.length };
 }
 
 async function parseJson(file: File): Promise<Table> {
