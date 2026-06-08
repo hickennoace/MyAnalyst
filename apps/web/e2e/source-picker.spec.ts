@@ -28,9 +28,15 @@ test("multi-sheet Excel shows a sheet picker and can switch sheets", async ({ pa
     buffer: twoSheetWorkbook(),
   });
 
+  // Review step appears first; its sheet picker defaults to the first sheet. Confirm + start.
+  const reviewPicker = page.getByLabel(/Choose which sheet to analyze/);
+  await expect(reviewPicker).toBeVisible({ timeout: 30_000 });
+  await expect(reviewPicker).toHaveValue("Sales");
+  await page.getByRole("button", { name: /Start analyzing/ }).click();
+
   await expect(page.getByRole("heading", { name: "Key metrics" })).toBeVisible({ timeout: 30_000 });
 
-  // Picker appears, defaults to the first sheet.
+  // Post-analysis picker appears, defaults to the first sheet.
   const picker = page.getByLabel(/Choose which sheet to analyze/);
   await expect(picker).toBeVisible();
   await expect(picker).toHaveValue("Sales");

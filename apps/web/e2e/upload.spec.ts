@@ -20,6 +20,11 @@ test("uploading a CSV produces a dashboard for that file", async ({ page }) => {
     buffer: Buffer.from(sampleCsv()),
   });
 
+  // The file is staged for review first — confirm it shows, then start analyzing deliberately.
+  await expect(page.getByRole("heading", { name: /Ready to analyze/ })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("uploaded-sales.csv").first()).toBeVisible();
+  await page.getByRole("button", { name: /Start analyzing/ }).click();
+
   await expect(page.getByRole("heading", { name: "Key metrics" })).toBeVisible({ timeout: 30_000 });
   // The dataset's own name shows in the dashboard header.
   await expect(page.getByText("uploaded-sales.csv").first()).toBeVisible();

@@ -7,7 +7,7 @@ import { parseFile, type SourceInfo } from "@/lib/parse";
 import { runAnalysis } from "@/lib/analyze-client";
 import { downloadCsv } from "@/lib/csv";
 import { sampleTable } from "@/lib/sample";
-import { combinedContext } from "@/lib/industry-tags";
+import { combinedContext, INDUSTRY_TAGS } from "@/lib/industry-tags";
 import { exportPdf, exportPng } from "@/lib/export";
 import { exportDeckPdf, exportReportPdf } from "@/lib/report-pdf";
 import { loadBrand } from "@/lib/brand";
@@ -36,6 +36,22 @@ const CONTEXT_KEY = "quantia:context";
 const INDUSTRY_KEY = "quantia:industry";
 
 const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
+
+/** A file that's been read and is waiting for the user to confirm before analysis starts — so nobody
+ *  analyzes the wrong file, and they get a chance to pick the right sheet and add context first. */
+interface PendingFile {
+  file: File;
+  table: Table;
+  sources: SourceInfo[];
+  sourceId: string;
+  sourceKind?: "sheet" | "table";
+}
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+}
 
 export default function AnalyzePage() {
   const [busy, setBusy] = useState(false);
@@ -66,6 +82,10 @@ export default function AnalyzePage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [jobDesc, setJobDesc] = useState("");
   const [industry, setIndustry] = useState<string | null>(null);
+  // A read-but-not-yet-analyzed file, shown in a review step so the user can confirm it's the right
+  // file (and sheet), add context, and only then start. `stagingSource` = re-reading a different sheet.
+  const [pending, setPending] = useState<PendingFile | null>(null);
+  const [stagingSource, setStagingSource] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -264,6 +284,7 @@ export default function AnalyzePage() {
 
   async function handleFile(file: File) {
     try {
+      setError(null);
       setBusy(true);
       setStage("Reading file");
       setReadInfo(file.size > 24 * 1024 * 1024 ? `Reading ${(file.size / 1048576).toFixed(0)} MB…` : null);
@@ -275,18 +296,53 @@ export default function AnalyzePage() {
       if (!result.table.columns.length || !result.table.rowCount) {
         throw new Error("No tabular data found. Make sure the first row contains column headers.");
       }
-      // Remember the file + its sheets/tables so the user can switch between them later.
-      setSourceFile(file);
-      setFileSources(result.sources);
-      setCurrentSourceId(result.sourceId);
-      setSourceKind(result.sourceKind);
-      await run(result.table);
+      // Don't analyze yet — stage the file for a confirmation step so the user can check it's the right
+      // file/sheet, add context, and start deliberately. Analysis begins from handleStartAnalysis().
+      setPending({ file, table: result.table, sources: result.sources, sourceId: result.sourceId, sourceKind: result.sourceKind });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not read that file.");
+    } finally {
       setBusy(false);
       setStage(null);
       setReadInfo(null);
     }
+  }
+
+  // Re-read a different sheet/table of the staged file during the review step, so the user picks the
+  // right one BEFORE analyzing (not after).
+  async function handleStageSource(id: string) {
+    if (!pending || id === pending.sourceId || stagingSource) return;
+    setStagingSource(true);
+    try {
+      const result = await parseFile(pending.file, undefined, id);
+      if (!result.table.columns.length || !result.table.rowCount) {
+        throw new Error("That selection has no usable tabular data.");
+      }
+      setPending({ ...pending, table: result.table, sourceId: id, sourceKind: result.sourceKind, sources: result.sources });
+    } catch (e) {
+      setToast({ text: e instanceof Error ? e.message : "Couldn't read that selection.", tone: "error" });
+    } finally {
+      setStagingSource(false);
+    }
+  }
+
+  // The user confirmed the staged file — commit it as the source and run the pipeline.
+  async function handleStartAnalysis() {
+    if (!pending || stagingSource) return;
+    setSourceFile(pending.file);
+    setFileSources(pending.sources);
+    setCurrentSourceId(pending.sourceId);
+    setSourceKind(pending.sourceKind);
+    const tbl = pending.table;
+    setPending(null);
+    await run(tbl);
+  }
+
+  // Discard the staged file and return to the uploader to pick a different one.
+  function cancelPending() {
+    setPending(null);
+    setError(null);
+    setReadInfo(null);
   }
 
   // Re-parse a different sheet/table from the same file and analyze it.
@@ -369,6 +425,7 @@ export default function AnalyzePage() {
     setFileSources([]);
     setCurrentSourceId("");
     setSourceKind(undefined);
+    setPending(null);
   }
 
   return (
@@ -492,7 +549,8 @@ export default function AnalyzePage() {
           </div>
         </header>
 
-        {!spec && (
+        {/* Upload view: shown until a file is staged for review (or analysis is running). */}
+        {!spec && !pending && (
           <div className="space-y-4">
             <Uploader onFile={handleFile} onSample={startSample} busy={busy} industry={industry} onIndustry={updateIndustry} />
             {busy && stage && <PipelineProgress stages={STAGES} current={stage} detail={readInfo ?? undefined} />}
@@ -518,6 +576,135 @@ export default function AnalyzePage() {
             </details>
 
             <HistoryList entries={history} onOpen={handleOpenHistory} onDelete={handleDeleteHistory} />
+          </div>
+        )}
+
+        {/* Review step: a file is read but NOT yet analyzed. Confirm it's the right file/sheet, add
+            context to maximize the conclusions, then start deliberately. */}
+        {!spec && pending && (
+          <div className="space-y-4">
+            <div className="card space-y-5 p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-100">Ready to analyze — does this look right?</h2>
+                  <p className="mt-0.5 text-sm text-slate-400">Check the file (and sheet), add a line of context, then start. Nothing is analyzed until you click the button.</p>
+                </div>
+                <button
+                  onClick={cancelPending}
+                  className="shrink-0 rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
+                >
+                  Change file
+                </button>
+              </div>
+
+              {/* File summary */}
+              <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-slate-100">{pending.file.name}</p>
+                    <p className="text-xs text-slate-400">
+                      {fmtBytes(pending.file.size)} · {pending.table.rowCount.toLocaleString()} rows × {pending.table.columns.length} columns
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pick the right sheet/table BEFORE analyzing (multi-sheet workbooks / multi-table DBs). */}
+                {pending.sources.length > 1 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-800 pt-3 text-sm">
+                    <span className="font-medium text-slate-300">{pending.sourceKind === "table" ? "Table" : "Sheet"}:</span>
+                    <select
+                      value={pending.sourceId}
+                      onChange={(e) => handleStageSource(e.target.value)}
+                      disabled={stagingSource}
+                      aria-label={`Choose which ${pending.sourceKind === "table" ? "table" : "sheet"} to analyze`}
+                      className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+                    >
+                      {pending.sources.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.label} ({s.rowCount.toLocaleString()} rows)
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-slate-500">
+                      {stagingSource ? "Reading…" : `${pending.sources.length} ${pending.sourceKind === "table" ? "tables" : "sheets"} in this file`}
+                    </span>
+                  </div>
+                )}
+
+                {/* Column preview so the user can confirm at a glance that it's the right data. */}
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-800 pt-3">
+                  {pending.table.columns.slice(0, 14).map((c) => (
+                    <span key={c} className="rounded-md bg-slate-800/70 px-2 py-0.5 text-xs text-slate-300">{c}</span>
+                  ))}
+                  {pending.table.columns.length > 14 && (
+                    <span className="rounded-md px-2 py-0.5 text-xs text-slate-500">+{pending.table.columns.length - 14} more</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Context — emphasized, because it markedly improves the conclusions. */}
+              <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                  <span aria-hidden>⭐</span> Add context to maximize your conclusions
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-300/90">
+                  A sentence or two about what this data is and what you want to learn makes a <strong>real</strong> difference —
+                  it steers domain detection and the metrics we surface, and frames every insight, the “About this data”
+                  story, and the AI’s answers around <em>your</em> goal. Stored only in this browser; never uploaded.
+                </p>
+
+                {/* Optional industry tag — another fast way to sharpen the analysis. */}
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className="mr-1 text-[11px] uppercase tracking-wide text-slate-500">industry:</span>
+                  {INDUSTRY_TAGS.map((t) => {
+                    const active = industry === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => updateIndustry(active ? null : t.key)}
+                        className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
+                          active ? "border-blue-400 bg-blue-500/15 text-blue-200" : "border-slate-700 text-slate-300 hover:border-blue-500/50 hover:text-blue-300"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <textarea
+                  value={jobDesc}
+                  onChange={(e) => updateContext(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. I run a used-car dealership and want to understand why customers don't buy."
+                  className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
+                />
+                {!jobDesc.trim() && (
+                  <p className="mt-1.5 text-[11px] text-amber-300/80">Tip: even a short note noticeably sharpens the results — it’s worth the 10 seconds.</p>
+                )}
+              </div>
+
+              {/* Start */}
+              <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <button onClick={cancelPending} className="text-sm text-slate-400 transition hover:text-slate-200">
+                  ← Choose a different file
+                </button>
+                <button
+                  onClick={handleStartAnalysis}
+                  disabled={stagingSource}
+                  className="btn-shine rounded-xl bg-blue-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400 disabled:opacity-50"
+                >
+                  🚀 Start analyzing
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
