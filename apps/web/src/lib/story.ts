@@ -142,7 +142,7 @@ export function buildDataStory(
   // 5) Purpose — tailored to the user's stated goal when given.
   const ctx = userContext?.trim();
   if (ctx) {
-    sentences.push(`You're using this to ${lowerFirst(ctx).replace(/\.$/, "")} — the findings below are framed around that goal.`);
+    sentences.push(`You're using this to ${lowerFirst(ctx).replace(/\.$/, "")} — this analysis is framed around that goal.`);
   } else {
     sentences.push(`Data like this is typically used to ${purpose}.`);
   }

@@ -23,7 +23,6 @@ import { ActionPlanCard } from "./ActionPlanCard";
 import { domainFocus } from "@/lib/domain-pack";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
-import { Disclaimer } from "./Disclaimer";
 import { MethodologyCard } from "./MethodologyCard";
 
 // The dashboard body, rendered identically by the live analyzer (/analyze) and the read-only shared
@@ -291,9 +290,6 @@ export function DashboardView({
           </Section>
         </Panel>
       )}
-
-      {/* Persistent — always visible and always in the export. */}
-      <Disclaimer />
     </div>
   );
 }
