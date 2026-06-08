@@ -76,6 +76,19 @@ def build_facts(spec: dict) -> list[dict]:
         add("fact-corr", f"{c['a']} and {c['b']} move together (r={c['r']:.2f}, {c['strength']}) — "
             f"association, not proven cause.", "correlation")
 
+    rfm = spec.get("rfm")
+    if rfm and rfm.get("segments"):
+        champ = next((s for s in rfm["segments"] if s["key"] == "champions"), None)
+        risk = next((s for s in rfm["segments"] if s["key"] == "at-risk"), None)
+        bits = []
+        if champ:
+            bits.append(f"{champ['size']} Champions ({_pct(champ['monetaryShare'])} of revenue)")
+        if risk:
+            bits.append(f"{risk['size']} At-Risk")
+        if bits:
+            add("fact-rfm", f"Of {rfm['customers']} {rfm['entity']}s: {', '.join(bits)} — "
+                f"reward the Champions and win back the At-Risk.", "rfm")
+
     seg = spec.get("segments")
     if seg and len(seg.get("segments", [])) > 1:
         biggest = seg["segments"][0]

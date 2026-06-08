@@ -58,6 +58,18 @@ check("stats: correlations + group comparisons", "correlations" in spec["stats"]
 check("charts: revenue-by-product + forecast", any("Revenue by" in c["title"] for c in spec["charts"]) and any("forecast" in c["title"].lower() for c in spec["charts"]))
 check("grounded facts built (>=5)", len(spec.get("facts", [])) >= 5)
 check("k-means segments found", spec.get("segments") is not None and len(spec["segments"]["segments"]) >= 2)
+
+# RFM on transaction data with repeating customers.
+rng2 = np.random.default_rng(7)
+cust_rows = []
+base = pd.Timestamp("2024-01-01")
+for c in range(40):
+    for _ in range(int(rng2.integers(1, 8))):
+        cust_rows.append({"CustomerID": f"C{c}", "Date": (base + pd.Timedelta(days=int(rng2.integers(0, 300)))).strftime("%Y-%m-%d"),
+                          "Amount": float(rng2.integers(20, 500))})
+rfm_df = pd.DataFrame(cust_rows)
+rfm_spec = analyze(rfm_df)
+check("RFM segments computed for customer data", rfm_spec.get("rfm") is not None and len(rfm_spec["rfm"]["segments"]) >= 2 and rfm_spec["rfm"]["entity"] == "CustomerID")
 check("no tautological 'Cost drives Price' driver", not (spec["stats"].get("drivers") and spec["stats"]["drivers"]["drivers"][0]["name"] == "Cost"))
 import json
 from analyze import _jsonable

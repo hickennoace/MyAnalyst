@@ -21,6 +21,7 @@ import _outliers as _ol
 import _charts as _ch
 import _insights as _ins
 import _segments as _sg
+import _rfm as _rf
 
 # ─────────────────────────── Profiling: type + role per column ───────────────────────────
 
@@ -413,6 +414,7 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
     outliers.sort(key=lambda x: x["count"], reverse=True)
 
     segments = _sg.segment_rows(df, profiles)
+    rfm = _rf.analyze_rfm(df, profiles)
 
     spec: dict[str, Any] = {
         "engine": "python",
@@ -426,6 +428,7 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
         "stats": stats_block,
         "outliers": outliers[:5],
         "segments": segments,
+        "rfm": rfm,
     }
     spec["charts"] = _ch.build_charts(df, profiles, {
         "revenue": revenue, "bestsellers": bs, "monthly": monthly, "forecast": forecast,
