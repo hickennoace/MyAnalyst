@@ -24,6 +24,7 @@ import { buildDataStory } from "./story";
 import { computeDataQuality } from "./quality";
 import { buildActionReport } from "./actions";
 import { analyzeTimeSeries } from "./timeseries";
+import { buildContributions } from "./contribution";
 import { segmentRows } from "./segment";
 import { analyzeCohorts } from "./cohort";
 import { getInsightProvider } from "./insights";
@@ -72,6 +73,10 @@ export async function analyze(
         .map((m) => analyzeTimeSeries(table, timeCol.name, m.name))
         .filter((a): a is NonNullable<typeof a> => a !== undefined)
     : [];
+  // "What drove the change" — attribute the primary metric's period-over-period move to a dimension.
+  const pmForContrib = primaryMetric(profiles);
+  const contributions = timeCol && pmForContrib ? buildContributions(table, profiles, pmForContrib.name) : [];
+
   stage("Running statistics");
   const charts = opts.skipCharts ? [] : recommendCharts(table, profiles);
 
@@ -119,6 +124,7 @@ export async function analyze(
     drivers: ctx.drivers,
     cohorts,
     actions: buildActionReport(ctx, quality, profiles),
+    contributions: contributions.length ? contributions : undefined,
   };
 }
 
@@ -284,6 +290,7 @@ function buildInsightContext(
       const X = predictors.map((p) => numericColumn(table, p.name));
       const mr = multipleRegression(X, numericColumn(table, target.name), predictors.map((p) => p.name));
       if (mr) {
+        const tNum = target.numeric;
         drivers = {
           target: target.name,
           r2: mr.r2,
@@ -291,6 +298,20 @@ function buildInsightContext(
           fP: mr.fP,
           n: mr.n,
           drivers: mr.coefficients.map((c) => ({ name: c.name, coef: c.coef, beta: c.beta, p: c.p, significant: c.significant })),
+          // Baselines for the what-if simulator: an OLS fit passes through the means, so the modeled
+          // outcome at every-predictor-at-its-mean equals the target's mean. From there the UI projects
+          // outcome = targetMean + Σ coefᵢ·(xᵢ − meanᵢ) — no raw rows needed.
+          model: tNum
+            ? {
+                intercept: mr.intercept,
+                targetMean: tNum.mean,
+                targetStd: tNum.std,
+                predictors: mr.coefficients.map((c) => {
+                  const pr = predictors.find((p) => p.name === c.name)!.numeric!;
+                  return { name: c.name, coef: c.coef, mean: pr.mean, std: pr.std, min: pr.min, max: pr.max };
+                }),
+              }
+            : undefined,
         };
       }
     }

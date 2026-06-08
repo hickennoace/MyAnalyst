@@ -8,8 +8,10 @@ import { CleaningReport } from "./CleaningReport";
 import { QualityCard } from "./QualityCard";
 import { AnomalyCard } from "./AnomalyCard";
 import { TimeTrendCard } from "./TimeTrendCard";
+import { ContributionCard } from "./ContributionCard";
 import { SegmentCard } from "./SegmentCard";
 import { DriverCard } from "./DriverCard";
+import { ScenarioCard } from "./ScenarioCard";
 import { CohortCard } from "./CohortCard";
 import { ExecutiveSummary } from "./ExecutiveSummary";
 import { ActionPlanCard } from "./ActionPlanCard";
@@ -124,9 +126,25 @@ export function DashboardView({
         </Section>
       )}
 
+      {spec.contributions && spec.contributions.length > 0 && (
+        <Section title="What drove the change" subtitle="The latest period's move in the primary metric, attributed to the segments behind it — contributions sum to the total.">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {spec.contributions.map((c) => (
+              <ContributionCard key={`${c.metric}-${c.dimension}`} analysis={c} profiles={spec.profiles} />
+            ))}
+          </div>
+        </Section>
+      )}
+
       {spec.drivers && spec.drivers.drivers.length > 0 && (
         <Section title="What moves the needle" subtitle={`The factors that most influence ${spec.drivers.target}, each holding the others constant.`}>
           <DriverCard drivers={spec.drivers} />
+        </Section>
+      )}
+
+      {spec.drivers?.model && spec.drivers.model.predictors.length > 0 && (
+        <Section title="Scenario simulator" subtitle="Drag the factors to project the outcome, or set a target and see which levers reach it — modelled, not guaranteed." exclude>
+          <ScenarioCard drivers={spec.drivers} profiles={spec.profiles} />
         </Section>
       )}
 

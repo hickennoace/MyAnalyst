@@ -211,6 +211,17 @@ export interface DriverAnalysis {
   fP: number;
   n: number;
   drivers: { name: string; coef: number; beta: number; p: number; significant: boolean }[];
+  /** The fitted model + baselines, enough to run local what-if / goal-seek with no raw rows. */
+  model?: DriverModel;
+}
+
+/** Coefficients + baselines for the driver regression, so the UI can simulate outcomes client-side. */
+export interface DriverModel {
+  intercept: number;
+  targetMean: number;
+  targetStd: number;
+  /** per-predictor raw coefficient (Δtarget per +1 unit) and the observed distribution for slider bounds. */
+  predictors: { name: string; coef: number; mean: number; std: number; min: number; max: number }[];
 }
 
 export interface OutlierFact {
@@ -311,6 +322,38 @@ export interface TimeSeriesAnalysis {
   movingAvg: (number | null)[];
   best: PeriodPoint;
   worst: PeriodPoint;
+}
+
+// ── Contribution / mix-shift decomposition ────────────────────────────────────
+
+/** One segment's part in a metric's period-over-period change. Deltas sum to the total change. */
+export interface ContributionSegment {
+  name: string;
+  prev: number;
+  latest: number;
+  /** latest − prev. */
+  delta: number;
+  /** signed share of the total change (delta / totalDelta); can exceed 1 or be negative when segments offset. */
+  contributionPct: number;
+  /** share of the period total in the previous and latest periods (0..1) — the mix-shift view. */
+  sharePrev: number;
+  shareLatest: number;
+  status: "grew" | "shrank" | "new" | "lost" | "flat";
+}
+
+/** Why a metric's total moved between the two most recent periods, attributed by a dimension. */
+export interface ContributionAnalysis {
+  metric: string;
+  dimension: string;
+  cadence: Cadence;
+  prevLabel: string;
+  latestLabel: string;
+  prevTotal: number;
+  latestTotal: number;
+  totalDelta: number;
+  totalDeltaPct: number | null;
+  /** segments ranked by the absolute size of their contribution; small ones rolled into "Other". */
+  segments: ContributionSegment[];
 }
 
 // ── Segmentation ──────────────────────────────────────────────────────────────
@@ -426,6 +469,8 @@ export interface DashboardSpec {
   cohorts?: CohortAnalysis;
   /** A ranked, quantified "what to do next" action plan derived from the analysis. */
   actions?: ActionItem[];
+  /** "What drove the change" — period-over-period movement of the primary metric, attributed by dimension. */
+  contributions?: ContributionAnalysis[];
 }
 
 export interface DataStory {
