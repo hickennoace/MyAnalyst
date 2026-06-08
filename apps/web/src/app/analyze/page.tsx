@@ -7,6 +7,7 @@ import { parseFile, type SourceInfo } from "@/lib/parse";
 import { runAnalysis } from "@/lib/analyze-client";
 import { downloadCsv } from "@/lib/csv";
 import { sampleTable } from "@/lib/sample";
+import { INDUSTRY_TAGS, combinedContext } from "@/lib/industry-tags";
 import { exportPdf, exportPng } from "@/lib/export";
 import { exportDeckPdf, exportReportPdf } from "@/lib/report-pdf";
 import { loadBrand } from "@/lib/brand";
@@ -32,6 +33,7 @@ import { HistoryList } from "@/components/HistoryList";
 import { PipelineProgress } from "@/components/PipelineProgress";
 
 const CONTEXT_KEY = "quantia:context";
+const INDUSTRY_KEY = "quantia:industry";
 
 const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
 
@@ -63,13 +65,25 @@ export default function AnalyzePage() {
   const [toast, setToast] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [jobDesc, setJobDesc] = useState("");
+  const [industry, setIndustry] = useState<string | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     listHistory().then(setHistory).catch(() => {});
-    // Work-context lives only in this browser (localStorage) — never sent anywhere.
+    // Work-context + industry tag live only in this browser (localStorage) — never sent anywhere.
     setJobDesc(localStorage.getItem(CONTEXT_KEY) ?? "");
+    setIndustry(localStorage.getItem(INDUSTRY_KEY) || null);
   }, []);
+
+  function updateIndustry(key: string | null) {
+    setIndustry(key);
+    try {
+      if (key) localStorage.setItem(INDUSTRY_KEY, key);
+      else localStorage.removeItem(INDUSTRY_KEY);
+    } catch {
+      /* ignore quota */
+    }
+  }
 
   // Transient toasts auto-dismiss; errors linger a little longer than info.
   useEffect(() => {
@@ -180,6 +194,9 @@ export default function AnalyzePage() {
   ) {
     const excl = opts?.excluded ?? new Set<string>();
     const ov = opts?.overrides ?? {};
+    // Fold the chosen industry tag into the analysis context so domain detection + the AI understand
+    // the uploaded file. (The "or by industry" sample buttons are unrelated — they generate showcase data.)
+    const ctx = combinedContext(industry, jobDesc);
     setError(null);
     setBusy(true);
     // Fresh run (from upload/sample) returns to the uploader+progress view; a re-run from the
@@ -196,7 +213,7 @@ export default function AnalyzePage() {
       // so the UI never freezes even on a 200k-row file — and the progress here reflects the
       // worker's REAL stage transitions instead of a timed animation.
       setStage("Cleaning & normalizing");
-      const { spec: result, table: cleaned } = await runAnalysis(analyzedTbl, jobDesc, (s) => setStage(s), ov, activeLlmConfig() ?? undefined);
+      const { spec: result, table: cleaned } = await runAnalysis(analyzedTbl, ctx, (s) => setStage(s), ov, activeLlmConfig() ?? undefined);
       setTable(cleaned);
       setSpec(result);
       setExcluded(excl);
@@ -212,7 +229,7 @@ export default function AnalyzePage() {
             domain: result.domain.domain,
             rowCount: result.rowCount,
             columns: result.profiles.map((p) => ({ name: p.name, role: p.role, type: p.type })),
-            userContext: jobDesc || undefined,
+            userContext: ctx,
           },
           result.story.summary
         )
@@ -490,6 +507,34 @@ export default function AnalyzePage() {
                 we pick, and frames the “About this data” summary and insights around what you care about. Stored
                 only in this browser — never uploaded anywhere.
               </p>
+
+              {/* Industry tag for YOUR uploaded file — tells the engine + AI what kind of data this is. */}
+              <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-slate-500">Tag your data’s industry</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {INDUSTRY_TAGS.map((t) => {
+                  const active = industry === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => updateIndustry(active ? null : t.key)}
+                      className={`rounded-full border px-3 py-1 text-xs transition ${
+                        active
+                          ? "border-blue-400 bg-blue-500/15 text-blue-200"
+                          : "border-slate-700 text-slate-300 hover:border-blue-500/50 hover:text-blue-300"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                Optional. Tags the file you upload so the analysis and AI know what they’re looking at — separate from the
+                “try a sample” buttons above.
+              </p>
+
               <textarea
                 value={jobDesc}
                 onChange={(e) => updateContext(e.target.value)}
