@@ -33,6 +33,18 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // The on-device model (transformers.js) and its onnxruntime-node binaries are huge (~400MB) and are
+  // used ONLY client-side (WebGPU in the browser). Next's build trace would otherwise bundle them into
+  // the serverless function, blowing past Vercel's 250MB limit and failing the deploy. Exclude them from
+  // server file-tracing — the client chunks are unaffected, so the browser feature still works.
+  outputFileTracingExcludes: {
+    "*": [
+      "node_modules/@huggingface/**",
+      "node_modules/onnxruntime-node/**",
+      "**/node_modules/@huggingface/**",
+      "**/node_modules/onnxruntime-node/**",
+    ],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
