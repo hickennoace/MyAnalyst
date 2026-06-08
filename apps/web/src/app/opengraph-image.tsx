@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 // Branded social-share card (used for OpenGraph + Twitter). Next generates this at build time and
 // wires it into the metadata for every route, so links to the site preview with a real image.
@@ -6,6 +8,9 @@ import { ImageResponse } from "next/og";
 export const alt = "MyAnalyst — turn a spreadsheet into a beautiful, explained dashboard";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+
+// The brand logo, inlined as a data URI so it renders inside the OG image (Satori has no filesystem).
+const LOGO_DATA_URI = `data:image/png;base64,${readFileSync(join(process.cwd(), "public/logo.png")).toString("base64")}`;
 
 export default function Image() {
   return new ImageResponse(
@@ -27,25 +32,8 @@ export default function Image() {
       >
         {/* Brand row */}
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <div
-            style={{
-              width: "76px",
-              height: "76px",
-              borderRadius: "20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "linear-gradient(135deg, #3d8bff, #5fd2e0)",
-            }}
-          >
-            <svg width="44" height="44" viewBox="0 0 32 32" fill="none">
-              <g stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 6 L24 25.5" />
-                <path d="M8 25.5 L11.5 19 L14 21 L16 6" />
-              </g>
-              <circle cx="16" cy="6" r="2.4" fill="#fff" />
-            </svg>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_DATA_URI} width={76} height={76} alt="MyAnalyst logo" style={{ borderRadius: "20px" }} />
           <div style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.02em" }}>MyAnalyst</div>
         </div>
 
