@@ -48,6 +48,14 @@ export function buildExecutiveSummary(spec: DashboardSpec): string[] {
   if (spec.segmentation && spec.segmentation.segments.length > 1) {
     finding.push(`The data splits into ${spec.segmentation.segments.length} natural segments (e.g. ${spec.segmentation.segments[0].label.toLowerCase()}).`);
   }
+  if (spec.concentration?.length) {
+    const c = spec.concentration[0];
+    finding.push(`${c.metricIsCount ? "Volume" : c.metric} is concentrated — the top ${c.paretoCount} ${c.dimension}${c.paretoCount === 1 ? "" : "s"} hold ${Math.round(c.paretoShare * 100)}% of it.`);
+  }
+  if (spec.rfm) {
+    const champ = spec.rfm.segments.find((s) => s.key === "champions");
+    if (champ) finding.push(`RFM puts ${champ.size} ${spec.rfm.entity}s in the Champions tier (${Math.round(champ.monetaryShare * 100)}% of revenue).`);
+  }
   if (spec.anomalies?.length) {
     const total = spec.anomalies.reduce((s, a) => s + a.count, 0);
     finding.push(`${total.toLocaleString()} unusual value${total > 1 ? "s were" : " was"} flagged for review.`);

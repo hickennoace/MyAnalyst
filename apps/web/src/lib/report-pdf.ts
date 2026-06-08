@@ -167,6 +167,21 @@ function writeBody(c: Ctx, spec: DashboardSpec) {
     }
   }
 
+  if (spec.concentration?.length) {
+    heading(c, "Concentration (the 80–20)");
+    for (const cc of spec.concentration) {
+      const measure = cc.metricIsCount ? "the records" : cc.metric;
+      bullet(c, `The top ${cc.paretoCount} of ${cc.distinct} ${cc.dimension}${cc.paretoCount === 1 ? "" : "s"} (${Math.round(cc.paretoPctOfCategories * 100)}%) hold ${Math.round(cc.paretoShare * 100)}% of ${measure}; "${cc.segments[0].name}" alone is ${Math.round(cc.segments[0].share * 100)}% (Gini ${cc.gini.toFixed(2)}, ${cc.level} concentration).`);
+    }
+  }
+
+  if (spec.rfm?.segments.length) {
+    heading(c, "Customer value (RFM)");
+    for (const s of spec.rfm.segments) {
+      bullet(c, `${s.label}: ${s.size.toLocaleString()} ${spec.rfm.entity}s (${s.sharePct.toFixed(0)}%), ${(s.monetaryShare * 100).toFixed(0)}% of revenue — avg ${Math.round(s.avgRecencyDays)}d since last, ${s.avgFrequency.toFixed(1)} orders.`);
+    }
+  }
+
   heading(c, "How this was computed");
   for (const sec of buildMethodology(spec)) {
     c.pdf.setFont("helvetica", "bold").setFontSize(10).setTextColor(...INK);
@@ -267,6 +282,18 @@ export async function exportDeckPdf(spec: DashboardSpec, brand: BrandSettings = 
     (spec.actions ?? []).map((a) => a.impact)
   );
   bulletSlide("What the data is telling you", spec.insights.filter((i) => i.kind !== "summary").slice(0, 6).map((i) => i.text));
+  if (spec.concentration?.length) {
+    bulletSlide(
+      "Concentration (the 80–20)",
+      spec.concentration.map((cc) => `Top ${cc.paretoCount} of ${cc.distinct} ${cc.dimension}s hold ${Math.round(cc.paretoShare * 100)}% of ${cc.metricIsCount ? "volume" : cc.metric} (Gini ${cc.gini.toFixed(2)}).`)
+    );
+  }
+  if (spec.rfm?.segments.length) {
+    bulletSlide(
+      "Customer value (RFM)",
+      spec.rfm.segments.slice(0, 6).map((s) => `${s.label}: ${s.size} ${spec.rfm!.entity}s (${s.sharePct.toFixed(0)}%), ${(s.monetaryShare * 100).toFixed(0)}% of revenue.`)
+    );
+  }
 
   // Closing disclaimer slide
   slide(c, "Notes");
