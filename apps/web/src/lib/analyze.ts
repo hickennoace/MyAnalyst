@@ -77,9 +77,9 @@ export async function analyze(
   const relationships = buildRelationships(table, profiles);
   const rfm = analyzeRfm(table, profiles);
   stage("Detecting domain");
-  const domain = detectDomain(profiles, opts.userContext);
+  const domain = detectDomain(profiles, opts.userContext, table.rowCount);
   stage("Computing KPIs");
-  const kpis = computeKpis(table, profiles, domain.domain);
+  const kpis = computeKpis(table, profiles, domain.domain, bestSellers);
 
   // Period-over-period (MoM/YoY) for the top metrics, when there's a usable time column.
   const timeCol = profiles.find((p) => p.role === "time");

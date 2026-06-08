@@ -13,6 +13,8 @@ import type { ColumnProfile, Domain } from "./types";
 
 // Names that denote an additive flow/value (safe to sum across rows).
 const VALUE_NAME = /\b(revenue|sales?|amount|amt|turnover|gmv|spend(?:ing)?|cost|profit|gross|net|income|proceeds|booking|bookings|payment|charge|invoice|deal[_\s-]?(?:value|size)|line[_\s-]?total|sub[_\s-]?total|grand[_\s-]?total|total)\b/i;
+// Names that denote TOP-LINE REVENUE specifically (money in) — excludes cost/profit/spend.
+const REVENUE_NAME = /\b(revenue|sales?|turnover|gmv|income|proceeds|amount|amt|bookings?|net[_\s-]?sales|gross[_\s-]?sales|grand[_\s-]?total)\b/i;
 const QTY_NAME = /\b(qty|quantity|units?|orders?|count|volume|sold|pieces?|items?|tickets?|seats?|bookings?)\b/i;
 // Names that are per-row attributes — averaging is fine, summing is meaningless.
 const ATTRIBUTE_NAME = /(%|percent|\brate\b|ratio|\bavg\b|average|\bmean\b|median|margin|\bscore\b|rating|\bindex\b|\bage\b|\byear\b|\bid\b|\bno\.?\b|\bnumber\b|\bcode\b|\bzip\b|postal|phone|\blat(?:itude)?\b|\blon(?:gitude)?\b|\blng\b|tenure|\bdays?\b|temperature|\btemp\b|weight|height|\bbmi\b|distance|duration|\bgpa\b)/i;
@@ -51,9 +53,10 @@ export function revenueMetric(profiles: ColumnProfile[], grain: boolean, domain?
   if (domain === "financial-timeseries") return undefined;
   const metrics = profiles.filter(isMetric);
 
-  // 1. Columns explicitly named like an additive money value (and not an attribute) — always summable.
-  const valueNamed = metrics.filter((m) => VALUE_NAME.test(m.name) && !ATTRIBUTE_NAME.test(m.name) && !QTY_NAME.test(m.name));
-  if (valueNamed.length) return byLargestTotal(valueNamed);
+  // 1. A column named like top-line REVENUE (sales/revenue/amount/turnover) — never a cost/profit/spend,
+  //    which are summable values but NOT the money coming in. The biggest such total is the revenue.
+  const revenueNamed = metrics.filter((m) => REVENUE_NAME.test(m.name) && !ATTRIBUTE_NAME.test(m.name) && !QTY_NAME.test(m.name));
+  if (revenueNamed.length) return byLargestTotal(revenueNamed);
 
   // 2. On transaction-grain data, the price paid per row is that sale's revenue → summable.
   if (grain) {

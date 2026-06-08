@@ -1,52 +1,55 @@
 import type { ColumnProfile, Domain, DomainGuess } from "./types";
+import { isTransactionGrain } from "./semantics";
 
-// Rule-based domain detection from column names + roles. Cheap, deterministic, no LLM.
-// Domain selects which KPIs and which charts are appropriate downstream.
+// Rule-based domain detection from column names + roles + STRUCTURE. Cheap, deterministic, no LLM.
+// Domain selects which KPIs and charts are appropriate downstream, so getting it right matters: a sales
+// table with a "Price" (or "Cost") column must NOT be mistaken for a stock price-series, or the whole
+// revenue analysis is disabled. The fix: "price/volume" alone are weak financial hints, and a stream of
+// transactions (many repeating-category rows over time) is operational data, never a financial series.
 
-const SIGNALS: { domain: Domain; words: RegExp; label: string }[] = [
-  {
-    domain: "financial-timeseries",
-    words: /(price|close|open|high|low|return|volume|portfolio|asset|ticker|nav|yield|interest|balance|equity)/i,
-    label: "price/return/volume columns over time",
-  },
-  {
-    domain: "sales-operational",
-    words: /(sales|revenue|order|quantity|units|product|customer|invoice|profit|margin|sku|region|store)/i,
-    label: "sales/order/product columns",
-  },
-  {
-    domain: "marketing",
-    words: /(impression|click|ctr|conversion|campaign|channel|spend|cpc|cpm|roas|lead|session|bounce)/i,
-    label: "campaign/click/conversion columns",
-  },
-  {
-    domain: "survey",
-    words: /(rating|score|response|question|satisfaction|nps|agree|likert|respondent|feedback)/i,
-    label: "survey/rating/response columns",
-  },
-];
+// Real market-data structure — these strongly imply a financial price/return series.
+const STRONG_FINANCIAL = /(\bclose\b|\bopen\b|\bhigh\b|\blow\b|ohlc|ticker|portfolio|\bnav\b|\byield\b|dividend|\bequity\b|adj[_\s-]?close|candlestick|drawdown|coupon|maturity|cusip|isin|sharpe)/i;
+// Ambiguous: common in BOTH finance and ordinary sales — only count for finance on non-transaction data.
+const WEAK_FINANCIAL = /(\bprice\b|\bvolume\b|\breturn\b|\bbalance\b|\basset\b|\binterest\b)/i;
 
-export function detectDomain(profiles: ColumnProfile[], userContext?: string): DomainGuess {
+const SALES = /(sales|revenue|orders?|quantity|\bqty\b|\bunits?\b|product|customer|client|invoice|profit|margin|\bsku\b|region|stores?|\bprice\b|\bcost\b|discount|brand|model|make|dealer|vendor|supplier|category|shipment|warehouse|inventory|payment|transaction|deal)/i;
+const MARKETING = /(impression|click|\bctr\b|conversion|campaign|channel|spend|\bcpc\b|\bcpm\b|roas|\blead\b|session|bounce|audience|\breach\b|engagement)/i;
+const SURVEY = /(rating|\bscore\b|response|question|satisfaction|\bnps\b|agree|likert|respondent|feedback|survey)/i;
+
+export function detectDomain(profiles: ColumnProfile[], userContext?: string, rowCount?: number): DomainGuess {
   const hasTime = profiles.some((p) => p.role === "time");
   const hasMetric = profiles.some((p) => p.role === "metric");
+  const grain = rowCount !== undefined && isTransactionGrain(profiles, rowCount);
   const context = (userContext ?? "").toLowerCase();
+  const names = profiles.map((p) => p.name);
+  const count = (re: RegExp) => names.filter((n) => re.test(n)).length;
+  const ctxHit = (re: RegExp) => (context && re.test(context) ? 2 : 0);
 
-  const scores = SIGNALS.map((sig) => {
-    const matches = profiles.filter((p) => sig.words.test(p.name)).length;
-    let score = matches;
-    if (sig.domain === "financial-timeseries" && hasTime) score += 1;
-    // The user's described job/goal is a strong hint about the domain.
-    if (context && sig.words.test(context)) score += 2;
-    return { ...sig, score, matches };
-  }).sort((a, b) => b.score - a.score);
+  const strongFin = count(STRONG_FINANCIAL);
+  const weakFin = count(WEAK_FINANCIAL);
+  // Financial needs market structure: strong signals always count; weak ones (price/volume) only when the
+  // data ISN'T a stream of transactions. The time bonus applies only when there's some financial signal.
+  const finSignal = strongFin + weakFin;
+  const financialScore = strongFin * 2 + (grain ? 0 : weakFin + (hasTime && finSignal > 0 ? 1 : 0)) + ctxHit(STRONG_FINANCIAL);
 
-  const top = scores[0];
+  // Operational/sales: keyword matches plus a structural bonus — a transaction stream IS sales/ops data.
+  const salesScore = count(SALES) + (grain ? 1 : 0) + ctxHit(SALES);
+  const marketingScore = count(MARKETING) + ctxHit(MARKETING);
+  const surveyScore = count(SURVEY) + ctxHit(SURVEY);
+
+  const scored = [
+    { domain: "sales-operational" as Domain, score: salesScore, label: "sales/order/product columns" },
+    { domain: "financial-timeseries" as Domain, score: financialScore, label: "price/return/volume columns over time" },
+    { domain: "marketing" as Domain, score: marketingScore, label: "campaign/click/conversion columns" },
+    { domain: "survey" as Domain, score: surveyScore, label: "survey/rating/response columns" },
+  ].sort((a, b) => b.score - a.score);
+
+  const top = scored[0];
   if (top && top.score > 0) {
-    const confidence = Math.min(0.95, 0.4 + top.score * 0.18);
     return {
       domain: top.domain,
-      confidence,
-      reason: `Detected ${top.label} (${top.matches} matching column${top.matches === 1 ? "" : "s"}).`,
+      confidence: Math.min(0.95, 0.4 + top.score * 0.16),
+      reason: `Detected ${top.label}.`,
     };
   }
 

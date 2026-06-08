@@ -1,4 +1,4 @@
-import type { ColumnProfile, Domain, Kpi, Table } from "./types";
+import type { BestSellers, ColumnProfile, Domain, Kpi, Table } from "./types";
 import { numericColumn } from "./profile";
 import { cagr, mean, std } from "./stats";
 import { analyzeTimeSeries, trimPartialTail } from "./timeseries";
@@ -39,7 +39,19 @@ export function primaryMetric(profiles: ColumnProfile[]): ColumnProfile | undefi
   return [...metrics].sort((a, b) => (b.numeric!.std || 0) - (a.numeric!.std || 0))[0];
 }
 
-export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Domain): Kpi[] {
+/** A rate/score/ratio metric whose AVERAGE is itself the KPI (satisfaction, conversion, margin %). */
+function isRateLike(name: string): boolean {
+  return /(\brate\b|ratio|\bscore\b|rating|csat|\bnps\b|satisfaction|margin|percent|%|conversion|\bctr\b|\bcpc\b|\broi\b|\baov\b|utilization|occupancy|accuracy|efficiency)/i.test(name);
+}
+
+/** A cost-of-goods column to net against revenue for gross margin (COGS, not opex/marketing spend). */
+function costMetric(profiles: ColumnProfile[], revenue?: ColumnProfile): ColumnProfile | undefined {
+  return profiles.find(
+    (p) => p.role === "metric" && p.numeric && p.name !== revenue?.name && (p.numeric.sum ?? 0) > 0 && /\b(cogs|cost|costs|cost[_\s-]?of[_\s-]?goods)\b/i.test(p.name)
+  );
+}
+
+export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Domain, bestSellers?: BestSellers): Kpi[] {
   const kpis: Kpi[] = [];
   const timeCol = profiles.find((p) => p.role === "time");
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
@@ -90,10 +102,10 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
 
     // Revenue trend — on revenue SUMMED PER MONTH (the honest version), not per-row noise. Monthly so a
     // dense stream of daily transactions reads as a real trend, and the incomplete final period is trimmed.
-    if (timeCol) {
-      const ts = analyzeTimeSeries(table, timeCol.name, revenue.name, "monthly");
-      const series = ts ? trimPartialTail(ts.periods.map((p) => p.value)) : [];
-      if (ts && series.length >= 2) {
+    const monthlyTs = timeCol ? analyzeTimeSeries(table, timeCol.name, revenue.name, "monthly") : undefined;
+    if (monthlyTs) {
+      const series = trimPartialTail(monthlyTs.periods.map((p) => p.value));
+      if (series.length >= 2) {
         const last = series[series.length - 1];
         const yoy = series.length > 12;
         const base = yoy ? series[series.length - 13] : series[0];
@@ -111,6 +123,47 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
         }
       }
     }
+
+    // ── Derived KPIs that lead to a CONCLUSION, not just describe the data. ──
+
+    // Gross margin — the single most decision-relevant number when costs are present.
+    const cost = costMetric(profiles, revenue);
+    if (cost && n.sum > 0) {
+      const margin = (n.sum - cost.numeric!.sum) / n.sum;
+      if (Number.isFinite(margin)) {
+        kpis.push({
+          id: "kpi-margin",
+          name: "Gross margin",
+          value: `${(margin * 100).toFixed(1)}%`,
+          trend: margin,
+          howComputed: `(total ${revenue.name} − total ${cost.name}) ÷ total ${revenue.name}.`,
+          relevance: 0.92,
+        });
+      }
+    }
+
+    // Top performer — where the revenue actually concentrates (answers "what carries the business").
+    if (bestSellers && bestSellers.topRevenue.revenueShare >= 0.15) {
+      const t = bestSellers.topRevenue;
+      kpis.push({
+        id: "kpi-topseller",
+        name: `Top ${bestSellers.dimension}`,
+        value: `${t.name} · ${Math.round(t.revenueShare * 100)}%`,
+        howComputed: `"${t.name}" is the largest ${bestSellers.dimension} by ${bestSellers.metric} — ${Math.round(t.revenueShare * 100)}% of the total.`,
+        relevance: 0.86,
+      });
+    }
+
+    // Peak period — when the business does its best, a hook for seasonality/planning.
+    if (monthlyTs && monthlyTs.periods.length >= 4 && monthlyTs.best) {
+      kpis.push({
+        id: "kpi-bestmonth",
+        name: "Best month",
+        value: `${monthlyTs.best.label} · ${(isMoney ? fmtCurrency : fmtNum)(monthlyTs.best.value)}`,
+        howComputed: `The single month with the highest total ${revenue.name}.`,
+        relevance: 0.6,
+      });
+    }
   } else {
     kpis.push({
       id: "kpi-rows",
@@ -121,7 +174,10 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
     });
   }
 
-  // ── Per-metric KPIs, by what the number MEANS. Sum flows (values, quantities); average attributes. ──
+  // ── Per-metric KPIs — but only the ones that lead somewhere. Sum flows (values, quantities). For
+  //    attributes, surface the average ONLY when it's a real KPI (a rate/score like satisfaction) — a
+  //    bare "Average customer age" is noise next to revenue, so it's dropped when a revenue headline
+  //    exists. With no revenue, descriptive averages ARE the analysis, so they stay.
   for (const m of metrics) {
     if (m.name === revenue?.name || m.name === qty?.name) continue; // already a headline KPI
     const n = m.numeric!;
@@ -134,18 +190,21 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
         value: fmt(n.sum),
         unit: isMoney ? "USD" : undefined,
         howComputed: `Sum of all ${m.name} values.`,
-        relevance: isMoney ? 0.7 : 0.6,
+        relevance: isMoney ? 0.7 : 0.55,
+      });
+      continue;
+    }
+    // Attribute: keep its average only if it's a meaningful rate/score, or there's no revenue headline.
+    if (isRateLike(m.name) || !revenue) {
+      kpis.push({
+        id: `kpi-avg-${m.name}`,
+        name: `Average ${m.name}`,
+        value: fmt(n.mean),
+        unit: isMoney ? "USD" : undefined,
+        howComputed: `Mean of ${m.name} (median ${fmt(n.median)}, σ = ${fmtNum(n.std)}).`,
+        relevance: isRateLike(m.name) ? 0.62 : 0.4,
       });
     }
-    // An average is always meaningful; for attributes (age, unit price, rating) it's the ONLY total worth showing.
-    kpis.push({
-      id: `kpi-avg-${m.name}`,
-      name: `Average ${m.name}`,
-      value: fmt(n.mean),
-      unit: isMoney ? "USD" : undefined,
-      howComputed: `Mean of ${m.name} (median ${fmt(n.median)}, σ = ${fmtNum(n.std)}).`,
-      relevance: isAdditive(m, revenue) ? 0.5 : 0.45,
-    });
   }
 
   // ── Financial price-series KPIs (growth / CAGR / volatility / Sharpe) — only where summing is wrong
