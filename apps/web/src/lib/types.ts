@@ -137,6 +137,8 @@ export interface InsightContext {
   associations: Association[];
   /** multiple-regression driver analysis (when ≥2 numeric predictors exist) */
   drivers?: DriverAnalysis;
+  /** the most concentrated measure×category views ("80–20"), for a concentration-risk insight */
+  concentration?: Concentration[];
   /** true when the dataset is small enough that estimates are unstable (n < 30) */
   smallSample: boolean;
 }

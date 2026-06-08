@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TemplatedInsightProvider } from "./templated";
-import type { CategoryFact, InsightContext } from "../types";
+import type { CategoryFact, Concentration, InsightContext } from "../types";
 
 function ctxWith(category: CategoryFact): InsightContext {
   return {
@@ -71,5 +71,43 @@ describe("templated categorical insight phrasing", () => {
     expect(text).toContain("just ahead");
     expect(text).not.toContain("dominates");
     expect(text).not.toContain("distant second");
+  });
+});
+
+describe("templated concentration insight", () => {
+  const conc: Concentration = {
+    dimension: "Customer",
+    metric: "Revenue",
+    metricIsCount: false,
+    total: 100000,
+    distinct: 40,
+    segments: [
+      { name: "Acme Corp", value: 22000, share: 0.22, cumShare: 0.22, rank: 1 },
+      { name: "Globex", value: 15000, share: 0.15, cumShare: 0.37, rank: 2 },
+    ],
+    paretoCount: 8,
+    paretoShare: 0.81,
+    paretoPctOfCategories: 0.2,
+    topShare: 0.22,
+    gini: 0.66,
+    hhi: 0.18,
+    level: "high",
+  };
+
+  it("emits a high-confidence concentration-risk finding for a skewed measure", async () => {
+    const ctx: InsightContext = { ...ctxWith({ column: "x", total: 1, distinct: 1, top: [] }), categories: [], concentration: [conc] };
+    const insights = await new TemplatedInsightProvider().generate(ctx);
+    const ins = insights.find((i) => i.id.startsWith("ins-conc-"))!;
+    expect(ins).toBeDefined();
+    expect(ins.confidence).toBe("high");
+    expect(ins.text).toContain("top 8 of 40");
+    expect(ins.text).toContain("81.0%");
+    expect(ins.text).toContain("Acme Corp");
+    expect(ins.text).toMatch(/risk worth managing/i);
+  });
+
+  it("stays silent when nothing is concentrated", async () => {
+    const insights = await new TemplatedInsightProvider().generate(ctxWith({ column: "x", total: 1, distinct: 1, top: [] }));
+    expect(insights.find((i) => i.id.startsWith("ins-conc-"))).toBeUndefined();
   });
 });

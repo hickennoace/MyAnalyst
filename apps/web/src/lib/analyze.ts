@@ -95,7 +95,7 @@ export async function analyze(
   stage("Running statistics");
   const charts = opts.skipCharts ? [] : recommendCharts(table, profiles);
 
-  const ctx = buildInsightContext(table, profiles, kpis, domain.domain);
+  const ctx = buildInsightContext(table, profiles, kpis, domain.domain, concentration);
   ctx.userContext = opts.userContext?.trim() || undefined;
   stage("Writing insights");
   const provider = getInsightProvider(opts.llm);
@@ -209,7 +209,8 @@ function buildInsightContext(
   table: Table,
   profiles: ReturnType<typeof profileTable>,
   kpis: DashboardSpec["kpis"],
-  domain: InsightContext["domain"]
+  domain: InsightContext["domain"],
+  concentration: InsightContext["concentration"]
 ): InsightContext {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   const dims = profiles.filter((p) => p.role === "dimension");
@@ -447,6 +448,7 @@ function buildInsightContext(
     groupComparisons: groupComparisons.slice(0, 4),
     associations: associations.slice(0, 4),
     drivers,
+    concentration: concentration?.slice(0, 2),
     smallSample: table.rowCount < 30,
   };
 }

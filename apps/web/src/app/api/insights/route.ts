@@ -298,13 +298,14 @@ function collectValidCites(ctx: InsightContext): Set<string> {
   for (const g of ctx.groupComparisons ?? []) ids.add(`anova:${g.metric}~${g.dimension}`);
   for (const a of ctx.associations ?? []) ids.add(`assoc:${a.a}~${a.b}`);
   if (ctx.drivers) ids.add("drivers");
+  for (const c of ctx.concentration ?? []) ids.add(`concentration:${c.dimension}`);
   return ids;
 }
 
 function buildPrompt(ctx: InsightContext, validCites: Set<string>) {
   const system = [
     "You are a principal data analyst writing the headline findings for a busy decision-maker. Plain, jargon-free language — but sharp and specific, like a trusted advisor who respects the reader's time and tells them what actually matters and why.",
-    "You are given ONLY pre-computed statistics (KPIs, correlations, a regression of drivers, trends, outliers, group comparisons) — never raw rows.",
+    "You are given ONLY pre-computed statistics (KPIs, correlations, a regression of drivers, trends, outliers, group comparisons, and concentration/Pareto facts) — never raw rows.",
     "Each insight must EARN its place. A strong insight does three things in 1–2 tight sentences: leads with the concrete number, says what it MEANS for the reader, and points to one thing to do or check. Be specific — name the segment, the driver, the direction, the size of the gap.",
     "Hard rules:",
     "1. GROUNDING: state only numbers that appear in the context. Never invent, re-round, or estimate a figure. Plain arithmetic of given numbers (a difference, a %, a share) is fine; a brand-new number is not.",

@@ -102,6 +102,26 @@ export class TemplatedInsightProvider implements InsightProvider {
       });
     }
 
+    // 5b. Concentration / Pareto — a vital few categories carrying most of a measure is a real finding
+    //     (and often a risk). Only surface genuinely uneven distributions (the lib already gates on Gini).
+    const conc = ctx.concentration?.find((c) => c.level !== "low");
+    if (conc) {
+      const measure = conc.metricIsCount ? "the records" : conc.metric;
+      const biggest = conc.segments[0];
+      out.push({
+        id: `ins-conc-${conc.dimension}-${conc.metric}`,
+        kind: "composition",
+        confidence: conc.level === "high" ? "high" : "medium",
+        cites: [`concentration:${conc.dimension}`],
+        text:
+          `A few ${conc.dimension}s carry most of ${measure}: the top ${conc.paretoCount} of ${conc.distinct} ` +
+          `(${pct(conc.paretoPctOfCategories)}) account for ${pct(conc.paretoShare)}, and "${biggest.name}" alone is ${pct(biggest.share)}. ` +
+          (conc.level === "high"
+            ? `That dependence on a few ${conc.dimension}s is a risk worth managing — protect them and grow the long tail.`
+            : `Worth knowing where the weight sits when you plan.`),
+      });
+    }
+
     // 6. Most common category value (e.g. the top reason / segment). Phrasing adapts to the ACTUAL
     //    distribution: only call it "dominates" when it really does, and only "a distant second" when
     //    there's a real gap — a near-even split is described as such, not over-claimed.
