@@ -507,6 +507,35 @@ describe("Wave 4 — statistical reasoning", () => {
     expect(r.answer).toMatch(/top \d+ of 5 Products/i);
   });
 
+  it("answers 'who are my best customers' with an RFM segment summary", () => {
+    const rows: Record<string, unknown>[] = [];
+    const asOf = new Date("2024-06-01");
+    for (let c = 0; c < 12; c++) {
+      const champ = c < 4;
+      const txns = champ ? 6 : 1;
+      for (let t = 0; t < txns; t++) {
+        const daysAgo = champ ? t * 5 : 300 + c * 5;
+        rows.push({
+          CustomerID: `C${c}`,
+          Date: new Date(asOf.getTime() - daysAgo * 86_400_000).toISOString().slice(0, 10),
+          Amount: champ ? 500 : 20,
+        });
+      }
+    }
+    const t: Table = { name: "tx.csv", columns: ["CustomerID", "Date", "Amount"], rows, rowCount: rows.length };
+    const r = answerQuestion("who are my best customers?", t, profileTable(t));
+    expect(r.ok).toBe(true);
+    expect(r.answer).toMatch(/recency, frequency, and spend/i);
+    expect(r.answer).toMatch(/Champions/);
+    expect(r.method).toMatch(/RFM/);
+  });
+
+  it("explains when RFM can't run for lack of transaction shape", () => {
+    const r = answerQuestion("who are my best customers?", table, profiles);
+    expect(r.ok).toBe(false);
+    expect(r.answer).toMatch(/customer\/account id, a date, and a spend/i);
+  });
+
   it("finds the strongest correlate of a single named metric", () => {
     // Sales tracks Spend strongly but with enough noise to stay below the 0.98 "redundant/derived" cutoff;
     // Noise is unrelated. So the strongest *real* correlate of Spend should be Sales.

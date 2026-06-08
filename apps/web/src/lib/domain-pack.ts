@@ -30,6 +30,9 @@ export function domainSuggestions(domain: Domain, profiles: ColumnProfile[]): st
   const d = dims[0]?.name;
   // A column with enough distinct values to have a "vital few" story (a category or an entity id).
   const groupCol = profiles.find((p) => (p.role === "dimension" || p.role === "identifier") && p.distinctCount >= 4)?.name;
+  // Transaction shape (a customer-ish id + a date + a value) → RFM "best customers" is answerable.
+  const hasCustomer = profiles.some((p) => /customer|client|account|member|subscriber|user/i.test(p.name) && p.distinctCount >= 8);
+  const rfmReady = hasCustomer && !!time && !!m;
 
   const out: string[] = [];
   const add = (s?: string | false) => {
@@ -45,6 +48,7 @@ export function domainSuggestions(domain: Domain, profiles: ColumnProfile[]): st
       break;
     case "sales-operational":
       if (d && m) add(`which ${d} has the highest ${m}`);
+      if (rfmReady) add(`who are my best customers`);
       if (m && groupCol) add(`how concentrated is ${m} across ${groupCol}`);
       if (m && d) add(`average ${m} by ${d}`);
       if (time && m) add(`how did ${m} change over time`);
@@ -67,6 +71,7 @@ export function domainSuggestions(domain: Domain, profiles: ColumnProfile[]): st
       if (m) add(`total ${m}`);
       if (m && d) add(`average ${m} by ${d}`);
       if (d && m) add(`which ${d} has the highest ${m}`);
+      if (rfmReady) add(`who are my best customers`);
       if (m && groupCol) add(`how concentrated is ${m} across ${groupCol}`);
       if (m && m2) add(`correlation between ${m} and ${m2}`);
       if (time && m) add(`how did ${m} change over time`);

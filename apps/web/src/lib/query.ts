@@ -7,6 +7,7 @@ import { aggregateCount, buildChart, buildComparisonChart, buildCrossTabChart, t
 import { parseChartRequest } from "./nl-chart";
 import { sortByTime } from "./kpi";
 import { concentrationFor } from "./concentration";
+import { analyzeRfm } from "./rfm";
 import { activeLlmConfig } from "./llm-settings";
 import { verifyAnswerGrounding, type GroundingResult } from "./grounding";
 
@@ -33,6 +34,8 @@ const CATEGORY_HINT = /(reason|category|type|status|segment|group|class|gender|c
 const SHARE_SIGNAL = /\bwhat\s+(?:%|percent|percentage|fraction|proportion|share)\b|\b(?:percent|percentage|proportion|fraction|share)\s+of\b|\bhow much of\b/;
 // Concentration / Pareto phrasing: "80–20", "how concentrated", "the vital few", "top N drive most of …".
 const CONCENTRATION_SIGNAL = /(concentrat|pareto|\b80\s*[\/\- ]\s*20\b|vital few|lion'?s share|how (?:concentrated|spread out)|top \w+\b[^?]*\b(?:account|make up|drive|driving|represent|come from|comes from|generate)|\b(?:drive|drives|account for|accounts for|generate|generates|make up|makes up|represent|represents)\s+(?:most|the most|the bulk|the majority)\b|(?:most|majority|bulk) of [a-z %]+ (?:come|comes) from)/;
+// RFM / customer-value phrasing: "best customers", "who's at risk", "customer segments", "rfm".
+const RFM_SIGNAL = /\brfm\b|\b(?:best|top|most valuable|loyal|at[- ]?risk|churn(?:ing|ed)?|dormant|lapsed|new) customers\b|customer (?:segments?|value|tiers?)|who are my .*customers|champions/;
 
 // "Ask your data" — a heuristic natural-language Q&A engine. No LLM, no key. It maps plain-English
 // questions to exact computations over the local data (aggregates, group-bys, rankings, correlation,
@@ -414,6 +417,41 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         };
       }
     }
+  }
+
+  // 0.65 RFM / customer value: "who are my best customers?", "which customers are at risk?", "show me
+  // the customer segments". Scores entities on Recency/Frequency/Monetary and reports the segment mix.
+  // Needs transaction-shaped data (id + date + value); otherwise says so plainly rather than guessing.
+  if (RFM_SIGNAL.test(lower)) {
+    const rfm = analyzeRfm(view, profiles);
+    if (rfm) {
+      const champ = rfm.segments.find((s) => s.key === "champions");
+      const risk = rfm.segments.find((s) => s.key === "at-risk");
+      const top = rfm.segments[0];
+      const parts: string[] = [
+        `I scored your ${rfm.customers.toLocaleString()} ${rfm.entity}s on recency, frequency, and spend (${rfm.valueColumn}, as of ${rfm.asOf}).`,
+      ];
+      if (champ) parts.push(`Champions — recent, frequent, high-spend — are ${champ.size} ${rfm.entity}s (${champ.sharePct.toFixed(0)}%) and ${(champ.monetaryShare * 100).toFixed(0)}% of revenue.`);
+      parts.push(`"${top.label}" is the most valuable segment by total spend.`);
+      if (risk && risk.size > 0) parts.push(`Watch the ${risk.size} At Risk ${rfm.entity}s (${(risk.monetaryShare * 100).toFixed(0)}% of revenue) — they were valuable but have gone quiet; a win-back is the clearest opportunity.`);
+      let chart: ChartSpec | undefined;
+      try {
+        chart = buildComparisonChart(`Revenue by RFM segment`, "sum", rfm.segments.map((s) => [s.label, s.totalMonetary] as [string, number]));
+      } catch {
+        chart = undefined;
+      }
+      return {
+        ok: true,
+        answer: parts.join(" "),
+        chart,
+        method: `RFM: scored each ${rfm.entity} on recency (days since last ${rfm.dateColumn}), frequency (transaction count), and monetary (${rfm.valueColumn} sum) into 1–5 quintiles across ${rowsNote(view, table, filter)}, then mapped scores to named value segments.`,
+      };
+    }
+    // Intent was clearly RFM but the data isn't transaction-shaped — say why instead of misfiring.
+    return {
+      ok: false,
+      answer: "RFM customer segmentation needs three things in the data: a customer/account id, a date, and a spend (or value) column. I couldn't find all three here, so I can't score recency, frequency, and monetary value.",
+    };
   }
 
   // 0.7 Two-dimension breakdown: "revenue by region and product", "orders by status and channel".
