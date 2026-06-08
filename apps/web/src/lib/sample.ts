@@ -88,17 +88,24 @@ function saasData(): Gen {
 function ecommerceData(): Gen {
   const cats = subset(["Electronics", "Apparel", "Home", "Beauty", "Sports", "Toys"], 4);
   const channels = subset(["Web", "Mobile App", "Marketplace", "In-Store"], 3);
-  const n = randInt(90, 150);
+  const n = randInt(120, 180);
   const start = Date.UTC(2024, 0, 1);
+  // A pool of customers with a power-law buying habit: a small "heavy" tier places most orders (and the
+  // bigger baskets), a long tail buys once. Skewing rand()² toward 0 makes low-index customers recur —
+  // so the RFM and revenue-concentration cards have a real Champions-vs-one-timers story to tell.
+  const customerCount = randInt(34, 46);
+  const heavy = (i: number) => i < customerCount * 0.2; // top ~20% are the whales
   const rows: Row[] = [];
   for (let i = 0; i < n; i++) {
+    const cust = Math.floor(customerCount * rand() * rand()); // bias toward the heavy tier
     const category = pick(cats);
-    const qty = randInt(1, 6);
+    const qty = heavy(cust) ? randInt(2, 9) : randInt(1, 4);
     const unit = 12 + cats.indexOf(category) * 9 + randInt(0, 40);
     const discount = pick([0, 0, 0, 5, 10, 15, 20]);
     const gross = qty * unit;
     rows.push({
-      "Order Date": maybeMessyDate(isoDate(start, 2, i), i),
+      "Order Date": maybeMessyDate(isoDate(start, 1, i), i),
+      Customer: `CUST-${String(1000 + cust).padStart(4, "0")}`,
       Category: category,
       Channel: pick(channels),
       Quantity: qty,
@@ -106,7 +113,7 @@ function ecommerceData(): Gen {
       Total: money(gross * (1 - discount / 100)),
     });
   }
-  return { name: "sample-orders.csv", columns: ["Order Date", "Category", "Channel", "Quantity", "Discount %", "Total"], rows, numericKey: "Quantity", catKey: "Category" };
+  return { name: "sample-orders.csv", columns: ["Order Date", "Customer", "Category", "Channel", "Quantity", "Discount %", "Total"], rows, numericKey: "Quantity", catKey: "Category" };
 }
 
 function marketingData(): Gen {

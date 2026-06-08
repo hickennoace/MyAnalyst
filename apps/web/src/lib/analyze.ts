@@ -31,6 +31,9 @@ import { buildTextAnalyses } from "./text-analytics";
 import { buildCaveats } from "./caveats";
 import { segmentRows } from "./segment";
 import { analyzeCohorts } from "./cohort";
+import { analyzeConcentration } from "./concentration";
+import { buildRelationships } from "./relationships";
+import { analyzeRfm } from "./rfm";
 import { getInsightProvider } from "./insights";
 import { llmEnabled, sharpenStory } from "./insights/humanize";
 import type { LlmConfig } from "./llm-settings";
@@ -66,6 +69,9 @@ export async function analyze(
   const anomalies = detectAnomalies(table, profiles);
   const segmentation = segmentRows(table, profiles);
   const cohorts = analyzeCohorts(table, profiles);
+  const concentration = analyzeConcentration(table, profiles);
+  const relationships = buildRelationships(table, profiles);
+  const rfm = analyzeRfm(table, profiles);
   stage("Detecting domain");
   const domain = detectDomain(profiles, opts.userContext);
   stage("Computing KPIs");
@@ -136,6 +142,9 @@ export async function analyze(
     contributions: contributions.length ? contributions : undefined,
     textAnalysis: textAnalysis.length ? textAnalysis : undefined,
     caveats: (() => { const c = buildCaveats(profiles); return c.length ? c : undefined; })(),
+    concentration: concentration.length ? concentration : undefined,
+    relationships,
+    rfm,
     smallSample: table.rowCount < 30 ? true : undefined,
   };
 }

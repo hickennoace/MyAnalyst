@@ -393,6 +393,107 @@ export interface Segmentation {
   sampled?: number;
 }
 
+// ── Concentration / Pareto (80–20) ──────────────────────────────────────────────
+
+/** One category's slice of a measure, with its share and the running cumulative share. */
+export interface ConcentrationSegment {
+  name: string;
+  /** the measure total (or row count) for this category. */
+  value: number;
+  /** value / grand total, 0..1. */
+  share: number;
+  /** cumulative share through this row (sorted largest-first), 0..1. */
+  cumShare: number;
+  /** 1-based position in the sorted ranking. */
+  rank: number;
+  /** true for the rolled-up long tail ("Other") row. */
+  isOther?: boolean;
+}
+
+/** How concentrated a measure is across the values of one categorical/identifier column. */
+export interface Concentration {
+  dimension: string;
+  /** the measure being concentrated; "row count" when counting rows. */
+  metric: string;
+  metricIsCount: boolean;
+  /** grand total of the measure across all categories. */
+  total: number;
+  /** number of distinct categories. */
+  distinct: number;
+  /** largest categories first, with the long tail rolled into a final "Other" row. */
+  segments: ConcentrationSegment[];
+  /** how many of the top categories it takes to reach 80% of the total. */
+  paretoCount: number;
+  /** the actual cumulative share at paretoCount (≥ 0.8 unless the whole set is below it). */
+  paretoShare: number;
+  /** paretoCount / distinct — the "vital few" as a fraction of all categories. */
+  paretoPctOfCategories: number;
+  /** share held by the single largest category, 0..1. */
+  topShare: number;
+  /** Gini coefficient across categories (0 = perfectly even, → 1 = one category holds everything). */
+  gini: number;
+  /** Herfindahl–Hirschman index = Σ share² (1/distinct = even, 1 = a single category). */
+  hhi: number;
+  level: "high" | "moderate" | "low";
+}
+
+// ── Relationship explorer (full correlation matrix) ──────────────────────────────
+
+/** One numeric pair's relationship, with significance, CI, and a redundancy flag. */
+export interface RelationshipPair {
+  a: string;
+  b: string;
+  r: number;
+  strength: "strong" | "moderate" | "weak";
+  p: number;
+  significant: boolean;
+  ciLow: number;
+  ciHigh: number;
+  n: number;
+  /** near-perfect or name-subset pairs that are almost certainly derived/duplicate, not findings. */
+  redundant: boolean;
+}
+
+/** The full pairwise correlation matrix over the numeric columns, for an interactive heatmap. */
+export interface RelationshipMatrix {
+  /** numeric column names, in matrix row/column order. */
+  columns: string[];
+  /** symmetric r matrix; diagonal = 1. NaN where a pair had too few paired points. */
+  matrix: number[][];
+  /** every unique pair (i<j), strongest |r| first. */
+  pairs: RelationshipPair[];
+}
+
+// ── RFM customer segmentation ────────────────────────────────────────────────────
+
+/** One RFM segment (Champions, Loyal, At-Risk, …) with its averaged scores and value. */
+export interface RfmSegment {
+  key: string;
+  label: string;
+  /** short plain-language description of who these customers are. */
+  blurb: string;
+  size: number;
+  sharePct: number;
+  avgRecencyDays: number;
+  avgFrequency: number;
+  avgMonetary: number;
+  totalMonetary: number;
+  /** this segment's share of total monetary value, 0..1. */
+  monetaryShare: number;
+}
+
+/** Recency–Frequency–Monetary segmentation of an entity (customer) by transaction-shaped data. */
+export interface RfmAnalysis {
+  entity: string;
+  dateColumn: string;
+  valueColumn: string;
+  /** the most recent date in the data — recency is measured back from here. */
+  asOf: string;
+  customers: number;
+  /** segments ranked by total monetary value, largest first. */
+  segments: RfmSegment[];
+}
+
 // ── Action report ─────────────────────────────────────────────────────────────
 
 /** One prioritized, grounded "do this next" recommendation derived from the analysis. */
@@ -521,6 +622,12 @@ export interface DashboardSpec {
   textAnalysis?: TextAnalysis[];
   /** "Read with care" flags propagated from the data-quality scorecard onto the analysis. */
   caveats?: Caveat[];
+  /** Pareto / concentration: how unevenly a measure is spread across its categories ("80–20"). */
+  concentration?: Concentration[];
+  /** Full pairwise correlation matrix over the numeric columns, for the interactive relationship explorer. */
+  relationships?: RelationshipMatrix;
+  /** RFM customer segmentation, when the data is transaction-shaped (entity id + date + value). */
+  rfm?: RfmAnalysis;
   /** True when the dataset is small enough (n < 30) that estimates are unstable. */
   smallSample?: boolean;
 }

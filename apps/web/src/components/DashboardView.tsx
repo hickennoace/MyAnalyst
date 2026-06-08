@@ -15,6 +15,9 @@ import { TimeTrendCard } from "./TimeTrendCard";
 import { ContributionCard } from "./ContributionCard";
 import { ThemesCard } from "./ThemesCard";
 import { SegmentCard } from "./SegmentCard";
+import { ConcentrationCard } from "./ConcentrationCard";
+import { RfmCard } from "./RfmCard";
+import { RelationshipCard } from "./RelationshipCard";
 import { DriverCard } from "./DriverCard";
 import { ScenarioCard } from "./ScenarioCard";
 import { CohortCard } from "./CohortCard";
@@ -50,12 +53,15 @@ export function DashboardView({
       spec.insights.length > 0 ||
       !!spec.textAnalysis?.length ||
       (spec.segmentation?.segments.length ?? 0) > 1 ||
+      !!spec.concentration?.length ||
+      !!spec.rfm?.segments.length ||
       !!spec.anomalies?.length,
     trends:
       !!spec.timeAnalysis?.length ||
       !!spec.contributions?.length ||
       !!(spec.drivers && spec.drivers.drivers.length > 0) ||
       (spec.cohorts?.cohorts.length ?? 0) > 1 ||
+      (spec.relationships?.columns.length ?? 0) >= 2 ||
       spec.charts.length > 0,
     explore: !!table,
   };
@@ -189,6 +195,18 @@ export function DashboardView({
             </Section>
           )}
 
+          {spec.concentration && spec.concentration.length > 0 && (
+            <Section title="The 80–20" subtitle="How concentrated each measure is — whether a vital few categories carry the whole number (a risk worth knowing).">
+              <ConcentrationCard concentration={spec.concentration} profiles={spec.profiles} />
+            </Section>
+          )}
+
+          {spec.rfm && spec.rfm.segments.length > 0 && (
+            <Section title="Customer value (RFM)" subtitle="Customers grouped by how recently, how often, and how much they buy — your Champions through to those slipping away.">
+              <RfmCard rfm={spec.rfm} />
+            </Section>
+          )}
+
           {spec.anomalies && spec.anomalies.length > 0 && (
             <Section title="Anomalies &amp; outliers" subtitle="Unusual values that can skew averages — flagged so you can verify or exclude them.">
               <AnomalyCard anomalies={spec.anomalies} profiles={spec.profiles} />
@@ -231,6 +249,12 @@ export function DashboardView({
           {spec.cohorts && spec.cohorts.cohorts.length > 1 && (
             <Section title="Cohort retention" subtitle="How well each cohort sticks around over time — the heartbeat of recurring-revenue data.">
               <CohortCard cohorts={spec.cohorts} />
+            </Section>
+          )}
+
+          {spec.relationships && spec.relationships.columns.length >= 2 && (
+            <Section title="How your numbers relate" subtitle="A correlation heatmap of every numeric pair — click any cell to drill into the scatter, strength, and significance.">
+              <RelationshipCard relationships={spec.relationships} table={table} profiles={spec.profiles} />
             </Section>
           )}
 

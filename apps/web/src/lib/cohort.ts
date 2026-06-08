@@ -13,7 +13,7 @@ const MAX_OFFSETS = 12;
 // Match entity-ish column names even when concatenated (CustomerID, user_id) — no \b, since there's no
 // word boundary inside "CustomerID". A false positive is harmless: the recurrence gate below drops any
 // "entity" whose rows don't actually repeat over time.
-function looksLikeEntity(name: string): boolean {
+export function looksLikeEntity(name: string): boolean {
   const n = name.toLowerCase().replace(/[\s_-]/g, "");
   return /customer|user|account|member|client|subscriber|email|uuid|guid|person|patient|player|device|session/.test(n) || /id$/.test(n);
 }
