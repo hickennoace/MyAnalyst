@@ -134,6 +134,19 @@ export function QueryBox({
                         ✨ AI-written · numbers computed locally from your data
                       </p>
                     )}
+                    {/* Numeric grounding signal (W3.6): vouch for an AI answer whose figures all trace
+                        back to the data, or gently flag any that couldn't be verified. */}
+                    {t.result.grounding && t.result.grounding.salient > 0 && (
+                      t.result.grounding.unverified.length === 0 ? (
+                        <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-emerald-300/80">
+                          ✓ Every figure traces back to your data
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-amber-300/90">
+                          ⚠ Couldn’t verify: {t.result.grounding.unverified.join(", ")} — double-check before relying on {t.result.grounding.unverified.length > 1 ? "them" : "it"}
+                        </p>
+                      )
+                    )}
                     {/* Show the math: an auditable account of exactly how the number was computed. */}
                     {t.result.method && (
                       <details className="group mt-2">

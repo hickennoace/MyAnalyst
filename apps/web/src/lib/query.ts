@@ -5,6 +5,7 @@ import { aggregateCount, buildChart, buildComparisonChart, type ChartRequest } f
 import { parseChartRequest } from "./nl-chart";
 import { sortByTime } from "./kpi";
 import { activeLlmConfig } from "./llm-settings";
+import { verifyAnswerGrounding, type GroundingResult } from "./grounding";
 
 // ── AI-enhanced answers ────────────────────────────────────────────────────────
 // When the optional LLM is enabled (NEXT_PUBLIC_LLM_ENABLED=1), `answerQuestionAI` keeps the exact
@@ -17,6 +18,9 @@ export interface RichAnswer extends QueryAnswer {
   source: "llm" | "heuristic";
   /** Suggested next questions (LLM only). */
   followups?: string[];
+  /** Numeric grounding check of an LLM answer (W3.6) — present only when the LLM narrated and stated at
+   *  least one salient number. Lets the UI show a "grounded in your data" / "unverified figure" signal. */
+  grounding?: GroundingResult;
 }
 
 const CATEGORY_HINT = /(reason|category|type|status|segment|group|class|gender|channel|source|outcome|result|stage|priority|label|tag|product|region|country|state|city|department)/i;
@@ -1355,6 +1359,7 @@ async function runAnswerAI(
             source: "llm",
             method: base.method,
             followups: localFollowups(profiles),
+            grounding: checkGrounding(text.trim(), evidence),
           };
         }
       }
@@ -1383,6 +1388,7 @@ async function runAnswerAI(
           followups: Array.isArray(data.followups)
             ? data.followups.filter((s) => typeof s === "string" && s.trim()).slice(0, 3)
             : undefined,
+          grounding: checkGrounding(data.answer.trim(), evidence),
         };
       }
     }
@@ -1390,6 +1396,18 @@ async function runAnswerAI(
     // fall through to the heuristic answer
   }
   return { ...base, source: "heuristic" };
+}
+
+/** Verify the LLM answer's numbers against the evidence it was given (W3.6). Returns undefined when the
+ *  answer states no salient numbers (nothing to vouch for), so the UI only shows a signal when it means
+ *  something. Never throws — grounding is a trust nicety, not a correctness gate. */
+function checkGrounding(answer: string, evidence: unknown): GroundingResult | undefined {
+  try {
+    const g = verifyAnswerGrounding(answer, evidence);
+    return g.salient > 0 ? g : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Relevant next questions, derived locally from the column roles (used for streamed answers). */
