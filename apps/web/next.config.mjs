@@ -1,16 +1,25 @@
-// Strict, locked-down security headers. The app is fully client-side and talks ONLY to its own
-// origin (the optional LLM call is server-to-server from /api/insights, never browser→provider),
-// so the Content-Security-Policy can be tight: no third-party scripts, frames, or connections.
+// Security headers. The app is client-side and talks to its own origin; the optional LLM call is
+// server-to-server from /api/insights (never browser→provider). Two OPT-IN, zero-data-egress features
+// need narrow third-party allowances and so are whitelisted explicitly below:
+//   • On-device model (transformers.js + WebGPU) — downloads PUBLIC model weights from Hugging Face and
+//     the ONNX-runtime WASM from jsDelivr. No user data is sent; only public assets are fetched.
+//   • Image OCR (tesseract.js) — downloads its WASM core/worker (jsDelivr) and language data.
+// Both require WebAssembly, hence 'wasm-unsafe-eval'. Everything else stays locked down.
+const HF = "https://huggingface.co https://*.huggingface.co https://*.hf.co";
+const CDN = "https://cdn.jsdelivr.net"; // ONNX-runtime WASM (transformers.js) + tesseract.js worker/core/lang
 
 const ContentSecurityPolicy = [
   "default-src 'self'",
   // Next.js injects a small inline bootstrap script; Tailwind/inline styles need 'unsafe-inline'.
-  "script-src 'self' 'unsafe-inline'",
+  // 'wasm-unsafe-eval' lets the on-device model + OCR instantiate WebAssembly; the jsDelivr origin
+  // serves the tesseract.js worker/core script.
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${CDN}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
-  "worker-src 'self' blob:",
+  // Fetches for model weights (Hugging Face) + runtime WASM and OCR worker/core/lang (jsDelivr).
+  `connect-src 'self' ${HF} ${CDN}`,
+  `worker-src 'self' blob: ${CDN}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

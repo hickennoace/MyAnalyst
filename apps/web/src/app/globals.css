@@ -394,6 +394,21 @@ body:has(.lp) { background: #ffffff; }
   --color-slate-800: #e7ebf1;
   --color-slate-900: #f1f4f8;
   --color-slate-950: #f8fafc;
+
+  /* reversed amber ramp: amber warning text/icons (caveats, disclaimer, anomalies) were authored
+     dark-first (light amber on dark). Reversing keeps the mid (500) for fills/borders but darkens the
+     light shades so they stay legible on a white surface instead of washing out. */
+  --color-amber-50: #451a03;
+  --color-amber-100: #78350f;
+  --color-amber-200: #92400e;
+  --color-amber-300: #b45309;
+  --color-amber-400: #d97706;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #fbbf24;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+  --color-amber-950: #fffbeb;
 }
 
 /* Light overrides for the shared, hand-rolled dark surfaces. */
