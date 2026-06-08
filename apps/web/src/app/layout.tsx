@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ScrollProgress } from "@/components/ScrollProgress";
+import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 
 // Type system: one clean, neutral grotesque for everything (headings + body),
 // and a mono for small numerals & data labels. Kept deliberately plain.
@@ -42,6 +43,17 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
   },
   robots: { index: true, follow: true },
+  appleWebApp: { capable: true, title: "MyAnalyst", statusBarStyle: "black-translucent" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0e16" },
+  ],
 };
 
 // Set the theme on <html> before first paint to avoid a flash of the wrong theme.
@@ -56,6 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <a href="#main-content" className="skip-link">Skip to content</a>
         <ScrollProgress />
+        <ServiceWorkerRegistrar />
         {children}
       </body>
     </html>
