@@ -827,6 +827,27 @@ export function validatePlan(raw: unknown, profiles: ColumnProfile[]): QueryPlan
   return plan;
 }
 
+const PLAN_INTENTS = new Set(["metric", "groupRank", "groupAggregate", "aggregate", "compare", "trend", "correlation", "count", "distribution", "describe"]);
+
+/** Why a raw LLM plan can't be used as-is — a human-readable reason fed back to the model for ONE repair
+ *  attempt (W3.8). Returns null when the plan's intent is supported and every column it names exists.
+ *  Pure + exported so it's unit-testable; the actual repair round-trip lives in planQuestion. */
+export function planRejectionReason(raw: unknown, profiles: ColumnProfile[]): string | null {
+  if (!raw || typeof raw !== "object") return "the response was not a plan object";
+  const r = raw as Record<string, unknown>;
+  if (!PLAN_INTENTS.has(r.intent as string)) return `intent "${String(r.intent)}" isn't supported`;
+  const unknown: string[] = [];
+  const check = (v: unknown) => {
+    if (typeof v === "string" && v && !colByName(v, profiles)) unknown.push(v);
+  };
+  check(r.metric);
+  check(r.metric2);
+  check(r.dimension);
+  if (r.filter && typeof r.filter === "object") check((r.filter as Record<string, unknown>).column);
+  if (unknown.length) return `uses column${unknown.length > 1 ? "s" : ""} not in the dataset: ${[...new Set(unknown)].join(", ")}`;
+  return null;
+}
+
 const planNum = (v: unknown): number => (typeof v === "number" ? v : parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, "")));
 
 /** Turn a validated plan filter into the same DataFilter shape the heuristic engine uses. */
@@ -1322,26 +1343,44 @@ function buildSchemaBrief(table: Table, profiles: ColumnProfile[], domain?: stri
   };
 }
 
+/** Validate a raw plan and execute it locally → a grounded answer, or undefined if it can't be used. */
+function executeRawPlan(raw: unknown, table: Table, profiles: ColumnProfile[]): QueryAnswer | undefined {
+  const plan = validatePlan(raw, profiles);
+  if (!plan || plan.intent === "describe") return undefined;
+  const result = executePlan(plan, table, profiles);
+  return result.ok ? result : undefined;
+}
+
 /** LLM query planner: ask the model to map a hard question to a structured plan (schema only), validate
- *  it, and execute it locally for an exact answer. Returns undefined on any failure (caller falls back). */
+ *  it, and execute it locally for an exact answer. If the first plan can't be used, make ONE cheap
+ *  repair attempt that feeds the rejection reason + valid column names back to the model (W3.8). Returns
+ *  undefined on any failure (caller falls back to the heuristic). */
 async function planQuestion(question: string, table: Table, profiles: ColumnProfile[], domain?: string, history?: QaTurn[]): Promise<QueryAnswer | undefined> {
-  try {
-    const schema = buildSchemaBrief(table, profiles, domain);
-    const conversation = history?.filter((h) => h.a).slice(-2).map((h) => ({ q: h.q, a: h.a.slice(0, 200) }));
-    const res = await fetch("/api/insights", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ task: "plan", question, schema, conversation, byok: activeLlmConfig() ?? undefined }),
-    });
-    if (!res.ok) return undefined;
-    const data = (await res.json()) as { plan?: unknown };
-    const plan = validatePlan(data.plan, profiles);
-    if (!plan || plan.intent === "describe") return undefined;
-    const result = executePlan(plan, table, profiles);
-    return result.ok ? result : undefined;
-  } catch {
-    return undefined;
-  }
+  const schema = buildSchemaBrief(table, profiles, domain);
+  const conversation = history?.filter((h) => h.a).slice(-2).map((h) => ({ q: h.q, a: h.a.slice(0, 200) }));
+
+  const requestPlan = async (repair?: { rejected: unknown; reason: string }): Promise<unknown | undefined> => {
+    try {
+      const res = await fetch("/api/insights", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ task: "plan", question, schema, conversation, repair, byok: activeLlmConfig() ?? undefined }),
+      });
+      if (!res.ok) return undefined;
+      return ((await res.json()) as { plan?: unknown }).plan;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const first = await requestPlan();
+  const firstResult = executeRawPlan(first, table, profiles);
+  if (firstResult) return firstResult;
+
+  // One repair pass: tell the model exactly why its plan was rejected and the only valid column names.
+  const reason = planRejectionReason(first, profiles) ?? "the plan could not be executed against the dataset";
+  const repaired = await requestPlan({ rejected: first, reason });
+  return executeRawPlan(repaired, table, profiles);
 }
 
 // In-memory cache of answered questions (per dataset), so asking the same thing twice is instant and

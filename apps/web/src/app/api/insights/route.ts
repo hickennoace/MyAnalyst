@@ -99,10 +99,10 @@ export async function POST(req: Request) {
   // client validates it against the real columns and executes it LOCALLY, so the numbers stay exact and
   // grounded. This is the "understand any question" planner, used when the local heuristics can't parse it.
   if (body && typeof body === "object" && (body as { task?: string }).task === "plan") {
-    const { question, schema, conversation } = body as { question?: string; schema?: unknown; conversation?: unknown };
+    const { question, schema, conversation, repair } = body as { question?: string; schema?: unknown; conversation?: unknown; repair?: { rejected?: unknown; reason?: string } };
     if (!question || typeof question !== "string") return NextResponse.json({ plan: null, provider: "error" });
     try {
-      const { system, user } = buildPlanPrompt(question, schema, conversation);
+      const { system, user } = buildPlanPrompt(question, schema, conversation, repair);
       const raw = await callLLM(system, user, { temperature: 0, maxTokens: 320 });
       return NextResponse.json({ plan: extractJson(raw), provider });
     } catch (err) {
@@ -232,11 +232,16 @@ function buildStoryPrompt(
 
 // ── Query planner prompt ───────────────────────────────────────────────────────
 
-function buildPlanPrompt(question: string, schema: unknown, conversation: unknown) {
+function buildPlanPrompt(question: string, schema: unknown, conversation: unknown, repair?: { rejected?: unknown; reason?: string }) {
   const system = [
     "You convert a question about a dataset into a STRUCTURED query plan. You see only the SCHEMA (column names, roles, types, numeric ranges, a few sample category values) — never raw rows. Pick the single computation that best answers the question.",
     'Respond with ONLY JSON: {"intent":"metric"|"aggregate"|"groupRank"|"groupAggregate"|"distribution"|"correlation"|"trend"|"compare"|"count"|"describe","metric"?:column,"metric2"?:column,"dimension"?:column,"agg"?:"sum"|"mean"|"max"|"min"|"median","direction"?:"top"|"bottom","filter"?:{"column":column,"op":"eq"|"gt"|"lt"|"gte"|"lte"|"between"|"year"|"contains","value":string|number,"value2"?:number},"compareValues"?:[valueA,valueB]}.',
     "Use EXACT column names from the schema. Guidance: 'most/highest/best <thing>' → groupRank, direction top, dimension = the thing's category, metric = the quality asked about; 'lowest/worst/least' → bottom. Rate/score columns (intensity, price, rating, score, rate) → agg mean; additive ones (revenue, sales, units, amount, count) → agg sum; 'median/typical middle value' → agg median. 'in 2023' → filter op year; 'over/above 100' → gt, 'under' → lt; 'for North' → eq on that dimension. 'A vs B' → intent compare, dimension = their column, compareValues=[A,B]. 'how many' → count. One metric's overall stats → metric. If the schema can't answer it, use intent describe.",
+    ...(repair?.reason
+      ? [
+          `REPAIR: your previous plan was REJECTED because ${repair.reason}. Try again. Use ONLY exact column names that appear in the schema and a supported intent. If the question genuinely cannot be answered from these columns, return {"intent":"describe"}. Rejected plan: ${JSON.stringify(repair.rejected)}.`,
+        ]
+      : []),
   ].join("\n");
   const user = JSON.stringify({ question, schema, conversation });
   return { system, user };

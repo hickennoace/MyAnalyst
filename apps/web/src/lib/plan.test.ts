@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validatePlan, executePlan } from "./query";
+import { validatePlan, executePlan, planRejectionReason } from "./query";
 import { profileTable } from "./profile";
 import type { Table } from "./types";
 
@@ -75,5 +75,30 @@ describe("executePlan", () => {
 
   it("returns ok:false for 'describe' so the narrator can use the overview", () => {
     expect(executePlan({ intent: "describe" }, table, profiles).ok).toBe(false);
+  });
+});
+
+// Planner repair loop (Wave 3 W3.8): the pure reason-builder that decides whether a rejected plan is
+// worth a second, repair-hinted attempt.
+describe("planRejectionReason", () => {
+  it("returns null when every referenced column and the intent are valid", () => {
+    expect(planRejectionReason({ intent: "aggregate", metric: "Revenue", agg: "sum" }, profiles)).toBeNull();
+  });
+
+  it("names columns that don't exist in the dataset", () => {
+    const reason = planRejectionReason({ intent: "groupRank", metric: "Profit", dimension: "Region" }, profiles);
+    expect(reason).toBeTruthy();
+    expect(reason).toContain("Profit");
+  });
+
+  it("flags an unsupported intent", () => {
+    const reason = planRejectionReason({ intent: "teleport", metric: "Revenue" }, profiles);
+    expect(reason).toBeTruthy();
+    expect(reason!.toLowerCase()).toContain("intent");
+  });
+
+  it("flags a filter on an unknown column", () => {
+    const reason = planRejectionReason({ intent: "count", filter: { column: "Country", op: "eq", value: "US" } }, profiles);
+    expect(reason).toContain("Country");
   });
 });
