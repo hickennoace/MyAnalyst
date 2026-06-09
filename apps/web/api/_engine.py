@@ -22,6 +22,7 @@ import _charts as _ch
 import _insights as _ins
 import _segments as _sg
 import _rfm as _rf
+import _quality as _ql
 
 # ─────────────────────────── Profiling: type + role per column ───────────────────────────
 
@@ -419,6 +420,7 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
     spec: dict[str, Any] = {
         "engine": "python",
         "rowCount": n,
+        "quality": _ql.data_quality(df, profiles),
         "domain": domain,
         "columns": [{"name": p["name"], "type": p["type"], "role": p["role"]} for p in profiles],
         "kpis": kpis,

@@ -26,10 +26,31 @@ export function PythonDashboard({
           {spec.rowCount.toLocaleString()} rows ·{" "}
           <span className="text-slate-400">{spec.domain.domain.replace("-", " ")}</span>
         </h2>
-        <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300">
-          Python engine
-        </span>
+        <div className="flex items-center gap-2">
+          {spec.quality && (
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                spec.quality.rating === "good"
+                  ? "bg-emerald-500/15 text-emerald-300"
+                  : spec.quality.rating === "fair"
+                    ? "bg-amber-500/15 text-amber-300"
+                    : "bg-red-500/15 text-red-300"
+              }`}
+              title={spec.quality.issues.join(" · ") || "No quality issues found"}
+            >
+              Data quality {spec.quality.score}/100
+            </span>
+          )}
+          <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-300">
+            Python engine
+          </span>
+        </div>
       </header>
+      {spec.quality && spec.quality.issues.length > 0 && (
+        <p className="-mt-3 text-[12px] text-slate-500">
+          Read with care: {spec.quality.issues.join(" · ")}.
+        </p>
+      )}
 
       {conclusions && <ConclusionsCard c={conclusions} />}
 

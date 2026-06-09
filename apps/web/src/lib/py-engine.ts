@@ -23,9 +23,20 @@ export interface PyFact {
   value?: unknown;
 }
 
+export interface PyQuality {
+  score: number;
+  rows: number;
+  columns: number;
+  duplicates: number;
+  completeness: number;
+  issues: string[];
+  rating: "good" | "fair" | "weak";
+}
+
 export interface PyAnalysisSpec {
   engine: "python";
   rowCount: number;
+  quality?: PyQuality;
   domain: { domain: string; confidence: number; reason: string };
   columns: { name: string; type: string; role: string }[];
   kpis: Kpi[];
