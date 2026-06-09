@@ -33,12 +33,12 @@ function single(table: Table): ParseResult {
 // Browser memory limits for the formats we must load whole (no streaming parser exists for them here).
 // CSV/TSV stream off disk and are effectively unbounded (handles ~1GB); Excel/JSON are read into memory
 // and expand several-fold while parsing, so we cap them and point users to CSV for anything bigger.
-const MAX_EXCEL_BYTES = 50 * 1024 * 1024; // 50 MB
-const MAX_JSON_BYTES = 120 * 1024 * 1024; // 120 MB
-const MAX_SQLITE_BYTES = 100 * 1024 * 1024; // 100 MB (loaded whole into a WASM SQLite engine)
-const MAX_PARQUET_BYTES = 200 * 1024 * 1024; // 200 MB (read whole into memory by hyparquet)
-const MAX_PDF_BYTES = 30 * 1024 * 1024; // 30 MB (text-positioned extraction)
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20 MB (OCR)
+const MAX_EXCEL_BYTES = 100 * 1024 * 1024; // 100 MB
+const MAX_JSON_BYTES = 250 * 1024 * 1024; // 250 MB
+const MAX_SQLITE_BYTES = 250 * 1024 * 1024; // 250 MB (loaded whole into a WASM SQLite engine)
+const MAX_PARQUET_BYTES = 500 * 1024 * 1024; // 500 MB (read whole into memory by hyparquet)
+const MAX_PDF_BYTES = 60 * 1024 * 1024; // 60 MB (text-positioned extraction)
+const MAX_IMAGE_BYTES = 40 * 1024 * 1024; // 40 MB (OCR)
 
 /** Parse an uploaded File (CSV / TSV / TXT / JSON / XLSX / XLS / SQLite) into a normalized Table plus
  *  the list of its analyzable sources. `sourceId` targets a specific sheet/table (else a sensible

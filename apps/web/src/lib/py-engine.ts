@@ -106,18 +106,31 @@ export interface PyConclusions {
 const API_BASE = (process.env.NEXT_PUBLIC_PY_API || "").replace(/\/$/, "");
 const api = (path: string) => `${API_BASE}${path}`;
 
-// Keep the POST body under Vercel's 4.5 MB serverless limit — sample evenly when a file is large.
-const SAMPLE_CAP = 40_000;
+// The POST body must stay under Vercel's 4.5 MB serverless limit. Rather than a fixed row cap, sample
+// ADAPTIVELY to fill a byte budget: estimate bytes/row from the real serialized shape, then send as many
+// evenly-spaced rows as fit. Narrow tables (the common case) get ~100k rows instead of a flat 40k — a
+// richer, more faithful analysis — while wide tables stay safely under the limit (no 413s).
+const MAX_PAYLOAD_BYTES = 3_800_000; // safety margin under 4.5 MB
+const HARD_ROW_CAP = 100_000; // statistical plenty; also bounds server compute time
 
-function sampleRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
-  if (rows.length <= SAMPLE_CAP) return rows;
-  const stride = Math.ceil(rows.length / SAMPLE_CAP);
-  return rows.filter((_, i) => i % stride === 0);
+export function sampleForPayload(columns: string[], rows: Record<string, unknown>[]): unknown[][] {
+  const toArr = (r: Record<string, unknown>) => columns.map((c) => r[c] ?? null);
+  const n = rows.length;
+  if (n === 0) return [];
+  const probe = Math.min(300, n);
+  let bytes = 0;
+  for (let i = 0; i < probe; i++) bytes += JSON.stringify(toArr(rows[Math.floor((i * n) / probe)])).length + 1;
+  const bytesPerRow = Math.max(1, bytes / probe);
+  const cap = Math.min(n, HARD_ROW_CAP, Math.max(1, Math.floor(MAX_PAYLOAD_BYTES / bytesPerRow)));
+  if (n <= cap) return rows.map(toArr);
+  const stride = n / cap; // even spacing across the whole dataset
+  const out: unknown[][] = [];
+  for (let i = 0; i < cap; i++) out.push(toArr(rows[Math.floor(i * stride)]));
+  return out;
 }
 
 export async function runPythonAnalysis(columns: string[], rows: Record<string, unknown>[]): Promise<PyAnalysisSpec> {
-  const sample = sampleRows(rows);
-  const body = JSON.stringify({ columns, rows: sample.map((r) => columns.map((c) => r[c] ?? null)) });
+  const body = JSON.stringify({ columns, rows: sampleForPayload(columns, rows) });
   const res = await fetch(api("/api/analyze"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -137,8 +150,7 @@ export async function runPythonAsk(
   rows: Record<string, unknown>[],
   facts?: PyFact[]
 ): Promise<PyAnswer> {
-  const sample = sampleRows(rows);
-  const body = JSON.stringify({ question, columns, rows: sample.map((r) => columns.map((c) => r[c] ?? null)), facts });
+  const body = JSON.stringify({ question, columns, rows: sampleForPayload(columns, rows), facts });
   const res = await fetch(api("/api/ask"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
