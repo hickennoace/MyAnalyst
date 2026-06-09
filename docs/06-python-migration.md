@@ -7,6 +7,12 @@ an **LLM (Groq/Gemini) write the conclusions** from the computed facts. Same pat
 
 This document is the single source of truth for the migration. Update it as phases land.
 
+> **STATUS (2026-06-09): conversion COMPLETE in code.** All 6 phases done; `/analyze` runs on the Python
+> engine (KPIs, charts, conclusions, ask-your-data) with the TS engine as fallback. The Vercel Python build
+> is verified green. **The only thing left is one production deploy** — blocked today by the free Vercel
+> 100-deploys/day cap; run `cd apps/web && npx vercel deploy --prod` when it resets and `/analyze` goes live
+> on Python. Groq reads the computed KPIs + charts and explains them, grounded.
+
 ---
 
 ## 0. Principles (do not violate)
@@ -144,12 +150,15 @@ Original scope:
   `/api/analyze-heavy`. If the full stack (sklearn) won't fit, stand up a small **FastAPI** service instead
   and point the frontend at it.
 
-### Phase 5 — Frontend wiring & cutover  🟡 IN PROGRESS
-Shipped the client (`lib/py-engine.ts`, samples under 4.5 MB), the chart adapter (`lib/py-charts.ts` →
-styled ECharts `ChartSpec`), a `PythonDashboard` component, and an **isolated `/analyze-py` page** (upload
-CSV → `/api/analyze` → `/api/conclude` → render). Nothing on `/analyze` changed. **Remaining:** validate
-`/analyze-py` on the preview, run the parity basket, then flip `NEXT_PUBLIC_ENGINE=python` on the main page.
-The k-means `segments` and (future) RFM/cohort/relationships still need rendering in `PythonDashboard`.
+### Phase 5 — Frontend wiring & cutover  ✅ DONE
+**`/analyze` now computes on the Python engine** — its KPIs, charts, conclusions, and ask-your-data come from
+`/api/analyze` + `/api/conclude` + `/api/ask`, run on the cleaned table. The in-browser TS engine is an
+automatic fallback (local `next dev`, or any backend error) so the page never goes blank. `PythonDashboard`
+renders KPIs, charts, best-sellers, RFM, k-means segments, the Groq conclusions (summary + per-chart
+insights), ask-your-data, data-quality badge, distributions, and a "how this was computed" section.
+**Verified:** the Vercel preview deploy BUILT GREEN (pandas+scipy+statsmodels fit under 250 MB, 50 s). The
+only remaining step is a production deploy to flip it live — blocked 2026-06-09 by the free 100-deploys/day
+cap; run `cd apps/web && npx vercel deploy --prod` once the quota resets.
 
 Original scope:
 - A thin client `lib/py-client.ts`: POST the parsed/sampled data to `/api/analyze`, receive the spec.
