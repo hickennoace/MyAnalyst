@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { llmEnabled } from "@/lib/insights/humanize";
+import { useState } from "react";
 
-// Privacy indicator: a small, honest "your data stays in your browser" badge. The whole analysis
-// engine runs client-side; only metadata/aggregates ever reach the optional LLM route — never raw rows.
-// The popover spells that out so the claim is verifiable, not just decorative.
+// Privacy indicator: a small, HONEST badge. The compute engine now runs on a server (the Python
+// backend), so the file is sent there over HTTPS to produce your dashboard — but it isn't stored, and
+// only computed numbers/aggregates (never raw rows) ever reach the AI narrator. The popover spells the
+// real flow out so the claim is verifiable, not decorative.
 
 export function PrivacyBadge() {
   const [open, setOpen] = useState(false);
-  const ai = useMemo(() => llmEnabled(), []);
 
   return (
     <div className="relative">
@@ -33,15 +32,15 @@ export function PrivacyBadge() {
           role="tooltip"
           className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-slate-700 bg-slate-900/95 p-3 text-left shadow-xl backdrop-blur"
         >
-          <p className="text-xs font-semibold text-slate-100">Your data stays in your browser</p>
+          <p className="text-xs font-semibold text-slate-100">Built to keep your data private</p>
           <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-            The whole analysis runs on this page — your file is never uploaded to a server. You can close
-            your connection after it loads and everything still works.
+            Your file is sent over an encrypted connection to MyAnalyst&apos;s analysis server only to compute
+            your dashboard. It isn&apos;t saved to any database, and it&apos;s never sold, shared, or used to
+            train anything. No accounts, no third-party trackers.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-            {ai
-              ? "AI narration is on: only anonymous aggregates (totals, averages, column names) are sent to write the prose — never your raw rows."
-              : "No AI key is configured, so nothing leaves this page at all."}
+            The AI narrator only ever receives computed numbers and column names (totals, averages,
+            correlations) — never your raw rows. History and shareable links stay in your browser.
           </p>
         </div>
       )}

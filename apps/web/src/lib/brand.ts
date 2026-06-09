@@ -1,5 +1,5 @@
 // White-label branding for exported deliverables (report PDF, slide deck, image header). Stored
-// locally only — like everything else, it never leaves the browser. A user can drop in their own
+// locally only (localStorage) — branding never leaves the browser. A user can drop in their own
 // company name, accent colour, and logo so the report reads as theirs.
 
 export interface BrandSettings {

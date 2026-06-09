@@ -19,7 +19,7 @@ const mono = JetBrains_Mono({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://myanalyst.net";
 const DESCRIPTION =
-  "Upload a spreadsheet, get an instant, fully-explained analytical dashboard: KPIs, statistics, forecasts, and plain-language insights — automatically. Your data never leaves your browser.";
+  "Upload a spreadsheet, get an instant, fully-explained analytical dashboard: KPIs, statistics, forecasts, and plain-language insights — automatically. Your data is processed securely, never stored, and never shared.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

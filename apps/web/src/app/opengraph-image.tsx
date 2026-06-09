@@ -43,7 +43,7 @@ export default function Image() {
             Turn a spreadsheet into a beautiful, explained dashboard.
           </div>
           <div style={{ fontSize: "30px", color: "#94a3b8", maxWidth: "900px", lineHeight: 1.3 }}>
-            KPIs, statistics, forecasts, and plain-language insights — automatically. Your data never leaves your browser.
+            KPIs, statistics, forecasts, and plain-language insights — automatically. Processed securely, never stored.
           </div>
         </div>
 

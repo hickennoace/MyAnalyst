@@ -4,7 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "Privacy",
-  description: "How MyAnalyst handles your data: it doesn't leave your browser.",
+  description: "How MyAnalyst handles your data: processed securely on our server, never stored, AI sees only computed numbers.",
 };
 
 export default function Privacy() {
@@ -18,32 +18,38 @@ export default function Privacy() {
           <ThemeToggle />
         </div>
         <h1 className="mt-6 text-3xl font-bold text-slate-50">Privacy</h1>
-        <p className="mt-2 text-sm text-slate-400">Short version: your data stays on your device.</p>
+        <p className="mt-2 text-sm text-slate-400">
+          Short version: your data is processed securely to build your dashboard, never stored, and never used
+          for anything else. The AI only ever sees computed numbers — never your raw rows.
+        </p>
 
         <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-300">
-          <Block title="Your files never leave your browser">
-            Parsing, cleaning, profiling, KPIs, statistics, forecasting, charts, and the templated
-            insights all run locally in your browser using JavaScript. MyAnalyst has no upload endpoint
-            and no database for your data. Nothing is transmitted to a server to produce your dashboard.
+          <Block title="How your file is processed">
+            To compute your dashboard, your spreadsheet (a representative sample of large files) is sent over an
+            encrypted HTTPS connection to MyAnalyst&apos;s analysis server, which runs the statistics in Python
+            (pandas/scipy) and returns the results. It is processed only to produce <em>your</em> dashboard —
+            it is <strong>not written to any database</strong>, not retained after the request, and never sold,
+            shared, or used to train models. There are no user accounts.
           </Block>
 
-          <Block title="Local history">
-            Recent analyses are stored only in your browser's <code className="text-blue-300">localStorage</code>,
-            on this device. Clearing your browser data removes them. They are never synced anywhere.
+          <Block title="The AI never sees your raw data">
+            When the AI narrator writes the conclusions and insights, it receives only a <em>metadata-only</em>{" "}
+            summary — column names and types, row counts, and the figures the engine already computed (KPI
+            values, correlations, a regression, a forecast). Your individual rows are <strong>never</strong>{" "}
+            sent to the language model.
+          </Block>
+
+          <Block title="What stays on your device">
+            Recent analyses are stored only in your browser&apos;s <code className="text-blue-300">localStorage</code>{" "}
+            — never synced anywhere; clearing your browser data removes them. PNG/PDF/report exports are generated
+            locally. The optional on-device AI model (WebGPU) runs entirely in your browser with no network.
           </Block>
 
           <Block title="Shareable links">
-            A share link encodes the whole dashboard into the URL's hash fragment (the part after
-            <code className="text-blue-300"> # </code>). Browsers never send the hash to a server, so a
-            shared dashboard is reconstructed entirely in the recipient's browser. Anyone with the link
-            can view it — treat links like the data they contain.
-          </Block>
-
-          <Block title="Optional AI narration">
-            If — and only if — the operator enables the optional LLM narrator, a small <em>metadata-only</em>{" "}
-            summary (KPI values, correlations, a regression, a forecast — never your raw rows) is sent to the
-            configured model provider to phrase the written insights. With AI disabled, even that doesn't leave
-            your browser.
+            A share link encodes the dashboard into the URL&apos;s hash fragment (the part after
+            <code className="text-blue-300"> # </code>). Browsers never send the hash to a server, so a shared
+            dashboard is reconstructed entirely in the recipient&apos;s browser, and verbatim free-text values are
+            redacted from it. Anyone with the link can view it — treat links like the data they contain.
           </Block>
 
           <Block title="No tracking">

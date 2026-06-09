@@ -68,8 +68,8 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { n: "01", title: "Upload", body: "Drop a CSV, TSV, Excel or JSON file — big CSVs stream up to ~1GB. Nothing is sent to a server; it's parsed entirely in your browser." },
-  { n: "02", title: "We analyze", body: "Clean → profile → detect domain → KPIs → statistics → forecast → conclusions, in seconds." },
+  { n: "01", title: "Upload", body: "Drop a CSV, TSV, Excel or JSON file — big CSVs stream up to ~1GB and are read right in your browser." },
+  { n: "02", title: "We analyze", body: "Clean → profile → detect domain → KPIs → statistics → forecast → conclusions, in seconds — processed securely and never stored." },
   { n: "03", title: "Explore", body: "Read your dashboard, ask questions, generate charts, export & share — no skills required." },
 ];
 
@@ -129,7 +129,7 @@ export default function Landing() {
               </div>
             </StaggerItem>
             <StaggerItem>
-              <p className="mt-5 text-[0.82rem] text-[var(--faint)]">No account · no upload · your data never leaves this page.</p>
+              <p className="mt-5 text-[0.82rem] text-[var(--faint)]">No account · processed securely · never stored or shared.</p>
             </StaggerItem>
           </Stagger>
 
@@ -226,9 +226,9 @@ export default function Landing() {
                 <div className="lp-ico">{I.lock}</div>
                 <h3 className="mt-5 text-base font-semibold text-[var(--ink)]">Private by design</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-                  All parsing, cleaning, KPIs, statistics and charts run entirely in your browser. Your raw
-                  rows never touch a server. When AI narration is enabled, only small aggregate statistics —
-                  never your underlying data — are sent for wording.
+                  Your file is sent over an encrypted connection only to build your dashboard, then discarded —
+                  never written to a database, never sold or shared, no accounts. The AI only ever sees computed
+                  numbers and column names — never your raw rows.
                 </p>
               </div>
               <div className="lp-feature">

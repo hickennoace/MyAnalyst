@@ -17,7 +17,7 @@ export function buildMethodology(spec: DashboardSpec): MethodologySection[] {
   sections.push({
     heading: "Pipeline",
     items: [
-      `${spec.rowCount.toLocaleString()} rows × ${spec.profiles.length} columns, analyzed entirely in your browser — no data left this device.`,
+      `${spec.rowCount.toLocaleString()} rows × ${spec.profiles.length} columns, processed securely on the analysis server and not stored.`,
       "Stages: clean & normalize → profile & type columns → detect domain → KPIs → statistics → charts → insights.",
       spec.domain ? `Domain detected as "${spec.domain.domain}" (${Math.round(spec.domain.confidence * 100)}% confidence) — used to choose relevant metrics and templates.` : "",
     ].filter(Boolean),

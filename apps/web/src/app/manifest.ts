@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "MyAnalyst — AI-assisted data analysis",
     short_name: "MyAnalyst",
     description:
-      "Upload a spreadsheet, get an instant explained dashboard — KPIs, statistics, forecasts, and plain-language insights. Your data never leaves your browser.",
+      "Upload a spreadsheet, get an instant explained dashboard — KPIs, statistics, forecasts, and plain-language insights. Your data is processed securely, never stored, and never shared.",
     start_url: "/",
     display: "standalone",
     background_color: "#0a0e16",

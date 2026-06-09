@@ -99,8 +99,8 @@ export function QueryBox({
       </div>
       <p className="mt-1 text-xs text-slate-400">
         {ai
-          ? "Plain-English questions, answered like a professional analyst — grounded in your real numbers. Your raw data never leaves this page."
-          : "Plain-English questions, answered with your real numbers. Runs locally — no AI key needed."}
+          ? "Plain-English questions, answered like a professional analyst — grounded in your real numbers. The AI only sees the figures for your question, never your raw rows."
+          : "Plain-English questions, answered with your real numbers. Computed on your device — no AI key needed."}
       </p>
 
       {/* Conversation thread */}

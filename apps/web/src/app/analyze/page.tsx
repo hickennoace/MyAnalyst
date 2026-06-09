@@ -823,7 +823,7 @@ export default function AnalyzePage() {
         )}
 
         <footer className="mt-16 space-y-2 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-          <p>MyAnalyst · Analysis runs locally in your browser. Insight narration is pluggable.</p>
+          <p>MyAnalyst · Your data is processed securely and never stored. Insight narration is pluggable.</p>
           {/* Not-financial-advice disclaimer: only after an analysis exists, in the page footer. */}
           {spec && <p className="text-slate-500">{DISCLAIMER_TEXT}</p>}
         </footer>

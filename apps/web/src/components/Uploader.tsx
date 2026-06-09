@@ -84,7 +84,7 @@ export function Uploader({
       <h2 className="text-lg font-semibold text-slate-100">Drop a spreadsheet to analyze</h2>
       <p className="mt-1 max-w-md text-sm text-slate-400">
         CSV, TSV, Excel, JSON, SQLite, Parquet, PDF tables, or a screenshot of a table. Big CSVs stream up
-        to ~1&nbsp;GB — analyzed on a representative sample. Everything runs in your browser; your data never leaves this page.
+        to ~1&nbsp;GB — analyzed on a representative sample, processed securely and never stored.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
