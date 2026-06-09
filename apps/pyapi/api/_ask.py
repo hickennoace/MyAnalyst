@@ -79,7 +79,7 @@ def _simple_answer(df: pd.DataFrame, question: str) -> str:
 
 def answer_question(df: pd.DataFrame, question: str, facts: list[dict] | None = None) -> dict:
     context = _profile_context(df) + _groupby_context(df, question)
-    facts_text = "\n".join(f"- {f['text']}" for f in (facts or []))
+    facts_text = "\n".join(f"- {f.get('text', '')}" for f in (facts or []) if isinstance(f, dict))
     user = (f"Question: {question}\n\nCOMPUTED STATISTICS:\n" + "\n".join(context)
             + (f"\n\nKNOWN FACTS:\n{facts_text}" if facts_text else "") + "\n\nAnswer as JSON.")
     raw = _groq.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}], temperature=0.3)

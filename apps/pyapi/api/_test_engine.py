@@ -171,6 +171,20 @@ age_spec = analyze(age_df)
 age_facts = " ".join(f["text"] for f in age_spec.get("facts", []))
 check("non-money column not shown as currency", "$" not in age_facts and "€" not in age_facts)
 
+
+# A bare-year integer column must be a METRIC, never a date — and never hijack the time axis from the
+# real date column (the "Year stole the timeline" regression).
+year_df = _pd.DataFrame({
+    "Year": ([2020, 2021, 2022, 2023] * 30),
+    "Date": _pd.date_range("2024-01-01", periods=120).astype(str),
+    "Usage": range(120),
+})
+year_profiles = profile(year_df)
+year_col = next(p for p in year_profiles if p["name"] == "Year")
+check("bare-year integers profile as metric, not date", year_col["role"] == "metric" and year_col["type"] == "integer")
+from _engine import _time_col as _tc
+check("the real Date column is the time axis", _tc(year_profiles)["name"] == "Date")
+
 print()
 if check.failed:
     print(f"{check.failed} FAILED")

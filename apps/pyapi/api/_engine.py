@@ -35,6 +35,13 @@ ID_HINT = re.compile(r"(\bid\b|_id\b|uuid|guid|code|sku|ticket|order[_\s-]?no|nu
 def _is_datelike(s: pd.Series) -> bool:
     if pd.api.types.is_datetime64_any_dtype(s):
         return True
+    # A numeric column is never date-like here: bare years ("2021") would otherwise parse as dates and
+    # hijack the time axis from the real date column — and inconsistently so ("2021.0" doesn't parse).
+    # Year-like columns are far more useful as metrics/attributes; real dates arrive as strings or
+    # datetime dtype.
+    numeric = pd.to_numeric(s, errors="coerce")
+    if numeric.notna().mean() > 0.8:
+        return False
     sample = s.dropna().astype(str).head(50)
     if sample.empty:
         return False
@@ -53,8 +60,8 @@ def profile(df: pd.DataFrame) -> list[dict[str, Any]]:
         card_ratio = distinct / n if n else 0.0
         numeric = pd.to_numeric(s, errors="coerce")
         num_frac = float(numeric.notna().mean())
-        is_num = num_frac > 0.8 and not _is_datelike(s)
         is_date = _is_datelike(s)
+        is_num = num_frac > 0.8 and not is_date
 
         if is_date:
             ctype, role = "date", "time"
@@ -192,26 +199,15 @@ def _fmt_num(x):
 
 
 def _time_col(profiles):
-    return next((p for p in profiles if p["role"] == "time"), None)
+    # With several time columns, the one with the most distinct values is the real timeline (an
+    # "order date" beats a "fiscal quarter" label); ties keep column order.
+    times = [p for p in profiles if p["role"] == "time"]
+    return max(times, key=lambda p: p["distinct"]) if times else None
 
 
-def _monthly_revenue(df, time_name, rev_name):
-    """Total revenue summed per month, chronologically. Returns (labels, values)."""
-    t = pd.to_datetime(df[time_name], errors="coerce", format="mixed")
-    v = pd.to_numeric(df[rev_name], errors="coerce")
-    g = pd.DataFrame({"m": t.dt.to_period("M"), "v": v}).dropna()
-    if g.empty:
-        return [], []
-    agg = g.groupby("m")["v"].sum().sort_index()
-    return [str(p) for p in agg.index], agg.to_numpy()
-
-
-def _trim_partial_tail(values: np.ndarray) -> np.ndarray:
-    if len(values) < 4:
-        return values
-    prior = values[:-1]
-    med = np.median(prior)
-    return prior if (med > 0 and values[-1] < 0.5 * med) else values
+# Monthly aggregation + partial-tail trim live in _timeseries; these aliases keep one implementation.
+_monthly_revenue = _ts.monthly_sum
+_trim_partial_tail = _ts.trim_partial_tail
 
 
 # ─────────────────────────── Best sellers ───────────────────────────
