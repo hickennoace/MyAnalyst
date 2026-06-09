@@ -4,6 +4,8 @@ Deployed as its OWN Vercel project (no Next.js), so the browser reaches it cross
 NEXT_PUBLIC_PY_API. A vercel.json rewrite sends `/api/analyze|conclude|ask` here as `/api/index?fn=...`,
 and this dispatches; `_fn()` also falls back to the last path segment. CORS is wide-open (`*`) below.
 """
+import os
+import sys
 from http.server import BaseHTTPRequestHandler
 from io import StringIO
 from urllib.parse import urlparse, parse_qs
@@ -12,9 +14,13 @@ import json
 import numpy as np
 import pandas as pd
 
-from _engine import analyze
-from _conclude import generate_conclusions
-from _ask import answer_question
+# On Vercel the entrypoint's own directory is NOT on sys.path, so sibling imports (`_engine` etc., bundled
+# via vercel.json includeFiles) fail with ModuleNotFoundError. Put this file's dir on the path first.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from _engine import analyze  # noqa: E402
+from _conclude import generate_conclusions  # noqa: E402
+from _ask import answer_question  # noqa: E402
 
 
 def _jsonable(o):
