@@ -90,6 +90,8 @@ class handler(BaseHTTPRequestHandler):
         body = b"" if obj is None else json.dumps(obj, default=_jsonable).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
+        # Responses are derived from the user's data — never let a CDN/proxy cache them.
+        self.send_header("Cache-Control", "no-store")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
