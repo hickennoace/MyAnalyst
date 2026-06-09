@@ -1,9 +1,9 @@
 import type { Kpi } from "./types";
 
-// Client for the Python analysis backend (Phase 5 of the Python migration; see docs/06-python-migration.md).
-// Sends the parsed (sampled) data to the Vercel Python function and returns its spec; a second call turns
-// the grounded facts into LLM conclusions. Off by default — gated behind NEXT_PUBLIC_ENGINE=python so the
-// live site keeps using the in-browser TypeScript engine until parity is verified.
+// Client for the Python analysis backend (see docs/06-python-migration.md). Sends the parsed (sampled)
+// data to the Vercel Python function and returns its spec; a second call turns the grounded facts into
+// LLM conclusions. Python is the PRIMARY engine: run() always calls it and only falls back to the
+// in-browser TypeScript engine if the backend is unreachable, so the page never goes blank.
 
 export interface PyChart {
   id: string;
@@ -36,6 +36,7 @@ export interface PyQuality {
 export interface PyAnalysisSpec {
   engine: "python";
   rowCount: number;
+  currency?: { symbol: string; code: string };
   quality?: PyQuality;
   domain: { domain: string; confidence: number; reason: string };
   columns: { name: string; type: string; role: string }[];
@@ -96,11 +97,6 @@ export interface PyConclusions {
   actions: { title: string; detail: string }[];
   grounding: { grounded: boolean; unverified: string[] };
   disclaimer: string;
-}
-
-/** True when the Python backend should drive analysis (opt-in, so the live default stays the TS engine). */
-export function pythonEngineEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_ENGINE === "python";
 }
 
 // Base URL for the Python API. Empty = same-origin (`/api/...`, in-project functions). Set
