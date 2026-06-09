@@ -146,6 +146,13 @@ check("detect GBP from £ in cells", gbp["symbol"] == "£")
 usd = detect(_pd.DataFrame({"Sales": [100, 200]}), ["Sales"])
 check("default to USD/$ when no currency hint", usd["code"] == "USD" and usd["symbol"] == "$")
 check("money() uses the given symbol", _cmoney(1_250_000, "€") == "€1.2M")
+# Shekel / Yen / Yuan + name-based detection + NIS normalization + word-collision guard.
+check("detect ILS (Shekel)", detect(_pd.DataFrame({"Price ₪": [1]}), ["Price ₪"])["code"] == "ILS")
+check("detect JPY (Yen) by code", detect(_pd.DataFrame({"Amount JPY": [1]}), ["Amount JPY"])["code"] == "JPY")
+check("detect CNY (Yuan) by name", detect(_pd.DataFrame({"Cost in Yuan": [1]}), ["Cost in Yuan"])["code"] == "CNY")
+check("detect ILS by name (Shekels)", detect(_pd.DataFrame({"Salary in Shekels": [1]}), ["Salary in Shekels"])["code"] == "ILS")
+check("normalize NIS -> ILS", detect(_pd.DataFrame({"Total NIS": [1]}), ["Total NIS"])["code"] == "ILS")
+check("no false positive on 'Games Won'", detect(_pd.DataFrame({"Games Won": [1]}), ["Games Won"])["code"] == "USD")
 
 # End-to-end: an EUR sales file renders € in the KPI values, not $.
 eur_df = car_sales(300).rename(columns={"Price": "Price (EUR)", "Cost": "Cost (EUR)"})

@@ -14,6 +14,14 @@ describe("parseNumeric", () => {
     expect(Number.isNaN(parseNumeric("hello"))).toBe(true);
     expect(Number.isNaN(parseNumeric(""))).toBe(true);
   });
+
+  it("parses a currency symbol AFTER the number (the reported Shekel bug)", () => {
+    expect(parseNumeric("12,500 ₪")).toBe(12500);
+    expect(parseNumeric("12500₪")).toBe(12500);
+    expect(parseNumeric("100 €")).toBe(100);
+    expect(parseNumeric("¥1,250,000")).toBe(1250000);
+    expect(parseNumeric("(₪500)")).toBe(-500);
+  });
 });
 
 describe("inferType", () => {
@@ -23,6 +31,14 @@ describe("inferType", () => {
     expect(inferType("Count", ["1", "2", "3", "4"])).toBe("integer");
     // Low-cardinality strings → category (needs distinct/total < 0.5).
     expect(inferType("Region", ["North", "South", "North", "South", "North", "South"])).toBe("category");
+  });
+
+  it("types a trailing-symbol Shekel column as currency, not text (the reported bug)", () => {
+    expect(inferType("Total paid (year)", ["12,500 ₪", "13,200 ₪", "11,800 ₪", "14,000 ₪", "12,900 ₪"])).toBe("currency");
+  });
+
+  it("types a plain salary column as currency via the header hint", () => {
+    expect(inferType("Salary", ["12500", "13200", "11800", "14000"])).toBe("currency");
   });
 });
 

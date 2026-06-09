@@ -29,6 +29,27 @@ describe("currency detection", () => {
   it("does not read 'R$' as a bare '$'", () => {
     expect(detectCurrency(tbl(["Total R$"], []), [money("Total R$")])).toEqual({ symbol: "R$", code: "BRL" });
   });
+
+  it("detects Shekel, Yen, and Yuan (the user's examples + more)", () => {
+    expect(detectCurrency(tbl(["Price ₪"], []), [money("Price ₪")])).toEqual({ symbol: "₪", code: "ILS" });
+    expect(detectCurrency(tbl(["Amount JPY"], []), [money("Amount JPY")])).toEqual({ symbol: "¥", code: "JPY" });
+    expect(detectCurrency(tbl(["Cost (CNY)"], []), [money("Cost (CNY)")])).toEqual({ symbol: "¥", code: "CNY" });
+  });
+
+  it("detects from the currency's NAME", () => {
+    expect(detectCurrency(tbl(["Salary in Shekels"], []), [money("Salary in Shekels")]).code).toBe("ILS");
+    expect(detectCurrency(tbl(["Total (Yen)"], []), [money("Total (Yen)")]).code).toBe("JPY");
+    expect(detectCurrency(tbl(["Revenue in Rupees"], []), [money("Revenue in Rupees")]).code).toBe("INR");
+    expect(detectCurrency(tbl(["Price in Zloty"], []), [money("Price in Zloty")]).code).toBe("PLN");
+  });
+
+  it("normalizes NIS to ILS", () => {
+    expect(detectCurrency(tbl(["Total NIS"], []), [money("Total NIS")])).toEqual({ symbol: "₪", code: "ILS" });
+  });
+
+  it("does not false-positive on ordinary words (e.g. 'Games Won')", () => {
+    expect(detectCurrency(tbl(["Games Won"], []), [money("Games Won")])).toEqual({ symbol: "$", code: "USD" });
+  });
 });
 
 describe("money formatting", () => {

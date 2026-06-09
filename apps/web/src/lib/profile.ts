@@ -3,20 +3,30 @@ import { maxOf, mean, median, minOf, std, sum } from "./stats";
 
 // Type inference + column profiling. This is where messy real-world cells become typed, usable columns.
 
-const CURRENCY_RE = /^[\s]*[-(]?\s*[$€£¥₪₹]\s?[\d,]+(\.\d+)?\)?[\s]*$/;
+// Currency glyphs we recognize — covers ~all world currencies (see lib/currency.ts). The symbol may sit
+// BEFORE the number ("₪12,500", "$1,200") or AFTER it ("12,500 ₪", "100 €", "¥1200"), with an optional space.
+const CUR = "$€£¥₪₹₩₽₺฿₱₫₦₴₵₲₸₾₡";
+const CURRENCY_RE = new RegExp(
+  `^\\s*\\(?\\s*(?:[${CUR}]\\s?[\\d,]+(?:\\.\\d+)?|[\\d,]+(?:\\.\\d+)?\\s?[${CUR}])\\s*\\)?\\s*$`
+);
 const PERCENT_RE = /^\s*-?[\d,]+(\.\d+)?\s*%\s*$/;
 const NUMERIC_RE = /^\s*-?[\d,]+(\.\d+)?\s*$/;
 
-/** Parse a single cell into a number, handling currency symbols, thousands separators, %, and (parentheses) negatives. */
+/** Parse a single cell into a number, tolerating any currency symbol (before OR after the digits),
+ *  thousands separators, %, currency codes, and (parentheses) negatives. */
 export function parseNumeric(raw: unknown): number {
   if (raw === null || raw === undefined || raw === "") return NaN;
   if (typeof raw === "number") return raw;
-  let s = String(raw).trim();
-  const negative = /^\(.*\)$/.test(s);
-  s = s.replace(/[()$€£¥₪₹%]/g, "").replace(/,/g, "").trim();
-  const n = Number(s);
+  const str = String(raw).trim();
+  const negative = /^\(.*\)$/.test(str); // accounting negatives: (1,200)
+  // Pull out the numeric core (digits + optional decimal) after dropping thousands commas — robust to a
+  // currency symbol/code on either side, stray spaces, "%", etc.
+  const m = str.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  if (!m) return NaN;
+  let n = Number(m[0]);
   if (!Number.isFinite(n)) return NaN;
-  return negative ? -n : n;
+  if (negative && n > 0) n = -n;
+  return n;
 }
 
 function looksLikeDate(raw: unknown): boolean {
@@ -54,7 +64,7 @@ export function inferType(name: string, values: unknown[]): SemanticType {
 
   if (frac((s) => PERCENT_RE.test(s)) > 0.7) return "percent";
   if (frac((s) => CURRENCY_RE.test(s)) > 0.7) return "currency";
-  if (/(price|revenue|cost|amount|sales|profit|income|usd|eur|spend|balance|value)/.test(lname) &&
+  if (/(price|revenue|cost|amount|sales|profit|income|usd|eur|spend|balance|value|salary|salaries|wage|wages|\bpay\b|paid|payment|payroll|fee|fees|rent|budget|expense|expenses|charge|turnover|invoice|earnings|compensation)/.test(lname) &&
       frac((s) => NUMERIC_RE.test(s)) > 0.7)
     return "currency";
 
