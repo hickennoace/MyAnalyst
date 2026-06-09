@@ -103,6 +103,13 @@ export function pythonEngineEnabled(): boolean {
   return process.env.NEXT_PUBLIC_ENGINE === "python";
 }
 
+// Base URL for the Python API. Empty = same-origin (`/api/...`, in-project functions). Set
+// NEXT_PUBLIC_PY_API to a separate Python project's URL (e.g. https://myanalyst-api.vercel.app) when the
+// Python backend is deployed as its own Vercel project — the robust setup, since Next.js shadows /api in
+// the monorepo. CORS is enabled on the API.
+const API_BASE = (process.env.NEXT_PUBLIC_PY_API || "").replace(/\/$/, "");
+const api = (path: string) => `${API_BASE}${path}`;
+
 // Keep the POST body under Vercel's 4.5 MB serverless limit — sample evenly when a file is large.
 const SAMPLE_CAP = 40_000;
 
@@ -115,7 +122,7 @@ function sampleRows(rows: Record<string, unknown>[]): Record<string, unknown>[] 
 export async function runPythonAnalysis(columns: string[], rows: Record<string, unknown>[]): Promise<PyAnalysisSpec> {
   const sample = sampleRows(rows);
   const body = JSON.stringify({ columns, rows: sample.map((r) => columns.map((c) => r[c] ?? null)) });
-  const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  const res = await fetch(api("/api/analyze"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `Python analysis failed (${res.status})`);
@@ -136,7 +143,7 @@ export async function runPythonAsk(
 ): Promise<PyAnswer> {
   const sample = sampleRows(rows);
   const body = JSON.stringify({ question, columns, rows: sample.map((r) => columns.map((c) => r[c] ?? null)), facts });
-  const res = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  const res = await fetch(api("/api/ask"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `Ask failed (${res.status})`);
@@ -153,7 +160,7 @@ export async function runPythonConclusions(spec: PyAnalysisSpec, userContext?: s
     userContext,
     narrative: spec.narrative,
   });
-  const res = await fetch("/api/conclude", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  const res = await fetch(api("/api/conclude"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `Conclusions failed (${res.status})`);
