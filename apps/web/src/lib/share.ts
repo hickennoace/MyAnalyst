@@ -1,4 +1,5 @@
 import type { DashboardSpec } from "./types";
+import type { PyConclusions } from "./py-engine";
 
 // Shareable read-only links. The entire DashboardSpec is serialized, gzip-compressed (browser-native
 // CompressionStream), and base64url-encoded into the URL HASH fragment — which browsers never send to
@@ -37,8 +38,26 @@ export function redactForShare(spec: DashboardSpec): DashboardSpec {
   };
 }
 
-export const encodeSpec = (spec: DashboardSpec): Promise<string> => compress(redactForShare(spec));
-export const decodeSpec = (payload: string): Promise<DashboardSpec> => decompress<DashboardSpec>(payload);
+/** A shared dashboard: the rendered spec plus the AI conclusions, so a read-only link reproduces the full
+ *  decision-first view (KPIs, charts, and the AI "bottom line") — not just the templated dashboard. */
+export interface SharedDashboard {
+  spec: DashboardSpec;
+  conclusions: PyConclusions | null;
+}
+
+export const encodeShare = (spec: DashboardSpec, conclusions: PyConclusions | null): Promise<string> =>
+  compress({ spec: redactForShare(spec), conclusions: conclusions ?? null } satisfies SharedDashboard);
+
+/** Decode a share payload. v2 links wrap `{ spec, conclusions }`; older v1 links are a bare DashboardSpec
+ *  (no conclusions). Both are supported, so links created before this change keep working. */
+export async function decodeShare(payload: string): Promise<SharedDashboard> {
+  const obj = await decompress<unknown>(payload);
+  if (obj && typeof obj === "object" && "spec" in obj) {
+    const bundle = obj as Partial<SharedDashboard>;
+    if (bundle.spec) return { spec: bundle.spec, conclusions: bundle.conclusions ?? null };
+  }
+  return { spec: obj as DashboardSpec, conclusions: null };
+}
 
 // ── gzip via CompressionStream, with a no-compression fallback for older browsers ────────────────
 

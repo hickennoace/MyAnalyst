@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { DashboardSpec } from "@/lib/types";
-import { decodeSpec } from "@/lib/share";
+import type { PyConclusions } from "@/lib/py-engine";
+import { decodeShare } from "@/lib/share";
 import { DashboardView } from "@/components/DashboardView";
+import { PresenterMode } from "@/components/PresenterMode";
 import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -16,8 +18,10 @@ import { exportPdf, exportPng } from "@/lib/export";
 
 export default function ViewPage() {
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
+  const [conclusions, setConclusions] = useState<PyConclusions | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<null | "png" | "pdf">(null);
+  const [presenting, setPresenting] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,8 +30,11 @@ export default function ViewPage() {
       setError("This link doesn't contain a dashboard.");
       return;
     }
-    decodeSpec(payload)
-      .then(setSpec)
+    decodeShare(payload)
+      .then(({ spec, conclusions }) => {
+        setSpec(spec);
+        setConclusions(conclusions);
+      })
       .catch(() => setError("This link is invalid or was created by a newer version."));
   }, []);
 
@@ -63,6 +70,13 @@ export default function ViewPage() {
             <ThemeToggle />
             {spec && (
               <>
+                <button
+                  onClick={() => setPresenting(true)}
+                  className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60"
+                  title="Full-screen presenter mode"
+                >
+                  ▶ Present
+                </button>
                 <button
                   onClick={() => handleExport("png")}
                   disabled={!!exporting}
@@ -111,10 +125,12 @@ export default function ViewPage() {
               no data was sent to any server.
             </div>
             <ErrorBoundary label="dashboard">
-              <DashboardView spec={spec} innerRef={dashboardRef} />
+              <DashboardView spec={spec} conclusions={conclusions} innerRef={dashboardRef} />
             </ErrorBoundary>
           </>
         )}
+
+        {presenting && spec && <PresenterMode spec={spec} conclusions={conclusions} onClose={() => setPresenting(false)} />}
 
         <footer className="mt-16 space-y-2 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
           <p>MyAnalyst · Shared dashboards are encoded in the link itself — nothing is stored on a server.</p>

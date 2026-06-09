@@ -17,13 +17,12 @@ import { activeLlmConfig, localModelEnabled } from "@/lib/llm-settings";
 import { localNarrateStory, webgpuAvailable } from "@/lib/local-llm";
 import { BrandEditor } from "@/components/BrandEditor";
 import { AiKeyEditor } from "@/components/AiKeyEditor";
-import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
+import { encodeShare, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
 import { PresenterMode } from "@/components/PresenterMode";
 import { Uploader } from "@/components/Uploader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
-import { PrivacyBadge } from "@/components/PrivacyBadge";
 import { DashboardView } from "@/components/DashboardView";
 import { pyChartsToSpecs } from "@/lib/py-charts";
 import { runPythonAnalysis, runPythonConclusions, type PyAnalysisSpec, type PyConclusions } from "@/lib/py-engine";
@@ -35,7 +34,7 @@ import { PipelineProgress } from "@/components/PipelineProgress";
 const CONTEXT_KEY = "quantia:context";
 const INDUSTRY_KEY = "quantia:industry";
 
-const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights"];
+const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights", "Deep analysis (Python)", "Writing AI conclusions"];
 
 /** A file that's been read and is waiting for the user to confirm before analysis starts — so nobody
  *  analyzes the wrong file, and they get a chance to pick the right sheet and add context first. */
@@ -167,7 +166,7 @@ export default function AnalyzePage() {
     if (!spec) return;
     setToast({ text: "Building link…", tone: "info" });
     try {
-      const payload = await encodeSpec(spec);
+      const payload = await encodeShare(mergedDashboardSpec(spec, pySpec), pyConclusions);
       const url = `${window.location.origin}/view#${payload}`;
       if (url.length > MAX_LINK_CHARS) {
         setToast({ text: "Dataset too large for a link — use PNG/PDF export instead.", tone: "error" });
@@ -219,20 +218,28 @@ export default function AnalyzePage() {
       // worker's REAL stage transitions instead of a timed animation.
       setStage("Cleaning & normalizing");
       const { spec: result, table: cleaned } = await runAnalysis(sourceTbl, ctx, (s) => setStage(s), {}, activeLlmConfig() ?? undefined);
-      setTable(cleaned);
-      setSpec(result);
 
-      // ── The cutover: compute the dashboard's KPIs + charts with the PYTHON engine (pandas/statsmodels).
-      // Runs on the cleaned table; renders the Python dashboard. If the backend is unreachable (e.g. local
-      // `next dev`, or a transient error), we keep the TS dashboard above so the page never goes blank.
-      setStage("Analyzing with Python (pandas/statsmodels)…");
+      // ── The PYTHON engine (pandas/statsmodels) computes the dashboard's KPIs + charts, and Groq writes
+      // the AI conclusions from them. This is the primary view, so we finish it BEFORE revealing anything —
+      // one continuous progress bar, then the whole dashboard (conclusions included) appears at once, rather
+      // than showing the TS dashboard first and a confusing second "re-analyzing" pass. If the backend is
+      // unreachable (e.g. local `next dev`, or a transient error), we fall back to the in-browser TS spec.
+      let py: PyAnalysisSpec | null = null;
+      let conclusions: PyConclusions | null = null;
       try {
-        const py = await runPythonAnalysis(cleaned.columns, cleaned.rows, result.currency);
-        setPySpec(py);
-        runPythonConclusions(py, ctx).then(setPyConclusions).catch(() => setPyConclusions(null));
+        setStage("Deep analysis (Python)");
+        py = await runPythonAnalysis(cleaned.columns, cleaned.rows, result.currency);
+        setStage("Writing AI conclusions");
+        conclusions = await runPythonConclusions(py, ctx).catch(() => null);
       } catch {
-        setPySpec(null); // fall back to the in-browser TS dashboard
+        py = null; // backend unreachable → render the TS dashboard so the page never goes blank
       }
+
+      // Reveal the dashboard, Python KPIs/charts, and AI conclusions together — a single finished result.
+      setTable(cleaned);
+      setPySpec(py);
+      setPyConclusions(conclusions);
+      setSpec(result);
 
       // On-device narration (opt-in, WebGPU): sharpen the story locally with ZERO network, after the
       // dashboard is already up. Fire-and-forget so it never blocks rendering; patches the story in place.
@@ -397,8 +404,13 @@ export default function AnalyzePage() {
   }
 
   // Auto-run the sample when arriving from the landing page's "Try a sample" CTA (/analyze?demo=1).
+  // The ref guard makes this fire exactly once — React StrictMode double-invokes mount effects in dev,
+  // which would otherwise kick off two concurrent analyses.
+  const demoRan = useRef(false);
   useEffect(() => {
+    if (demoRan.current) return;
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1") {
+      demoRan.current = true;
       startSample();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -433,7 +445,6 @@ export default function AnalyzePage() {
             </div>
           </Link>
           <div className="flex flex-wrap items-center justify-end gap-2">
-          <PrivacyBadge />
           <ThemeToggle />
           {spec ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -698,12 +709,6 @@ export default function AnalyzePage() {
             <strong>{table.rowCount.toLocaleString()}</strong> rows out of{" "}
             <strong>{table.sampledFrom.toLocaleString()}</strong>. The statistics are valid for the full
             dataset; exact totals would need the complete file.
-          </div>
-        )}
-
-        {spec && busy && stage && (
-          <div className="mb-4">
-            <PipelineProgress stages={STAGES} current={stage} detail="Re-analyzing…" />
           </div>
         )}
 
