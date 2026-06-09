@@ -575,3 +575,58 @@ describe("advisoryAnswer (open 'what should I do?' questions)", () => {
     expect(advisoryAnswer("what should I do?", undefined)).toBeUndefined();
   });
 });
+
+describe("metaAnswer (capability & greeting questions)", () => {
+  const t: Table = {
+    name: "energy.csv",
+    columns: ["Region", "Monthly_Usage_kWh", "Cost_Savings_USD"],
+    rows: [
+      { Region: "Europe", Monthly_Usage_kWh: 700, Cost_Savings_USD: 120 },
+      { Region: "Asia", Monthly_Usage_kWh: 800, Cost_Savings_USD: 90 },
+      { Region: "Europe", Monthly_Usage_kWh: 760, Cost_Savings_USD: 150 },
+    ],
+    rowCount: 3,
+  };
+  const profiles = profileTable(t);
+
+  it("answers 'what you able to do?' with grounded capabilities, not a failure", async () => {
+    const { metaAnswer } = await import("./query");
+    const r = metaAnswer("what you able to do?", t, profiles);
+    expect(r?.ok).toBe(true);
+    expect(r?.answer).toMatch(/data analyst/i);
+    expect(r?.answer).toContain("Monthly_Usage_kWh"); // examples use real columns
+  });
+
+  it("answers greetings and stays silent for real questions", async () => {
+    const { metaAnswer } = await import("./query");
+    expect(metaAnswer("hi", t, profiles)?.ok).toBe(true);
+    expect(metaAnswer("total Cost_Savings_USD", t, profiles)).toBeUndefined();
+    expect(metaAnswer("which Region has the highest Monthly_Usage_kWh", t, profiles)).toBeUndefined();
+  });
+});
+
+describe("rank guard + stemmed column matching (the 'money we saved' bug)", () => {
+  const t: Table = {
+    name: "energy.csv",
+    columns: ["Region", "Monthly_Usage_kWh", "Cost_Savings_USD"],
+    rows: [
+      { Region: "Europe", Monthly_Usage_kWh: 700, Cost_Savings_USD: 120 },
+      { Region: "Asia", Monthly_Usage_kWh: 800, Cost_Savings_USD: 90 },
+      { Region: "Europe", Monthly_Usage_kWh: 760, Cost_Savings_USD: 150 },
+    ],
+    rowCount: 3,
+  };
+  const profiles = profileTable(t);
+
+  it("maps 'money we saved' to the savings column via stemming", () => {
+    const r = answerQuestion("what is the most amount of money we saved", t, profiles);
+    expect(r.ok).toBe(true);
+    expect(r.answer).toContain("Cost_Savings_USD");
+    expect(r.answer).not.toContain("Monthly_Usage_kWh"); // the old wrong default
+  });
+
+  it("refuses to guess when no column is referenced at all", () => {
+    const r = answerQuestion("what is the most impressive thing here", t, profiles);
+    expect(r.ok).toBe(false); // falls through to the AI/open-ended path instead of a fake answer
+  });
+});

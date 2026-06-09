@@ -87,10 +87,18 @@ function ordinal(n: number): string {
 
 /** Loose token match so a question word like "intense" resolves the column "Intensity", "calorie"
  *  resolves "Calories", "duration" resolves "Duration (min)", etc. */
+/** Light suffix stripper: saved/saving/savings → sav, prices/priced/pricing → pric. Lets inflected
+ *  question words find their column ("money we saved" → Cost_Savings_USD). */
+function stem(w: string): string {
+  const s = w.replace(/(ings|ing|ied|ies|ed|es|s)$/, "");
+  return s.length >= 3 ? s : w;
+}
+
 function stemMatch(a: string, b: string): boolean {
   if (a === b) return true;
   if (a.length >= 4 && b.startsWith(a)) return true;
   if (b.length >= 4 && a.startsWith(b)) return true;
+  if (stem(a) === stem(b)) return true; // saved ↔ savings, priced ↔ prices
   let p = 0;
   const n = Math.min(a.length, b.length);
   while (p < n && a[p] === b[p]) p++;
@@ -657,7 +665,10 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
   if (/\b(which|top|rank|ranking)\b/.test(lower) || rankingIntent) {
     const dim = mDims[0] ?? dims[0];
     const metric = mMetrics[0] ?? metrics[0];
-    if (dim && metric) {
+    // Only answer when the question actually referenced a column. With neither the metric nor the
+    // dimension mentioned, defaulting both is a guess dressed up as an answer ("most money we saved"
+    // once came back as usage-by-region) — fall through so the AI/open-ended path handles it instead.
+    if (dim && metric && (mMetrics.length > 0 || mDims.length > 0)) {
       const wantLowest = SUPER_LO.test(lower);
       const agg = chooseAgg(metric, lower);
       const ranked = groupBy(view, dim.name, metric.name, agg);
@@ -679,7 +690,11 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
   const aggMatch = AGG_WORDS.find((w) => w.re.test(lower));
   if (aggMatch) {
     const metric = mMetrics[0] ?? metrics[0];
-    if (metric) {
+    // Same no-guessing rule as ranking: a superlative ("most/least …") aimed at words that resolve to
+    // NO column ("most impressive thing") must not silently become max-of-the-first-metric. Explicit
+    // aggregations ("total", "average") keep the headline-metric default — that's a useful shorthand.
+    const guessing = (aggMatch.agg === "max" || aggMatch.agg === "min") && mMetrics.length === 0 && subjectNouns.length > 0;
+    if (metric && !guessing) {
       const wantsGroup = /\b(by|per|across|for each|grouped)\b/.test(lower);
       const dim = wantsGroup ? mDims[0] ?? dims[0] : undefined;
       if (dim) {
@@ -715,10 +730,10 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
   return {
     ok: false,
     answer:
-      'I couldn\'t map that to your columns. Try: "total ' +
+      'I couldn\'t match that to your data. Try: "total ' +
       (metrics[0]?.name ?? "value") +
       '", "average ' + (metrics[0]?.name ?? "value") + " by " + (dims[0]?.name ?? "category") +
-      '", or "correlation between two metrics".',
+      '", "what actions should I take?" — or ask "what can you do?" for the full list.',
   };
 }
 
@@ -1507,6 +1522,46 @@ export function advisoryAnswer(question: string, analysis?: AskAnalysis): QueryA
   };
 }
 
+// ── Meta questions ("what can you do?", greetings) ────────────────────────────
+// Answered locally and instantly, like any chat assistant would — never the "couldn't map that to
+// your columns" shrug. The capabilities answer is grounded in the dataset's real column names.
+
+const GREETING_RE = /^\s*(hi+|hello|hey+|yo|howdy|good\s+(morning|afternoon|evening)|thanks?(\s+you)?|thank\s+you|thx|ty)[\s!.,?]*$/i;
+const CAPABILITY_RE =
+  /(what\s+(can|are|is|do)\s+(you|u|this)\s*(do|able|capable)?|what\s+(you|u)\s+able\s+to\s+do|what\s+can\s+i\s+ask|how\s+(do|does)\s+(you|this|it)\s+work|^\s*help\s*\??\s*$|help\s+me|who\s+are\s+(you|u)|what\s+are\s+(you|u)\b|your\s+capabilit|what\s+questions?\s+can)/i;
+
+export function metaAnswer(question: string, table: Table, profiles: ColumnProfile[], analysis?: AskAnalysis): QueryAnswer | undefined {
+  const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
+  const dims = profiles.filter((p) => p.role === "dimension");
+  const time = profiles.find((p) => p.role === "time");
+  const m = metrics[0]?.name ?? "a metric";
+  const m2 = metrics[1]?.name;
+  const d = dims[0]?.name ?? "a category";
+
+  if (GREETING_RE.test(question)) {
+    return {
+      ok: true,
+      answer: `Hi! I'm your data analyst for "${table.name}". Ask me anything about it — try "average ${m} by ${d}" or "what actions should I take?".`,
+    };
+  }
+  if (!CAPABILITY_RE.test(question)) return undefined;
+
+  const lines = [
+    `I'm an AI data analyst for "${table.name}" (${table.rowCount.toLocaleString()} rows). Ask in plain English and I compute the answer from your actual data — every figure comes with a "How I computed this" note. I can:`,
+    `• Totals, averages & medians — "total ${m}", "average ${m} by ${d}"`,
+    `• Rankings — "which ${d} has the highest ${m}"`,
+    `• Comparisons — "A vs B ${m}", and whether a gap is statistically real`,
+    ...(m2 ? [`• Relationships — "correlation between ${m} and ${m2}"`] : []),
+    ...(time ? [`• Time — "how did ${m} change over time"`] : []),
+    `• Shares & spread — "what % of ${m} comes from …", "90th percentile of ${m}"`,
+    ...((analysis?.actions?.length ?? 0) > 0 || (analysis?.findings?.length ?? 0) > 0
+      ? [`• Advice — "what actions should I take?", "summarize the key takeaways"`]
+      : []),
+    `Follow-ups work too — I keep the thread's context.`,
+  ];
+  return { ok: true, answer: lines.join("\n") };
+}
+
 function buildEvidence(question: string, table: Table, profiles: ColumnProfile[], grounded: string, domain?: string, history?: QaTurn[], analysis?: AskAnalysis) {
   const conversation = history?.slice(-3).map((h) => ({ q: h.q, a: h.a.slice(0, 320) }));
   // If the question carries a filter, the focal facts are computed on the filtered subset (so the AI
@@ -1680,6 +1735,11 @@ async function runAnswerAI(
   onToken?: (delta: string) => void,
   analysis?: AskAnalysis
 ): Promise<RichAnswer> {
+  // Meta questions ("what can you do?", "hi") get an instant local answer — no network, no LLM,
+  // and never the "couldn't map that" failure.
+  const meta = metaAnswer(question, table, profiles, analysis);
+  if (meta) return { ...meta, source: "heuristic", followups: localFollowups(profiles) };
+
   let base = answerQuestion(question, table, profiles);
 
   // Advisory / open questions ("what should I do?", "summarize the takeaways") aren't computations —
