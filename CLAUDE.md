@@ -16,10 +16,16 @@ before doing pivot work.
 
 - **Trade-off accepted by the owner:** data now leaves the browser to a server (the old "data never leaves
   the page" privacy moat is dropped); it needs server hosting.
-- **Migration is ADDITIVE + STAGED. NEVER break the live site.** `main`/myanalyst.net keeps running on the
-  **TypeScript** engine until the Python path reaches parity. Do Python/deploy-config work on the
-  **`python-engine`** branch (Vercel preview), not `main`, until verified.
-- **Hosting = Vercel Python Serverless Function** (`apps/web/api/analyze.py`), same project.
+- **Migration is ADDITIVE + STAGED. NEVER break the live site.** myanalyst.net keeps running on the
+  **TypeScript** engine until the Python path is live; the Python call is wrapped so any failure falls back
+  to TS (the page never goes blank).
+- **Hosting = a SEPARATE Vercel Python project** — `apps/pyapi/` → **`https://quantia-api.vercel.app`**. The
+  web app calls it **cross-origin** via `NEXT_PUBLIC_PY_API`. Same-origin Python *inside* the Next app does
+  **NOT** work on Vercel (Next.js owns/shadows `/api/*` → the function 500s); that approach is abandoned.
+  CORS is `*` on the API; the web CSP `connect-src` is derived from `NEXT_PUBLIC_PY_API` in `next.config.mjs`.
+- **`main` auto-deploys to production (myanalyst.net)** via Vercel Git — but ONLY when the push changes files
+  under the project root `apps/web` (pushes touching just `apps/pyapi` are skipped). The free tier caps at
+  **100 deploys/day**. The `apps/pyapi` project is deployed via CLI (`cd apps/pyapi && vercel deploy --prod`).
 
 ## Two engines, two toolchains
 
@@ -48,14 +54,17 @@ post-build flake). ~272 vitest + 7 E2E.
 (`analyze.ts` sets `conclusions: []`). Users read **`insights` (`insights/templated.ts`) + `actions`
 (`actions.ts`)** — edit those for live output.
 
-### Python engine (NEW — `apps/web/api/`)
-`_engine.py` (pandas) ports the semantics + revenue-first KPIs + best-sellers; `analyze.py` is the
-`/api/analyze` serverless route. Underscore-prefixed `.py` files are private (not routed by Vercel).
+### Python engine (LIVE service — `apps/pyapi/`, its own Vercel project)
+`_engine.py` (pandas) ports the semantics + revenue-first KPIs + best-sellers. `api/index.py` is the single
+entrypoint (a `BaseHTTPRequestHandler`); a `vercel.json` rewrite maps `/api/{analyze,conclude,ask}` →
+`/api/index?fn=…`. **`index.py` must `sys.path.insert` its own dir** so the sibling `_*.py` imports resolve
+on Vercel. The web client (`lib/py-engine.ts`) POSTs to `${NEXT_PUBLIC_PY_API}/api/analyze|conclude|ask`.
 - **Use `py`, not `python`** on this Windows box (`python.exe` is the WindowsApps stub → exit 49).
-  `py --version` = 3.14; pandas/numpy/scipy installed. Target deploy runtime is Vercel Python 3.12.
-- **Run:** `py apps/web/api/_test_engine.py` (assertions) · `py apps/web/api/_demo.py` (car-sales demo).
+  `py --version` = 3.14; pandas/numpy/scipy installed. Deploy runtime is Vercel Python 3.12.
+- **Run tests/dev (from `apps/pyapi/api`):** `py _test_all.py` (all suites) · `py _demo.py` (car-sales demo) ·
+  `py _server.py` (local API on :8000; web `dev:py` runs it and points `NEXT_PUBLIC_PY_API` at it).
 - Engine computes deterministic **facts**; the LLM only narrates them (grounding discipline — it can't
-  invent numbers).
+  invent numbers). Conclusions fall back to grounded **templated** text when no LLM key is set on the API.
 
 ## Conventions
 
