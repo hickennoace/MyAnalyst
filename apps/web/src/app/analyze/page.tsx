@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import type { DashboardSpec, SemanticType, Table } from "@/lib/types";
+import type { DashboardSpec, Table } from "@/lib/types";
 import { parseFile, type SourceInfo } from "@/lib/parse";
 import { runAnalysis } from "@/lib/analyze-client";
 import { downloadCsv } from "@/lib/csv";
@@ -27,12 +27,10 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { PrivacyBadge } from "@/components/PrivacyBadge";
 import { DashboardView } from "@/components/DashboardView";
-import { PyConclusionsCard } from "@/components/PyConclusionsCard";
 import { pyChartsToSpecs } from "@/lib/py-charts";
 import { runPythonAnalysis, runPythonConclusions, type PyAnalysisSpec, type PyConclusions } from "@/lib/py-engine";
 import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ColumnControls } from "@/components/ColumnControls";
 import { HistoryList } from "@/components/HistoryList";
 import { PipelineProgress } from "@/components/PipelineProgress";
 
@@ -68,11 +66,8 @@ export default function AnalyzePage() {
   // stays as a safety fallback if the Python backend is unreachable.
   const [pySpec, setPySpec] = useState<PyAnalysisSpec | null>(null);
   const [pyConclusions, setPyConclusions] = useState<PyConclusions | null>(null);
-  // The full parsed source (all columns) + the user's column choices, so "Apply & re-run" can
-  // re-analyze from scratch with exclusions/type overrides applied.
+  // The full parsed source (all columns), kept so source/sheet switches can re-analyze from scratch.
   const [sourceTable, setSourceTable] = useState<Table | null>(null);
-  const [excluded, setExcluded] = useState<Set<string>>(new Set());
-  const [typeOverrides, setTypeOverrides] = useState<Record<string, SemanticType>>({});
   // Multi-sheet (Excel) / multi-table (SQLite) support: the uploaded file + its selectable sources.
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [fileSources, setFileSources] = useState<SourceInfo[]>([]);
@@ -144,10 +139,8 @@ export default function AnalyzePage() {
     }
     setTable(loaded.table);
     setSpec(loaded.spec);
-    // Re-runnable from the loaded table; the stored spec already reflects its prior column choices.
+    // Re-runnable from the loaded table.
     setSourceTable(loaded.table);
-    setExcluded(new Set());
-    setTypeOverrides({});
     // History entries have no underlying file, so there's no sheet/table picker.
     setSourceFile(null);
     setFileSources([]);
@@ -216,40 +209,24 @@ export default function AnalyzePage() {
     }
   }
 
-  async function run(
-    sourceTbl: Table,
-    opts?: { excluded?: Set<string>; overrides?: Record<string, SemanticType> }
-  ) {
-    const excl = opts?.excluded ?? new Set<string>();
-    const ov = opts?.overrides ?? {};
+  async function run(sourceTbl: Table) {
     // Fold the chosen industry tag into the analysis context so domain detection + the AI understand
     // the uploaded file. (The "or by industry" sample buttons are unrelated — they generate showcase data.)
     const ctx = combinedContext(industry, jobDesc);
     setError(null);
     setBusy(true);
-    // Fresh run (from upload/sample) returns to the uploader+progress view; a re-run from the
-    // column controls keeps the current dashboard on screen (dimmed) so it doesn't flash away.
-    if (!opts) {
-      setSpec(null);
-      setPySpec(null);
-      setPyConclusions(null);
-    }
+    setSpec(null);
+    setPySpec(null);
+    setPyConclusions(null);
     setSourceTable(sourceTbl);
     try {
-      // Apply column exclusions (the pipeline reads `columns`, so filtering it is enough — rows can
-      // keep the extra keys, they're ignored). Type overrides flow into cleaning via runAnalysis.
-      const analyzedTbl = excl.size
-        ? { ...sourceTbl, columns: sourceTbl.columns.filter((c) => !excl.has(c)) }
-        : sourceTbl;
       // The whole pipeline (clean → profile → stats → charts → insights) runs in a Web Worker,
       // so the UI never freezes even on a 200k-row file — and the progress here reflects the
       // worker's REAL stage transitions instead of a timed animation.
       setStage("Cleaning & normalizing");
-      const { spec: result, table: cleaned } = await runAnalysis(analyzedTbl, ctx, (s) => setStage(s), ov, activeLlmConfig() ?? undefined);
+      const { spec: result, table: cleaned } = await runAnalysis(sourceTbl, ctx, (s) => setStage(s), {}, activeLlmConfig() ?? undefined);
       setTable(cleaned);
       setSpec(result);
-      setExcluded(excl);
-      setTypeOverrides(ov);
 
       // ── The cutover: compute the dashboard's KPIs + charts with the PYTHON engine (pandas/statsmodels).
       // Runs on the cleaned table; renders the Python dashboard. If the backend is unreachable (e.g. local
@@ -299,11 +276,6 @@ export default function AnalyzePage() {
       setBusy(false);
       setStage(null);
     }
-  }
-
-  function handleApplyColumns(nextExcluded: Set<string>, nextOverrides: Record<string, SemanticType>) {
-    if (!sourceTable) return;
-    run(sourceTable, { excluded: nextExcluded, overrides: nextOverrides });
   }
 
   async function handleFile(file: File) {
@@ -445,8 +417,6 @@ export default function AnalyzePage() {
     setTable(null);
     setError(null);
     setSourceTable(null);
-    setExcluded(new Set());
-    setTypeOverrides({});
     setSourceFile(null);
     setFileSources([]);
     setCurrentSourceId("");
@@ -826,19 +796,6 @@ export default function AnalyzePage() {
           </div>
         )}
 
-        {spec && sourceTable && (
-          <div className="mb-4">
-            <ColumnControls
-              profiles={spec.profiles}
-              allColumns={sourceTable.columns}
-              excluded={excluded}
-              overrides={typeOverrides}
-              busy={busy}
-              onApply={handleApplyColumns}
-            />
-          </div>
-        )}
-
         {presenting && spec && <PresenterMode spec={spec} onClose={() => setPresenting(false)} />}
         {branding && <BrandEditor onClose={() => setBranding(false)} />}
         {aiKeyOpen && <AiKeyEditor onClose={() => setAiKeyOpen(false)} />}
@@ -852,17 +809,13 @@ export default function AnalyzePage() {
         {spec && table && (
           <ErrorBoundary label="dashboard">
             <div className={busy ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
-              {/* Groq reads the Python-computed KPIs + charts and explains them, above the dashboard. */}
-              {pyConclusions && (
-                <div className="mb-6">
-                  <PyConclusionsCard c={pyConclusions} />
-                </div>
-              )}
-              {/* The rich dashboard (same UI as the demo). When the Python engine has run, its KPIs and
-                  charts populate it; otherwise the in-browser TS engine does. */}
+              {/* The rich dashboard (same UI as the demo). The file header + tab nav sit at the very top;
+                  the Groq conclusions (which read the Python KPIs + charts) render just beneath the tabs.
+                  When the Python engine has run, its KPIs and charts populate it; otherwise the TS engine does. */}
               <DashboardView
                 spec={pySpec ? { ...spec, kpis: pySpec.kpis, charts: pyChartsToSpecs(pySpec.charts) } : spec}
                 table={table}
+                conclusions={pyConclusions}
                 innerRef={dashboardRef}
               />
             </div>

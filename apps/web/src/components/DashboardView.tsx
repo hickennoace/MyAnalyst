@@ -27,6 +27,8 @@ import { domainFocus } from "@/lib/domain-pack";
 import { QueryBox } from "./QueryBox";
 import { DataTable } from "./DataTable";
 import { MethodologyCard } from "./MethodologyCard";
+import { PyConclusionsCard } from "./PyConclusionsCard";
+import type { PyConclusions } from "@/lib/py-engine";
 
 // The dashboard body, rendered identically by the live analyzer (/analyze) and the read-only shared
 // view (/view). Everything renders from the DashboardSpec alone; interactive tools (Ask / Build / Browse)
@@ -42,10 +44,12 @@ type TabId = "overview" | "insights" | "trends" | "quality" | "explore";
 export function DashboardView({
   spec,
   table,
+  conclusions,
   innerRef,
 }: {
   spec: DashboardSpec;
   table?: Table | null;
+  conclusions?: PyConclusions | null;
   innerRef?: Ref<HTMLDivElement>;
 }) {
   const has = {
@@ -126,6 +130,10 @@ export function DashboardView({
           );
         })}
       </nav>
+
+      {/* AI conclusions (Groq reads the Python-computed KPIs + charts) — shown across all tabs,
+          directly under the file header + tab nav so the orientation stays at the very top. */}
+      {conclusions && <PyConclusionsCard c={conclusions} />}
 
       {/* ── Overview ───────────────────────────────────────────────────────── */}
       <Panel id="overview" active={active}>
