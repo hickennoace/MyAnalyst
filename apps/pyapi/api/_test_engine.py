@@ -72,7 +72,7 @@ rfm_spec = analyze(rfm_df)
 check("RFM segments computed for customer data", rfm_spec.get("rfm") is not None and len(rfm_spec["rfm"]["segments"]) >= 2 and rfm_spec["rfm"]["entity"] == "CustomerID")
 check("no tautological 'Cost drives Price' driver", not (spec["stats"].get("drivers") and spec["stats"]["drivers"]["drivers"][0]["name"] == "Cost"))
 import json
-from analyze import _jsonable
+from index import _jsonable
 try:
     json.dumps(spec, default=_jsonable)
     check("full spec is JSON-serializable", True)

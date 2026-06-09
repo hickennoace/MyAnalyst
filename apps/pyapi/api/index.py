@@ -1,7 +1,8 @@
-"""Single Python entrypoint for Vercel (the Next.js-compatible pattern).
+"""Single Python entrypoint for the standalone MyAnalyst API project (apps/pyapi).
 
-Next.js owns the `/api/*` namespace, so standalone `api/analyze.py` etc. don't route. Instead, a platform
-rewrite in vercel.json sends `/api/analyze|conclude|ask` here as `/api/index?fn=...`, and this dispatches.
+Deployed as its OWN Vercel project (no Next.js), so the browser reaches it cross-origin via
+NEXT_PUBLIC_PY_API. A vercel.json rewrite sends `/api/analyze|conclude|ask` here as `/api/index?fn=...`,
+and this dispatches; `_fn()` also falls back to the last path segment. CORS is wide-open (`*`) below.
 """
 from http.server import BaseHTTPRequestHandler
 from io import StringIO

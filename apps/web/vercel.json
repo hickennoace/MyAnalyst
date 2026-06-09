@@ -2,11 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "functions": {
-    "api/index.py": { "runtime": "@vercel/python@6.44.0", "memory": 1024, "maxDuration": 60, "includeFiles": "api/_*.py" }
-  },
-  "rewrites": [
-    { "source": "/api/:fn(analyze|conclude|ask)", "destination": "/api/index?fn=:fn" }
-  ]
+  "installCommand": "npm install"
 }

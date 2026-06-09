@@ -6,7 +6,7 @@
   "scripts": {
     "predev": "node scripts/copy-sql-wasm.mjs",
     "dev": "next dev",
-    "dev:py": "py api/_server.py",
+    "dev:py": "py ../pyapi/api/_server.py",
     "prebuild": "node scripts/copy-sql-wasm.mjs",
     "build": "next build",
     "start": "next start",
