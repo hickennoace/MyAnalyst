@@ -7,13 +7,13 @@ as a zero-API templated narrative when the LLM is off or rate-limited.
 from __future__ import annotations
 
 
-def _money(x):
+def _money(x, sym="$"):
     a = abs(x)
     if a >= 1e6:
-        return f"${x/1e6:.1f}M"
+        return f"{sym}{x/1e6:.1f}M"
     if a >= 1e3:
-        return f"${x/1e3:.0f}K"
-    return f"${x:,.0f}"
+        return f"{sym}{x/1e3:.0f}K"
+    return f"{sym}{x:,.0f}"
 
 
 def _pct(x):
@@ -22,6 +22,16 @@ def _pct(x):
 
 def build_facts(spec: dict) -> list[dict]:
     facts: list[dict] = []
+    cur = (spec.get("currency") or {}).get("symbol", "$")
+    money_cols = {c["name"] for c in spec.get("columns", []) if c["type"] == "currency"}
+
+    def _m(v):  # money in the dataset's detected currency
+        return _money(v, cur)
+
+    def _v(col, x):  # currency for money columns, plain number otherwise (so "Age" isn't shown as "$34")
+        if col in money_cols:
+            return _m(x)
+        return f"{x:,.0f}" if abs(x) >= 1000 else f"{x:,.1f}"
 
     def add(fid, text, kind="metric", value=None):
         facts.append({"id": fid, "text": text, "kind": kind, "value": value})
@@ -35,9 +45,9 @@ def build_facts(spec: dict) -> list[dict]:
         tr, tu = bs["topRevenue"], bs["topUnits"]
         if tr["name"] == tu["name"]:
             add("fact-bestseller", f"\"{tr['name']}\" is the biggest {bs['dimension']} by both revenue "
-                f"({_money(tr['revenue'])}, {_pct(tr['revenueShare'])}) and volume.", "bestseller")
+                f"({_m(tr['revenue'])}, {_pct(tr['revenueShare'])}) and volume.", "bestseller")
         else:
-            add("fact-bestseller", f"\"{tr['name']}\" earns the most ({_money(tr['revenue'])}, "
+            add("fact-bestseller", f"\"{tr['name']}\" earns the most ({_m(tr['revenue'])}, "
                 f"{_pct(tr['revenueShare'])} of revenue) while \"{tu['name']}\" sells the most volume "
                 f"({tu['units']:,.0f}).", "bestseller")
         pareto = bs.get("pareto")
@@ -53,11 +63,11 @@ def build_facts(spec: dict) -> list[dict]:
             f"{_pct(abs(tr['yoyChangePct']))} year-over-year.", "trend", tr["yoyChangePct"])
     if tr and tr.get("significant"):
         add("fact-trend", f"{tr['metric']} has a statistically real {tr['direction']}ward trend "
-            f"(p={tr['slopeP']:.3f}). Best month {tr['best']['label']} ({_money(tr['best']['value'])}).", "trend")
+            f"(p={tr['slopeP']:.3f}). Best month {tr['best']['label']} ({_m(tr['best']['value'])}).", "trend")
     sw = (tr or {}).get("biggestSwing")
     if sw and sw.get("notable"):
         add("fact-swing", f"The sharpest move was a {_pct(abs(sw['changePct']))} {sw['direction']} from "
-            f"{sw['fromLabel']} ({_money(sw['fromValue'])}) to {sw['toLabel']} ({_money(sw['toValue'])}) — "
+            f"{sw['fromLabel']} ({_m(sw['fromValue'])}) to {sw['toLabel']} ({_m(sw['toValue'])}) — "
             f"a likely turning point worth explaining.", "trend", sw["changePct"])
 
     fc = spec.get("forecast")
@@ -111,8 +121,8 @@ def build_facts(spec: dict) -> list[dict]:
     if o:
         if o["kind"] == "skew":
             add("fact-skew", f"{o['column']} is {'right' if o['direction']!='low' else 'left'}-skewed: "
-                f"typical (median) {_money(o['median'])} vs mean {_money(o['mean'])} — a {o['count']}-point "
-                f"tail; use the median.", "distribution")
+                f"typical (median) {_v(o['column'], o['median'])} vs mean {_v(o['column'], o['mean'])} — "
+                f"a {o['count']}-point tail; use the median.", "distribution")
         else:
             add("fact-anomaly", f"{o['column']} has {o['count']} isolated extreme value(s) worth checking.", "anomaly")
 
@@ -120,8 +130,8 @@ def build_facts(spec: dict) -> list[dict]:
     covered = {f["text"].split(" is ")[0].strip('"') for f in facts if f["kind"] == "distribution"}
     for d in spec.get("distributions", []):
         if not d["normal"] and abs(d["skew"]) > 0.6 and d["column"] not in covered:
-            mean_s = _money(d["mean"]) if abs(d["mean"]) > 100 else f"{d['mean']:.1f}"
-            med_s = _money(d["median"]) if abs(d["median"]) > 100 else f"{d['median']:.1f}"
+            mean_s = _v(d["column"], d["mean"])
+            med_s = _v(d["column"], d["median"])
             add("fact-distribution", f"{d['column']} is {d['shape']} and not normally distributed — its average "
                 f"({mean_s}) is pulled by the tail, so the median ({med_s}) is the more honest 'typical' value.",
                 "distribution")
@@ -134,6 +144,17 @@ def chart_readings(spec: dict) -> list[dict]:
     """A plain-language reading of EACH chart the engine produced, so the LLM can interpret the visuals
     (not just the raw facts). Built from the computed analysis, tied to each chart's title."""
     readings: list[dict] = []
+    cur = (spec.get("currency") or {}).get("symbol", "$")
+    money_cols = {c["name"] for c in spec.get("columns", []) if c["type"] == "currency"}
+
+    def _m(v):
+        return _money(v, cur)
+
+    def _v(col, x):
+        if col in money_cols:
+            return _m(x)
+        return f"{x:,.0f}" if abs(x) >= 1000 else f"{x:,.1f}"
+
     trend = spec.get("trend") or {}
     bs = spec.get("bestSellers") or {}
     fc = spec.get("forecast") or {}
@@ -146,14 +167,14 @@ def chart_readings(spec: dict) -> list[dict]:
             best = trend.get("best", {})
             direction = trend.get("direction", "flat")
             reading = (f"Revenue trends {direction} over the period"
-                       + (f", peaking in {best.get('label')} at {_money(best.get('value', 0))}" if best else "")
+                       + (f", peaking in {best.get('label')} at {_m(best.get('value', 0))}" if best else "")
                        + (f"; {'up' if (trend.get('yoyChangePct') or 0) >= 0 else 'down'} "
                           f"{_pct(abs(trend.get('yoyChangePct') or 0))} year-over-year" if trend.get("yoyChangePct") is not None else "")
                        + ".")
         elif c["id"] == "chart-bestsellers" and bs:
             tr = bs["topRevenue"]
             top3 = sum(p["revenueShare"] for p in bs["byRevenue"][:3])
-            reading = (f"\"{tr['name']}\" is the biggest {bs['dimension']} at {_money(tr['revenue'])} "
+            reading = (f"\"{tr['name']}\" is the biggest {bs['dimension']} at {_m(tr['revenue'])} "
                        f"({_pct(tr['revenueShare'])}); the top 3 make up {_pct(top3)} of revenue — "
                        f"{'concentrated' if top3 > 0.6 else 'fairly spread'}.")
         elif c["id"] == "chart-forecast" and fc:
@@ -175,8 +196,8 @@ def chart_readings(spec: dict) -> list[dict]:
             name = title.replace("Distribution of ", "")
             dd = next((d for d in spec.get("distributions", []) if d["column"] == name), None)
             if dd:
-                mean_s = _money(dd["mean"]) if abs(dd["mean"]) > 100 else f"{dd['mean']:.1f}"
-                med_s = _money(dd["median"]) if abs(dd["median"]) > 100 else f"{dd['median']:.1f}"
+                mean_s = _v(name, dd["mean"])
+                med_s = _v(name, dd["median"])
                 rel = "sits near" if dd["normal"] else "is pulled away from"
                 norm = "" if dd["normal"] else " and not normally distributed"
                 reading = f"{name} is {dd['shape']}{norm}; the mean ({mean_s}) {rel} the median ({med_s})."

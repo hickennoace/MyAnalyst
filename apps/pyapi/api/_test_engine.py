@@ -114,6 +114,36 @@ const_df = pd.DataFrame({"Region": ["US"] * 50, "Sales": np.random.default_rng(2
 dq = data_quality(const_df, profile(const_df))
 check("quality flags the constant column", "Region" in dq.get("constantColumns", []) and any("single value" in i for i in dq["issues"]))
 
+# ── Currency detection ────────────────────────────────────────────────────────
+from _currency import detect, money as _cmoney
+import pandas as _pd
+
+# Header ISO code wins.
+eur = detect(_pd.DataFrame({"Revenue (EUR)": [100, 200], "Units": [1, 2]}), ["Revenue (EUR)"])
+check("detect EUR from header code", eur["code"] == "EUR" and eur["symbol"] == "€")
+# Header symbol.
+ils = detect(_pd.DataFrame({"Price ₪": [100, 200]}), ["Price ₪"])
+check("detect ILS from ₪ symbol in header", ils["code"] == "ILS" and ils["symbol"] == "₪")
+# Symbol in raw cell values when header is plain.
+gbp = detect(_pd.DataFrame({"Amount": ["£1,200", "£980", "£1,500"]}), ["Amount"])
+check("detect GBP from £ in cells", gbp["symbol"] == "£")
+# Default USD when nothing found.
+usd = detect(_pd.DataFrame({"Sales": [100, 200]}), ["Sales"])
+check("default to USD/$ when no currency hint", usd["code"] == "USD" and usd["symbol"] == "$")
+check("money() uses the given symbol", _cmoney(1_250_000, "€") == "€1.2M")
+
+# End-to-end: an EUR sales file renders € in the KPI values, not $.
+eur_df = car_sales(300).rename(columns={"Price": "Price (EUR)", "Cost": "Cost (EUR)"})
+eur_spec = analyze(eur_df)
+check("engine detects EUR end-to-end", eur_spec["currency"]["code"] == "EUR")
+check("KPI money values use €, not $", any("€" in k["value"] for k in eur_spec["kpis"]) and not any("$" in k["value"] for k in eur_spec["kpis"]))
+
+# A non-money skewed column (CustomerAge) must NOT be printed with a currency symbol.
+age_df = _pd.DataFrame({"CustomerAge": list(np.random.default_rng(3).gamma(2, 12, 300).astype(int) + 18)})
+age_spec = analyze(age_df)
+age_facts = " ".join(f["text"] for f in age_spec.get("facts", []))
+check("non-money column not shown as currency", "$" not in age_facts and "€" not in age_facts)
+
 print()
 if check.failed:
     print(f"{check.failed} FAILED")

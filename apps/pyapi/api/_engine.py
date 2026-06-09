@@ -24,6 +24,7 @@ import _segments as _sg
 import _rfm as _rf
 import _quality as _ql
 import _distribution as _dist
+import _currency as _cur
 
 # ─────────────────────────── Profiling: type + role per column ───────────────────────────
 
@@ -173,13 +174,14 @@ def detect_domain(profiles, n) -> dict[str, Any]:
 
 # ─────────────────────────── Helpers ───────────────────────────
 
-def _fmt_money(x):
-    a = abs(x)
-    if a >= 1e6:
-        return f"${x/1e6:.1f}M"
-    if a >= 1e3:
-        return f"${x/1e3:.0f}K"
-    return f"${x:,.0f}"
+def _fmt_money(x, sym="$"):
+    return _cur.money(x, sym)
+
+
+def _money_columns(profiles) -> list[str]:
+    """Columns that hold money (for currency detection): currency-typed, or revenue/price-named."""
+    return [p["name"] for p in profiles
+            if p["type"] == "currency" or REVENUE_NAME.search(p["name"]) or UNIT_PRICE_NAME.search(p["name"])]
 
 
 def _fmt_num(x):
@@ -293,9 +295,10 @@ def _total_label(name):
     return "Total revenue"
 
 
-def compute_kpis(df, profiles, domain, bestsellers) -> list[dict[str, Any]]:
+def compute_kpis(df, profiles, domain, bestsellers, currency=None) -> list[dict[str, Any]]:
     n = len(df)
     kpis: list[dict[str, Any]] = []
+    sym = (currency or _cur.DEFAULT)["symbol"]
     grain = is_transaction_grain(profiles, n)
     revenue = revenue_metric(profiles, grain, domain)
     qty = quantity_metric(profiles, revenue)
@@ -304,7 +307,7 @@ def compute_kpis(df, profiles, domain, bestsellers) -> list[dict[str, Any]]:
     if revenue:
         num = revenue["numeric"]
         money = revenue["type"] == "currency"
-        fmt = _fmt_money if money else _fmt_num
+        fmt = (lambda v: _fmt_money(v, sym)) if money else _fmt_num
         kpis.append({"id": f"kpi-total-{revenue['name']}", "name": _total_label(revenue["name"]),
                      "value": fmt(num["sum"]), "relevance": 1.0,
                      "howComputed": f"Sum of {revenue['name']} across all {n:,} rows."})
@@ -368,7 +371,7 @@ def compute_kpis(df, profiles, domain, bestsellers) -> list[dict[str, Any]]:
             continue
         num = m["numeric"]
         money = m["type"] == "currency"
-        fmt = _fmt_money if money else _fmt_num
+        fmt = (lambda v: _fmt_money(v, sym)) if money else _fmt_num
         if is_additive(m, revenue):
             kpis.append({"id": f"kpi-total-{m['name']}", "name": m["name"] if re.match(r"^total\b", m["name"], re.I) else f"Total {m['name']}",
                          "value": fmt(num["sum"]), "relevance": 0.7 if money else 0.55,
@@ -392,8 +395,9 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
     grain = is_transaction_grain(profiles, n)
     revenue = revenue_metric(profiles, grain, domain["domain"])
     qty = quantity_metric(profiles, revenue)
+    currency = _cur.detect(df, _money_columns(profiles))
     bs = best_sellers(df, profiles, revenue, qty)
-    kpis = compute_kpis(df, profiles, domain["domain"], bs)
+    kpis = compute_kpis(df, profiles, domain["domain"], bs, currency)
 
     metric_names = [m["name"] for m in _metrics(profiles)]
     time_col = _time_col(profiles)
@@ -439,6 +443,7 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
     spec: dict[str, Any] = {
         "engine": "python",
         "rowCount": n,
+        "currency": currency,
         "quality": _ql.data_quality(df, profiles),
         "domain": domain,
         "columns": [{"name": p["name"], "type": p["type"], "role": p["role"]} for p in profiles],
@@ -455,6 +460,7 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
     spec["charts"] = _ch.build_charts(df, profiles, {
         "revenue": revenue, "bestsellers": bs, "monthly": monthly, "forecast": forecast,
         "correlations": stats_block.get("correlations", []), "metric_names": metric_names,
+        "currency": currency,
     })
     spec["facts"] = _ins.build_facts(spec)
     spec["chartReadings"] = _ins.chart_readings(spec)

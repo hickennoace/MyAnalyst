@@ -13,16 +13,18 @@ def _num(df, name):
     return pd.to_numeric(df[name], errors="coerce")
 
 
-def _compact(x: float) -> str:
+def _compact(x: float, symbol: str = "") -> str:
     a = abs(x)
     if a >= 1e6:
-        return f"{x/1e6:.1f}M"
-    if a >= 1e3:
-        return f"{x/1e3:.0f}K"
-    return f"{x:.0f}" if a >= 10 else f"{x:.1f}"
+        body = f"{x/1e6:.1f}M"
+    elif a >= 1e3:
+        body = f"{x/1e3:.0f}K"
+    else:
+        body = f"{x:.0f}" if a >= 10 else f"{x:.1f}"
+    return f"{symbol}{body}"
 
 
-def _histogram(df, name, bins: int = 12) -> dict | None:
+def _histogram(df, name, bins: int = 12, symbol: str = "") -> dict | None:
     """A distribution histogram for one metric, as a bar chart with bin-range labels — so the user SEES
     the skew/spread the stats describe (the mean-vs-median story made visual)."""
     v = _num(df, name).dropna().to_numpy()
@@ -30,7 +32,7 @@ def _histogram(df, name, bins: int = 12) -> dict | None:
     if len(v) < 20 or v.min() == v.max():
         return None
     counts, edges = np.histogram(v, bins=bins)
-    labels = [f"{_compact(edges[i])}–{_compact(edges[i + 1])}" for i in range(len(counts))]
+    labels = [f"{_compact(edges[i], symbol)}–{_compact(edges[i + 1], symbol)}" for i in range(len(counts))]
     return {
         "id": "chart-histogram", "type": "bar", "title": f"Distribution of {name}",
         "subtitle": "how the values are spread",
@@ -68,7 +70,9 @@ def build_charts(df, profiles, ctx) -> list[dict]:
     # 2b. Distribution histogram of the key metric (revenue if present, else the first metric).
     hist_metric = (revenue or {}).get("name") or (ctx.get("metric_names") or [None])[0]
     if hist_metric:
-        hist = _histogram(df, hist_metric)
+        prof = next((p for p in profiles if p["name"] == hist_metric), None)
+        sym = (ctx.get("currency") or {}).get("symbol", "") if prof and prof["type"] == "currency" else ""
+        hist = _histogram(df, hist_metric, symbol=sym)
         if hist:
             charts.append(hist)
 
