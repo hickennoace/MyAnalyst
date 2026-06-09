@@ -64,6 +64,6 @@ for f in spec["facts"][:10]:
 
 # JSON serialization must succeed (numpy/NaN safe) for the Vercel handler.
 import json
-from analyze import _jsonable
+from index import _jsonable
 blob = json.dumps(spec, default=_jsonable)
 print(f"\nJSON OK: {len(blob):,} bytes")

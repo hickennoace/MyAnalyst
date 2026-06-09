@@ -264,6 +264,24 @@ def best_sellers(df, profiles, revenue, qty):
         "byUnits": [perf(i, r) for i, r in by_u.head(6).iterrows()],
         "topRevenue": perf(by_rev.index[0], by_rev.iloc[0]),
         "topUnits": perf(by_u.index[0], by_u.iloc[0]),
+        "pareto": _pareto(by_rev["rev"].to_numpy(), total_rev),
+    }
+
+
+def _pareto(sorted_rev: np.ndarray, total: float) -> dict | None:
+    """The 80/20 read on a revenue distribution: how few items make 80% of revenue, and what share the
+    top 20% capture. Only meaningful with enough distinct items to talk about a 'top fifth'."""
+    k = len(sorted_rev)
+    if k < 5 or total <= 0:
+        return None
+    cum = np.cumsum(sorted_rev) / total
+    n80 = int(np.searchsorted(cum, 0.8) + 1)          # items needed to reach 80% of revenue
+    top20_count = max(1, int(round(0.2 * k)))
+    top20_share = float(sorted_rev[:top20_count].sum() / total)
+    return {
+        "items": k, "nFor80Pct": n80, "shareOfItemsFor80Pct": float(n80 / k),
+        "top20PctShare": top20_share, "top20PctCount": top20_count,
+        "concentrated": bool(top20_share >= 0.7),
     }
 
 

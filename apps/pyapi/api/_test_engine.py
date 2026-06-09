@@ -51,6 +51,12 @@ check("Top product KPI present", any(n.startswith("Top ") for n in names))
 check("NO 'Average CustomerAge' KPI (attribute noise dropped)", "Average CustomerAge" not in names)
 check("best-seller story computed", spec["bestSellers"] is not None and spec["bestSellers"]["topRevenue"]["name"] in ("Corolla", "S-Class", "F-150", "X5"))
 
+# Pareto: a deliberately skewed product mix is flagged concentrated with a sane 80% count.
+from _engine import _pareto
+par = _pareto(np.array([100.0, 50.0, 20.0, 10.0, 8.0, 6.0, 4.0, 2.0]), 200.0)
+check("pareto computed on skewed mix", par is not None and 1 <= par["nFor80Pct"] <= par["items"] and 0 < par["top20PctShare"] <= 1)
+check("pareto flags concentration", par["concentrated"] in (True, False))
+
 # Phase 2 — full analysis sections.
 check("Holt-Winters forecast computed", spec.get("forecast") is not None and "method" in spec["forecast"])
 check("monthly trend computed", spec.get("trend") is not None and "slopeP" in spec["trend"])
@@ -68,6 +74,11 @@ sw = _biggest_swing(step_labels, step_vals)
 check("biggest swing finds the Mar->Apr drop", sw is not None and sw["fromLabel"] == "2024-03" and sw["toLabel"] == "2024-04")
 check("biggest swing is a notable drop", sw["notable"] is True and sw["direction"] == "drop" and sw["changePct"] < -0.3)
 check("steady series has no notable swing", (_biggest_swing(step_labels, np.array([100.0, 101.0, 102.0, 103.0, 104.0])) or {}).get("notable") is False)
+
+# Forecast on a steeply declining non-negative series must never project below zero.
+from _forecast import forecast_series
+decl = forecast_series([100.0, 80.0, 60.0, 40.0, 20.0, 10.0, 5.0], horizon=6)
+check("declining revenue forecast never goes negative", decl is not None and min(decl["forecast"]) >= 0 and min(decl["lower"]) >= 0)
 
 # RFM on transaction data with repeating customers.
 rng2 = np.random.default_rng(7)

@@ -15,12 +15,19 @@ except Exception:  # pragma: no cover - exercised only when statsmodels is absen
     HAS_STATSMODELS = False
 
 
-def _band(fc: np.ndarray, sd: float, last: float):
+def _band(fc: np.ndarray, sd: float, last: float, non_negative: bool = False):
     h = np.arange(1, len(fc) + 1)
+    lower = fc - 1.96 * sd * np.sqrt(h)
+    upper = fc + 1.96 * sd * np.sqrt(h)
+    if non_negative:
+        # Revenue, units, counts can't go below zero — a negative central projection or 95% floor is
+        # mathematically possible from the smoother but physically meaningless, so clamp it.
+        fc = np.clip(fc, 0, None)
+        lower = np.clip(lower, 0, None)
     return {
         "forecast": [float(x) for x in fc],
-        "lower": [float(x) for x in fc - 1.96 * sd * np.sqrt(h)],
-        "upper": [float(x) for x in fc + 1.96 * sd * np.sqrt(h)],
+        "lower": [float(x) for x in lower],
+        "upper": [float(x) for x in upper],
         "lastValue": float(last), "projected": float(fc[-1]),
         "changePct": (float(fc[-1]) - last) / abs(last) if last else 0.0,
         "residualStd": float(sd),
@@ -34,7 +41,7 @@ def _linear_fallback(y: np.ndarray, horizon: int) -> dict | None:
     fitted = intercept + slope * x
     sd = float(np.nanstd(y - fitted, ddof=1)) if n > 1 else 0.0
     fc = intercept + slope * np.arange(n, n + horizon, dtype=float)
-    out = _band(fc, sd, y[-1])
+    out = _band(fc, sd, y[-1], non_negative=bool((y >= 0).all()))
     out.update(seasonal=False, period=None, method="Linear trend")
     return out
 
@@ -62,7 +69,7 @@ def forecast_series(values, horizon: int, seasonal_periods: int | None = None) -
         return _linear_fallback(y, horizon)
     if not np.all(np.isfinite(fc)):
         return _linear_fallback(y, horizon)
-    out = _band(fc, sd, y[-1])
+    out = _band(fc, sd, y[-1], non_negative=bool((y >= 0).all()))
     out.update(seasonal=seasonal, period=seasonal_periods if seasonal else None,
                method="Holt-Winters" if seasonal else "Holt")
     return out

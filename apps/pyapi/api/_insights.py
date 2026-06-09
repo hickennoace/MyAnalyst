@@ -40,6 +40,12 @@ def build_facts(spec: dict) -> list[dict]:
             add("fact-bestseller", f"\"{tr['name']}\" earns the most ({_money(tr['revenue'])}, "
                 f"{_pct(tr['revenueShare'])} of revenue) while \"{tu['name']}\" sells the most volume "
                 f"({tu['units']:,.0f}).", "bestseller")
+        pareto = bs.get("pareto")
+        if pareto and pareto.get("concentrated"):
+            add("fact-pareto", f"Revenue is highly concentrated: the top {pareto['top20PctCount']} "
+                f"{bs['dimension']}s (the top 20%) drive {_pct(pareto['top20PctShare'])} of it, and just "
+                f"{pareto['nFor80Pct']} of {pareto['items']} make up 80% — a classic Pareto distribution.",
+                "concentration")
 
     tr = spec.get("trend")
     if tr and tr.get("yoyChangePct") is not None:
