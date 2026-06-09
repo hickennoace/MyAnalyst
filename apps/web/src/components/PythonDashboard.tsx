@@ -136,6 +136,20 @@ export function PythonDashboard({
           ))}
         </ul>
       </section>
+
+      {spec.methodology && spec.methodology.length > 0 && (
+        <details className="card p-5 text-slate-400">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-200">How this was computed</summary>
+          <ul className="mt-3 space-y-1.5">
+            {spec.methodology.map((m, i) => (
+              <li key={i} className="flex gap-2 text-[12px] leading-relaxed">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-600" aria-hidden />
+                <span>{m}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

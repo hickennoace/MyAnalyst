@@ -57,6 +57,7 @@ export interface PyAnalysisSpec {
   charts: PyChart[];
   facts: PyFact[];
   chartReadings?: { title: string; reading: string }[];
+  methodology?: string[];
   narrative: string;
 }
 

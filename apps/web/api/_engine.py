@@ -439,4 +439,30 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
     spec["facts"] = _ins.build_facts(spec)
     spec["chartReadings"] = _ins.chart_readings(spec)
     spec["narrative"] = _ins.templated_narrative(spec["facts"])
+    spec["methodology"] = _methodology(spec, revenue)
     return spec
+
+
+def _methodology(spec, revenue) -> list[str]:
+    """How each number was computed — transparency that the engine is Python and the AI only narrates."""
+    sb = spec.get("stats", {})
+    m = ["Cleaning & profiling: pandas type inference + a 0-100 data-quality score."]
+    if revenue:
+        m.append("KPIs: pandas aggregation — total revenue, volume, average sale, gross margin, monthly trend.")
+    if spec.get("bestSellers"):
+        m.append("Best sellers: revenue & volume by product (pandas group-by, Gini-ranked).")
+    if sb.get("correlations"):
+        m.append("Correlations: scipy Pearson with 95% CIs and Benjamini-Hochberg FDR control.")
+    if sb.get("drivers"):
+        m.append(f"Drivers: {'statsmodels' if _st.HAS_STATSMODELS else 'numpy'} OLS regression (standardized betas, p-values, R²).")
+    if sb.get("groupComparisons"):
+        m.append("Group comparisons: one-way ANOVA with eta² effect size (scipy).")
+    if spec.get("forecast"):
+        m.append(f"Forecast: {spec['forecast'].get('method')} with a 95% prediction band.")
+    if spec.get("segments"):
+        m.append("Segments: k-means clustering (scipy.cluster).")
+    if spec.get("rfm"):
+        m.append("RFM: Recency/Frequency/Monetary quintile scoring (pandas).")
+    m.append("Conclusions: an LLM (Groq) reads the computed KPIs and charts and explains them, grounded so "
+             "every figure traces back to the data — with a deterministic fallback when the AI is off.")
+    return m
