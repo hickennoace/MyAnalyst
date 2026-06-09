@@ -27,7 +27,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { PrivacyBadge } from "@/components/PrivacyBadge";
 import { DashboardView } from "@/components/DashboardView";
-import { PythonDashboard } from "@/components/PythonDashboard";
+import { PyConclusionsCard } from "@/components/PyConclusionsCard";
+import { pyChartsToSpecs } from "@/lib/py-charts";
 import { runPythonAnalysis, runPythonConclusions, type PyAnalysisSpec, type PyConclusions } from "@/lib/py-engine";
 import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -848,20 +849,24 @@ export default function AnalyzePage() {
           </div>
         )}
 
-        {pySpec ? (
-          <ErrorBoundary label="python-dashboard">
-            <div ref={dashboardRef} className={busy ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
-              <PythonDashboard spec={pySpec} conclusions={pyConclusions} table={table} />
+        {spec && table && (
+          <ErrorBoundary label="dashboard">
+            <div className={busy ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
+              {/* Groq reads the Python-computed KPIs + charts and explains them, above the dashboard. */}
+              {pyConclusions && (
+                <div className="mb-6">
+                  <PyConclusionsCard c={pyConclusions} />
+                </div>
+              )}
+              {/* The rich dashboard (same UI as the demo). When the Python engine has run, its KPIs and
+                  charts populate it; otherwise the in-browser TS engine does. */}
+              <DashboardView
+                spec={pySpec ? { ...spec, kpis: pySpec.kpis, charts: pyChartsToSpecs(pySpec.charts) } : spec}
+                table={table}
+                innerRef={dashboardRef}
+              />
             </div>
           </ErrorBoundary>
-        ) : (
-          spec && table && (
-            <ErrorBoundary label="dashboard">
-              <div className={busy ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
-                <DashboardView spec={spec} table={table} innerRef={dashboardRef} />
-              </div>
-            </ErrorBoundary>
-          )
         )}
 
         <footer className="mt-16 space-y-2 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
