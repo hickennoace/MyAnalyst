@@ -1,4 +1,5 @@
 import type { ActionItem, ColumnProfile, DataQuality, InsightContext } from "./types";
+import { currencySymbol } from "./currency";
 
 // The "action report": a ranked, quantified list of concrete next steps derived from the computed
 // analysis — the thing a consultant charges to write, generated instantly and grounded in real numbers.
@@ -8,10 +9,11 @@ import type { ActionItem, ColumnProfile, DataQuality, InsightContext } from "./t
 function fmtVal(n: number, p?: ColumnProfile): string {
   if (!Number.isFinite(n)) return "—";
   if (p?.type === "currency") {
+    const sym = currencySymbol();
     const abs = Math.abs(n);
-    if (abs >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
-    if (abs >= 1e4) return "$" + (n / 1e3).toFixed(0) + "K";
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+    if (abs >= 1e6) return sym + (n / 1e6).toFixed(1) + "M";
+    if (abs >= 1e4) return sym + (n / 1e3).toFixed(0) + "K";
+    return sym + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   }
   const abs = Math.abs(n);
   if (abs >= 1e6) return (n / 1e6).toFixed(1) + "M";

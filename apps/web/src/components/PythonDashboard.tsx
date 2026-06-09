@@ -5,6 +5,7 @@ import { KpiCard } from "./KpiCard";
 import { Chart } from "./Chart";
 import { pyChartsToSpecs } from "@/lib/py-charts";
 import { runPythonAsk, type PyAnalysisSpec, type PyConclusions } from "@/lib/py-engine";
+import { currencySymbol, setActiveCurrency } from "@/lib/currency";
 
 // Renders a Python-engine analysis spec (Phase 5). Reuses the existing KPI cards + ECharts <Chart> via the
 // chart adapter, so a Python-computed dashboard looks identical to the TS one.
@@ -18,6 +19,7 @@ export function PythonDashboard({
   conclusions?: PyConclusions | null;
   table?: { columns: string[]; rows: Record<string, unknown>[] } | null;
 }) {
+  setActiveCurrency(spec.currency);
   const charts = pyChartsToSpecs(spec.charts);
   return (
     <div className="space-y-6">
@@ -220,10 +222,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function money(n: number): string {
   if (!Number.isFinite(n)) return "—";
+  const sym = currencySymbol();
   const a = Math.abs(n);
-  if (a >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
-  if (a >= 1e3) return "$" + (n / 1e3).toFixed(0) + "K";
-  return "$" + n.toFixed(0);
+  if (a >= 1e6) return sym + (n / 1e6).toFixed(1) + "M";
+  if (a >= 1e3) return sym + (n / 1e3).toFixed(0) + "K";
+  return sym + n.toFixed(0);
 }
 
 function ConclusionsCard({ c }: { c: PyConclusions }) {

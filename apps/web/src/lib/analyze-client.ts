@@ -39,8 +39,13 @@ export function runAnalysis(
         settled = true;
         cleanup();
         try {
-          // The worker skipped charts (their formatters aren't cloneable) — build them here.
-          const { recommendCharts } = await import("./charts");
+          // The worker detected the currency; mirror it onto the main thread so charts (built here) and
+          // later ask-your-data format money in the same currency the dashboard shows.
+          const [{ recommendCharts }, { setActiveCurrency }] = await Promise.all([
+            import("./charts"),
+            import("./currency"),
+          ]);
+          setActiveCurrency(msg.spec.currency);
           msg.spec.charts = recommendCharts(msg.table, msg.spec.profiles);
           resolve({ spec: msg.spec, table: msg.table });
         } catch (err) {

@@ -1,5 +1,6 @@
 import type { ColumnProfile, ContributionAnalysis } from "@/lib/types";
 import { cadenceNoun } from "@/lib/timeseries";
+import { currencySymbol } from "@/lib/currency";
 
 // "What drove the change" card: the primary metric's move from the previous period to the latest,
 // broken down by a dimension into per-segment contributions that sum to the total. A waterfall-style
@@ -8,7 +9,7 @@ import { cadenceNoun } from "@/lib/timeseries";
 
 function fmt(n: number, p?: ColumnProfile): string {
   if (!Number.isFinite(n)) return "—";
-  if (p?.type === "currency") return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+  if (p?.type === "currency") return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   const abs = Math.abs(n);
   if (abs >= 1e6) return (n / 1e6).toFixed(1) + "M";
   if (abs >= 1e3) return (n / 1e3).toFixed(1) + "k";

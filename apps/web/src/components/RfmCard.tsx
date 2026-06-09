@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { ColumnProfile, RfmAnalysis, RfmMember, RfmSegment, Table } from "@/lib/types";
 import { rfmMembers } from "@/lib/rfm";
 import { DownloadCsvButton } from "./DownloadCsvButton";
+import { currencySymbol } from "@/lib/currency";
 
 // RFM card: the customer-value segments (Champions, Loyal, At Risk, …) found by scoring every customer
 // on Recency, Frequency, and Monetary value. Each tile shows the segment's size, its share of revenue,
@@ -9,10 +10,11 @@ import { DownloadCsvButton } from "./DownloadCsvButton";
 
 function money(n: number): string {
   if (!Number.isFinite(n)) return "—";
+  const sym = currencySymbol();
   const abs = Math.abs(n);
-  if (abs >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
-  if (abs >= 1e3) return "$" + (n / 1e3).toFixed(1) + "k";
-  return "$" + n.toFixed(0);
+  if (abs >= 1e6) return sym + (n / 1e6).toFixed(1) + "M";
+  if (abs >= 1e3) return sym + (n / 1e3).toFixed(1) + "k";
+  return sym + n.toFixed(0);
 }
 
 const TONE: Record<string, string> = {

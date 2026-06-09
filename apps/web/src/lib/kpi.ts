@@ -3,6 +3,7 @@ import { numericColumn } from "./profile";
 import { cagr, mean, std } from "./stats";
 import { analyzeTimeSeries, trimPartialTail } from "./timeseries";
 import { isAdditive, isTransactionGrain, metricKind, quantityMetric, revenueMetric } from "./semantics";
+import { currencySymbol } from "./currency";
 
 // KPI engine: given the typed table + profiles + domain, compute the headline numbers that matter.
 // It leads with the business questions a manager actually has — total revenue, volume, average sale,
@@ -10,7 +11,7 @@ import { isAdditive, isTransactionGrain, metricKind, quantityMetric, revenueMetr
 // averages attributes (unit price, age, rating). Rules are keyed by role + meaning, not column names.
 
 function fmtCurrency(n: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+  return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
 }
 function fmtNum(n: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);

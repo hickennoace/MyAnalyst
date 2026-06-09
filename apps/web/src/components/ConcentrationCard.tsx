@@ -1,6 +1,7 @@
 import type { ColumnProfile, Concentration, Table } from "@/lib/types";
 import { concentrationMembers } from "@/lib/concentration";
 import { DownloadCsvButton } from "./DownloadCsvButton";
+import { currencySymbol } from "@/lib/currency";
 
 // Concentration / Pareto card: how much of a measure the biggest few categories hold. Sorted bars with
 // a running cumulative share, the "vital few" highlighted up to the 80% line, plus the concentration
@@ -9,10 +10,11 @@ import { DownloadCsvButton } from "./DownloadCsvButton";
 function fmt(n: number, p?: ColumnProfile): string {
   if (!Number.isFinite(n)) return "—";
   if (p?.type === "currency") {
+    const sym = currencySymbol();
     const abs = Math.abs(n);
-    if (abs >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
-    if (abs >= 1e3) return "$" + (n / 1e3).toFixed(1) + "k";
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+    if (abs >= 1e6) return sym + (n / 1e6).toFixed(1) + "M";
+    if (abs >= 1e3) return sym + (n / 1e3).toFixed(1) + "k";
+    return sym + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   }
   const abs = Math.abs(n);
   if (abs >= 1e6) return (n / 1e6).toFixed(1) + "M";

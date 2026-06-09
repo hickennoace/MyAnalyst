@@ -707,6 +707,8 @@ export interface DashboardSpec {
   version: string;
   datasetName: string;
   domain: DomainGuess;
+  /** Detected currency for money formatting across the dashboard (defaults to USD/$). */
+  currency?: { symbol: string; code: string };
   generatedAt: string;
   rowCount: number;
   cleaning: CleaningReport;

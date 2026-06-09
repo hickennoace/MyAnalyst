@@ -1,4 +1,5 @@
 import type { ColumnProfile, OutlierFact } from "@/lib/types";
+import { currencySymbol } from "@/lib/currency";
 
 // Anomalies card: surfaces the unusual values the engine flagged (|z| > 3) per metric, with the
 // typical range for context and a direction marker (above/below the average). Metadata-only — works on
@@ -6,7 +7,7 @@ import type { ColumnProfile, OutlierFact } from "@/lib/types";
 
 function fmt(n: number, p?: ColumnProfile): string {
   if (!Number.isFinite(n)) return "—";
-  if (p?.type === "currency") return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+  if (p?.type === "currency") return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }
 

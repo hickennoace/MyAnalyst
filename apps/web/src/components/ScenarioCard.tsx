@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { ColumnProfile, DriverAnalysis } from "@/lib/types";
 import { goalSeek, predictTarget, sliderBounds } from "@/lib/scenario";
+import { currencySymbol } from "@/lib/currency";
 
 // What-if simulator + goal-seek, driven by the fitted driver model. Sliders move each predictor; the
 // projected target updates live with a rough modeled range. Goal-seek inverts the model: enter a target
@@ -14,7 +15,7 @@ function useFmt(p?: ColumnProfile) {
     const cur = p?.type === "currency";
     return (n: number) => {
       if (!Number.isFinite(n)) return "—";
-      if (cur) return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+      if (cur) return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
       const abs = Math.abs(n);
       if (abs >= 1e6) return (n / 1e6).toFixed(2) + "M";
       if (abs >= 1e3) return (n / 1e3).toFixed(1) + "k";

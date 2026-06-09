@@ -2,13 +2,14 @@ import { useMemo } from "react";
 import type { ColumnProfile, Segmentation, Table } from "@/lib/types";
 import { segmentMembers } from "@/lib/segment";
 import { DownloadCsvButton } from "./DownloadCsvButton";
+import { currencySymbol } from "@/lib/currency";
 
 // Segmentation card: the natural groups found by clustering, each with its share of rows and the
 // features that set it apart (▲ high / ▼ low vs the overall average). Renders from precomputed data.
 
 function fmt(n: number, p?: ColumnProfile): string {
   if (!Number.isFinite(n)) return "—";
-  if (p?.type === "currency") return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+  if (p?.type === "currency") return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   const abs = Math.abs(n);
   if (abs >= 1e6) return (n / 1e6).toFixed(1) + "M";
   if (abs >= 1e3) return (n / 1e3).toFixed(1) + "k";

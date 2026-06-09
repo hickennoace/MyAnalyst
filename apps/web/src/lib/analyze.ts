@@ -37,6 +37,7 @@ import { analyzeBestSellers } from "./bestsellers";
 import { isTransactionGrain, isValueTautology, revenueMetric } from "./semantics";
 import { buildRelationships } from "./relationships";
 import { analyzeRfm } from "./rfm";
+import { detectCurrency, setActiveCurrency } from "./currency";
 import { getInsightProvider } from "./insights";
 import { llmEnabled, sharpenStory } from "./insights/humanize";
 import type { LlmConfig } from "./llm-settings";
@@ -68,6 +69,10 @@ export async function analyze(
 
   stage("Profiling columns");
   const profiles = profileTable(table, typeHints);
+  // Detect the dataset's currency (from raw headers + cells) and make it the active currency for every
+  // money formatter below, so the whole TS dashboard agrees instead of hardcoding "$".
+  const currency = detectCurrency(rawTable, profiles);
+  setActiveCurrency(currency);
   const quality = computeDataQuality(table, profiles, cleaning);
   const anomalies = detectAnomalies(table, profiles);
   const segmentation = segmentRows(table, profiles);
@@ -126,6 +131,7 @@ export async function analyze(
     version: "1.0",
     datasetName: rawTable.name,
     domain,
+    currency,
     generatedAt: new Date().toISOString(),
     rowCount: table.rowCount,
     cleaning,

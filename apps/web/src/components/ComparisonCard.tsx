@@ -1,5 +1,6 @@
 import type { DatasetComparison, MetricChange } from "@/lib/compare-datasets";
 import type { SemanticType } from "@/lib/types";
+import { currencySymbol } from "@/lib/currency";
 
 // Shows the ranked "what changed" between the current dataset and a second uploaded file.
 
@@ -7,7 +8,7 @@ function fmt(n: number, type: SemanticType): string {
   if (!Number.isFinite(n)) return "—";
   const abs = Math.abs(n);
   const compact = abs >= 1e6 ? (n / 1e6).toFixed(1) + "M" : abs >= 1e4 ? (n / 1e3).toFixed(1) + "K" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(n);
-  return type === "currency" ? "$" + compact : compact;
+  return type === "currency" ? currencySymbol() + compact : compact;
 }
 
 function Delta({ pct }: { pct: number | null }) {

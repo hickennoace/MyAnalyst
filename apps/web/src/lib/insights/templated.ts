@@ -1,4 +1,5 @@
 import type { Insight, InsightContext, InsightProvider } from "../types";
+import { currencySymbol } from "../currency";
 
 // Templated insight provider: turns the metadata-only InsightContext into grounded,
 // genuinely useful, plain-language findings. Every sentence is filled with numbers the
@@ -19,10 +20,11 @@ function fmt(n: number): string {
 }
 function money(n: number): string {
   if (!Number.isFinite(n)) return "—";
+  const sym = currencySymbol();
   const abs = Math.abs(n);
-  if (abs >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
-  if (abs >= 1e3) return "$" + (n / 1e3).toFixed(0) + "K";
-  return "$" + n.toFixed(0);
+  if (abs >= 1e6) return sym + (n / 1e6).toFixed(1) + "M";
+  if (abs >= 1e3) return sym + (n / 1e3).toFixed(0) + "K";
+  return sym + n.toFixed(0);
 }
 
 export class TemplatedInsightProvider implements InsightProvider {

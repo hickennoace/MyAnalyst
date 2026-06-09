@@ -1,5 +1,6 @@
 import type { ColumnProfile, TimeSeriesAnalysis } from "@/lib/types";
 import { cadenceNoun } from "@/lib/timeseries";
+import { currencySymbol } from "@/lib/currency";
 
 // Period-over-period card: for each top metric, the latest period's value, its change vs the previous
 // period (and vs a year ago when available), a sparkline with a moving-average overlay, and the
@@ -7,7 +8,7 @@ import { cadenceNoun } from "@/lib/timeseries";
 
 function fmt(n: number, p?: ColumnProfile): string {
   if (!Number.isFinite(n)) return "—";
-  if (p?.type === "currency") return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+  if (p?.type === "currency") return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   const abs = Math.abs(n);
   if (abs >= 1e6) return (n / 1e6).toFixed(1) + "M";
   if (abs >= 1e3) return (n / 1e3).toFixed(1) + "k";

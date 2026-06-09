@@ -6,6 +6,7 @@ import { analyzeTimeSeries, cadenceNoun } from "./timeseries";
 import { aggregateCount, buildChart, buildComparisonChart, buildCrossTabChart, type ChartRequest } from "./charts";
 import { parseChartRequest } from "./nl-chart";
 import { sortByTime } from "./kpi";
+import { currencySymbol, detectCurrency, setActiveCurrency } from "./currency";
 import { concentrationFor } from "./concentration";
 import { analyzeRfm } from "./rfm";
 import { activeLlmConfig } from "./llm-settings";
@@ -152,7 +153,7 @@ function chooseAgg(metric: ColumnProfile, lower: string): Agg {
 function fmt(n: number, profile?: ColumnProfile): string {
   if (!Number.isFinite(n)) return "—";
   if (profile?.type === "currency")
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+    return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }
 
@@ -257,6 +258,7 @@ function rowsNote(view: Table, table: Table, filter?: DataFilter): string {
 }
 
 export function answerQuestion(question: string, table: Table, profiles: ColumnProfile[]): QueryAnswer {
+  setActiveCurrency(detectCurrency(table, profiles));
   const text = question.trim();
   if (!text) return { ok: false, answer: 'Ask something like "total revenue by region" or "correlation between spend and revenue".' };
   const lower = text.toLowerCase();
@@ -1610,6 +1612,9 @@ export async function answerQuestionAI(
   onToken?: (delta: string) => void,
   analysis?: AskAnalysis
 ): Promise<RichAnswer> {
+  // Self-sufficient currency: a history-loaded analysis may not have run through analyze-client, so detect
+  // here too — so a "$" / "€" answer matches the dashboard regardless of how we got to this dataset.
+  setActiveCurrency(detectCurrency(table, profiles));
   // Cache hits only apply to fresh questions (no prior conversation), so follow-ups still get context.
   const key = cacheKey(question, table);
   if ((!history || history.length === 0) && answerCache.has(key)) return answerCache.get(key)!;
