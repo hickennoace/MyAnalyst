@@ -388,9 +388,88 @@ async function parseDelimited(file: File, onProgress?: (p: ParseProgress) => voi
   });
 }
 
+// A safe arithmetic evaluator (recursive descent over + - * / and parentheses) — NO eval/Function, so it
+// works under the strict production CSP. Used to compute formula cells that were saved without a result.
+export function evalArithmetic(expr: string): number | null {
+  const tokens = expr.match(/\d+\.?\d*|[+\-*/()]/g);
+  if (!tokens) return null;
+  let pos = 0;
+  const peek = () => tokens[pos];
+  const parseExpr = (): number => {
+    let v = parseTerm();
+    while (peek() === "+" || peek() === "-") { const op = tokens[pos++]; const r = parseTerm(); v = op === "+" ? v + r : v - r; }
+    return v;
+  };
+  const parseTerm = (): number => {
+    let v = parseFactor();
+    while (peek() === "*" || peek() === "/") { const op = tokens[pos++]; const r = parseFactor(); v = op === "*" ? v * r : v / r; }
+    return v;
+  };
+  const parseFactor = (): number => {
+    const t = peek();
+    if (t === "(") { pos++; const v = parseExpr(); if (peek() === ")") pos++; return v; }
+    if (t === "-") { pos++; return -parseFactor(); }
+    if (t === "+") { pos++; return parseFactor(); }
+    return Number(tokens[pos++]);
+  };
+  const v = parseExpr();
+  return pos === tokens.length && Number.isFinite(v) ? v : null;
+}
+
+// Excel files often store DERIVED columns as formulas (e.g. Total = Salary*12 + Bonus). Many are saved
+// without cached results — those cells then read as blank ("100% missing"). Resolve such cells by
+// evaluating their formula: substitute referenced cells with their (recursively resolved) numeric values,
+// then compute the resulting arithmetic. Only pure arithmetic formulas are supported (the common case);
+// anything else (functions, ranges, cross-sheet refs) is left blank.
+export function fillFormulaCells(ws: XLSX.WorkSheet): void {
+  const ref = ws["!ref"];
+  if (!ref) return;
+  const resolve = (addr: string, stack: Set<string>): number | null => {
+    const cell = ws[addr] as XLSX.CellObject | undefined;
+    if (!cell) return null;
+    // A real cached numeric value (type "n"). Formula stubs come back as type "z" with a placeholder v:0,
+    // so don't trust their value — evaluate the formula instead.
+    if (cell.t === "n" && typeof cell.v === "number") return cell.v;
+    if (typeof cell.f === "string") {
+      if (stack.has(addr)) return null; // circular reference guard
+      return evalFormula(cell.f, new Set(stack).add(addr));
+    }
+    const n = Number(cell.v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const evalFormula = (formula: string, stack: Set<string>): number | null => {
+    let expr = formula.replace(/^=/, "");
+    if (expr.includes("!")) return null; // cross-sheet refs unsupported
+    expr = expr.replace(/\$?([A-Z]{1,3})\$?(\d+)/g, (_m, col, row) => {
+      const v = resolve(col + row, stack);
+      return v === null ? "NaN" : `(${v})`;
+    });
+    if (!/^[\d.+\-*/()\s]+$/.test(expr)) return null; // arithmetic only (rejects leftover NaN/letters)
+    return evalArithmetic(expr.replace(/\s+/g, ""));
+  };
+  const range = XLSX.utils.decode_range(ref);
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[addr] as XLSX.CellObject | undefined;
+      // Fill formula cells with no genuine value: a stub (type "z") or an empty value.
+      if (cell && typeof cell.f === "string" && (cell.t === "z" || cell.v === undefined || cell.v === null)) {
+        const val = evalFormula(cell.f, new Set([addr]));
+        if (val !== null) {
+          cell.t = "n";
+          cell.v = val;
+          delete cell.w; // drop stale formatted text; sheet_to_json regenerates it from v + number format
+        }
+      }
+    }
+  }
+}
+
 async function parseExcel(file: File, sheetId?: string): Promise<ParseResult> {
   const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array", cellDates: true });
+  // sheetStubs + cellFormula materialize formula cells that have no cached value (otherwise SheetJS drops
+  // them entirely); cellNF keeps each cell's number format so the recomputed values still render with units.
+  const wb = XLSX.read(buf, { type: "array", cellDates: true, cellFormula: true, cellNF: true, sheetStubs: true });
   const sheetNames = wb.SheetNames.filter((n) => wb.Sheets[n]);
   if (sheetNames.length === 0) throw new Error("No sheets found in this Excel file.");
 
@@ -406,6 +485,9 @@ async function parseExcel(file: File, sheetId?: string): Promise<ParseResult> {
   });
 
   const chosen = sheetId && sheetNames.includes(sheetId) ? sheetId : sheetNames[0];
+  // Compute any formula cells that were saved without a cached result (derived columns like
+  // Total = Salary*12 + Bonus) so they don't read as blank.
+  fillFormulaCells(wb.Sheets[chosen]);
   const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[chosen], {
     defval: null,
     raw: false, // formatted strings, consistent with CSV path
