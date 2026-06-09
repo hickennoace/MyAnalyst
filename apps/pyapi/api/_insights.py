@@ -177,9 +177,25 @@ def chart_readings(spec: dict) -> list[dict]:
 
 
 def templated_narrative(facts: list[dict]) -> str:
-    """A zero-API conclusion paragraph from the facts — the always-works fallback."""
+    """A zero-API conclusion paragraph — the always-works fallback when Groq is off or rate-limited.
+
+    Reads like a brief: lead with the headline number, then the strongest story (who leads / where it's
+    trending), then a risk to watch (concentration / anomaly). Prioritized so the most decision-relevant
+    facts come first, not just the first three computed.
+    """
     if not facts:
         return "Nothing rose to a confident finding; more rows or an outcome column would help."
-    lead = [f for f in facts if f["kind"] in ("bestseller", "trend", "driver", "gap")][:3]
-    body = " ".join(f["text"] for f in lead) if lead else facts[0]["text"]
+    by_kind: dict[str, dict] = {}
+    for f in facts:
+        by_kind.setdefault(f["kind"], f)
+    headline = next((f for f in facts if f["kind"] == "kpi"), facts[0])
+    # Strongest "what's happening" story, in priority order.
+    story = next((by_kind[k] for k in ("bestseller", "trend", "driver", "gap") if k in by_kind), None)
+    # A risk/quality flag to watch.
+    risk = next((by_kind[k] for k in ("concentration", "anomaly", "distribution", "rfm") if k in by_kind), None)
+    parts = [headline["text"]]
+    for f in (story, risk):
+        if f and f["text"] not in parts:
+            parts.append(f["text"])
+    body = " ".join(parts)
     return body + " (Automated analysis — not financial advice; verify anything important with a professional.)"
