@@ -2,5 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "functions": {
+    "api/analyze.py": { "runtime": "@vercel/python@6.44.0", "memory": 1024, "maxDuration": 60, "includeFiles": "api/_*.py" },
+    "api/conclude.py": { "runtime": "@vercel/python@6.44.0", "memory": 1024, "maxDuration": 60, "includeFiles": "api/_*.py" },
+    "api/ask.py": { "runtime": "@vercel/python@6.44.0", "memory": 1024, "maxDuration": 60, "includeFiles": "api/_*.py" }
+  }
 }
