@@ -1,62 +1,56 @@
-# MyAnalyst — Python analysis engine (migration in progress)
+# MyAnalyst — Python analysis engine (`apps/pyapi`)
 
-We're moving the analysis engine from in-browser TypeScript to **Python (pandas/numpy/scipy)**, with an
-LLM (Groq/Gemini) writing the conclusions from the computed facts — the same pattern as the
-`CustomerBehaviour` and `Ethereum-Macro-Analysis` projects.
+The analysis engine: **Python (pandas/numpy/scipy/statsmodels)** does all the compute, and an LLM (Groq)
+writes the conclusions from the computed facts. **Live** — `/analyze` on myanalyst.net runs on this engine,
+with the in-browser TypeScript engine kept only as a fallback if the API is unreachable.
 
-This is an **additive, staged migration**: the live site (myanalyst.net) keeps running on the TypeScript
-engine until the Python path reaches parity, then we switch. The site never breaks mid-migration.
+## Architecture
 
-## Why (and the trade-off we accepted)
+Deployed as its **own Vercel project** (`quantia-api` → `https://quantia-api.vercel.app`), separate from the
+Next.js web app — Next shadows `/api/*` in the monorepo, so a same-origin Python function never routes. The
+web app calls this API cross-origin via `NEXT_PUBLIC_PY_API`; CORS is `*`, and the web CSP `connect-src` is
+derived from that origin. See `docs/06-python-migration.md`.
 
-- **Pro:** rigorous, standard stats (pandas/scipy/statsmodels), big-data ready, conclusions by AI.
-- **Con we accepted:** data now leaves the browser to a server (the old "data never leaves the page"
-  privacy moat is dropped), and it needs a backend (hosting cost).
+Trade-off accepted: data leaves the browser to the server (the old "data never leaves the page" privacy moat
+is dropped) in exchange for rigorous standard stats and big-data headroom.
 
-## Status
-
-| Phase | What | State |
-|---|---|---|
-| **1. Engine PoC** | profiling · metric **semantics** (revenue vs cost vs attribute) · **structure-aware domain** · revenue-first **KPIs** (total revenue, units, avg sale, monthly trend, **gross margin**, **top-seller share**, best month) · **best-seller** story | ✅ done — `engine.py`, 8 tests green |
-| 2. Rest of the analysis | charts data · correlations · trends · forecast (Holt-Winters / scipy) · k-means segments · skew-vs-anomaly outliers · templated insight facts | ⏳ next |
-| 3. LLM conclusions | feed the computed facts to Groq/Gemini → decision-first conclusions + grounding check | ⏳ |
-| 4. Hosting | Vercel Python Function (`/api/analyze`) **or** a small FastAPI service; upload handling (Vercel's 4.5 MB request-body limit → sample client-side or use Blob) | ⏳ |
-| 5. Frontend + cutover | call the Python API, render the JSON spec with the existing ECharts/KPI cards behind a flag → reach parity → switch default | ⏳ |
-
-## What it already does right (parity with the fixed TS engine)
-
-On car-sales data it leads with **Total revenue · Transactions · Gross margin · Revenue YoY ·
-Top Brand share · Avg sale · Best month** — and it does NOT: treat price as a stock series, sum customer
-age, call a sales file "financial", or pad the KPIs with `Average CustomerAge`.
-
-## Layout (Vercel Python Function)
-
-Lives in the Vercel deploy root (`apps/web`) so it ships as a serverless function:
+## Layout
 
 | File | Role |
 |---|---|
-| `analyze.py` | the **`/api/analyze`** route — `POST {csv}` or `{columns, rows}` → analysis spec (JSON) |
-| `_engine.py` | the pandas engine (underscore = private module, not a route) |
-| `_demo.py`, `_test_engine.py` | dev only (underscore = not routed) |
-| `requirements.txt` | Vercel installs these for the function (pandas/numpy/scipy) |
+| `index.py` | single entrypoint (`BaseHTTPRequestHandler`); a `vercel.json` rewrite maps `/api/{analyze,conclude,ask}` → `/api/index?fn=…`. Must `sys.path.insert` its own dir so sibling `_*.py` imports resolve on Vercel |
+| `_engine.py` | the pandas engine — profiling, metric **semantics** (revenue vs cost vs attribute), structure-aware **domain**, revenue-first **KPIs**, best-sellers, Pareto |
+| `_stats.py` | scipy/statsmodels inference — correlations (Fisher CIs + FDR), OLS drivers, ANOVA group gaps, chi-square associations |
+| `_timeseries.py`, `_forecast.py` | monthly trend + significance, biggest-swing regime change, Holt-Winters forecast with a 95% band (clamped ≥0 for non-negative metrics) |
+| `_outliers.py`, `_distribution.py`, `_segments.py`, `_rfm.py` | skew-vs-anomaly outliers, normality, k-means segments, RFM |
+| `_currency.py` | detects the dataset's currency (header codes/symbols + cell values) so money isn't hardcoded to `$` |
+| `_insights.py` | grounded **facts** + chart readings + the zero-API templated narrative |
+| `_conclude.py`, `_ask.py`, `_groq.py` | LLM conclusions / ask-your-data + a stdlib Groq client (sends a real User-Agent — Cloudflare 403s the default `Python-urllib` UA from datacenter IPs) |
+| `_server.py` | local dev server (ThreadingHTTPServer on :8000), reuses `index.handler` |
+| `_test_*.py`, `_demo.py`, `_parity_one.py` | tests + demos (underscore = not routed) |
 
-Vercel routes `/api/*.py` to Python functions; Next.js keeps `app/api/*` — they don't collide.
-Note Vercel's **4.5 MB request-body limit**: the frontend will sample large files before POSTing.
+Vercel's request body is capped at **4.5 MB** — the frontend samples large files before POSTing.
 
 ## Run it (local)
 
+Use `py`, not `python`, on Windows.
+
 ```bash
-py apps/web/api/_demo.py        # smart KPIs on synthetic car-sales data
-py apps/web/api/_test_engine.py # assertions (domain, revenue≠cost, margin, no-noise KPIs)
+py _test_all.py     # all suites (engine + conclude); PYTHONUTF8=1 on a non-UTF8 console
+py _demo.py         # smart KPIs + facts on synthetic car-sales data
+py _server.py       # serve on http://127.0.0.1:8000 (web `dev:py` runs this)
 ```
 
-Requires `pandas numpy scipy` (`pip install -r apps/web/api/requirements.txt`).
+Requires `pandas numpy scipy statsmodels` (`pip install -r requirements.txt`).
 
 ## Design notes
 
-- **`engine.analyze(df) -> dict`** returns a JSON-serializable spec (domain, columns, kpis, bestSellers)
-  the web frontend renders. The engine computes deterministic FACTS; the LLM only narrates them (so it
-  can't invent numbers — same grounding discipline as the TS engine).
+- **`_engine.analyze(df) -> dict`** returns a JSON-serializable spec (currency, domain, columns, kpis,
+  bestSellers, trend, forecast, stats, outliers, segments, rfm, distributions, charts, facts, chartReadings,
+  narrative, methodology) the web frontend renders with the existing ECharts/KPI cards.
+- The engine computes deterministic FACTS; the LLM only narrates them and a **grounding check** flags any
+  figure that doesn't trace back to the facts/KPIs/chart readings — so it can't invent numbers. Conclusions
+  fall back to a grounded templated narrative when no LLM key is set or Groq rate-limits.
 - The semantics layer is the heart of it: `revenue_metric` (top-line money, never cost), `is_additive`
   (sum flows, average attributes), `is_transaction_grain`, `detect_domain` (price/volume are only weak
   financial hints; a transaction stream is sales/ops, never a price series).
