@@ -21,7 +21,6 @@ import { RelationshipCard } from "./RelationshipCard";
 import { DriverCard } from "./DriverCard";
 import { ScenarioCard } from "./ScenarioCard";
 import { CohortCard } from "./CohortCard";
-import { ExecutiveSummary } from "./ExecutiveSummary";
 import { ActionPlanCard } from "./ActionPlanCard";
 import { domainFocus } from "@/lib/domain-pack";
 import { QueryBox } from "./QueryBox";
@@ -131,13 +130,11 @@ export function DashboardView({
         })}
       </nav>
 
-      {/* AI conclusions (Groq reads the Python-computed KPIs + charts) — shown across all tabs,
-          directly under the file header + tab nav so the orientation stays at the very top. */}
-      {conclusions && <PyConclusionsCard c={conclusions} />}
-
       {/* ── Overview ───────────────────────────────────────────────────────── */}
       <Panel id="overview" active={active}>
-        <ExecutiveSummary spec={spec} />
+        {/* AI conclusions (Groq reads the Python-computed KPIs + charts) — the decision-first read at the
+            top of the Overview tab, and only there. Replaces the old auto-generated Executive summary. */}
+        {conclusions && <PyConclusionsCard c={conclusions} />}
 
         {spec.actions && spec.actions.length > 0 && (
           <Section title="Your action plan" subtitle="What to do next — ranked by impact, grounded in the numbers.">

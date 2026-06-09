@@ -232,17 +232,7 @@ function money(n: number): string {
 function ConclusionsCard({ c }: { c: PyConclusions }) {
   return (
     <section className="card border border-blue-500/20 p-5">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-100">Conclusions</h3>
-        <span className="text-[11px] text-slate-500">
-          {c.provider === "groq" ? "AI-written" : "templated"} ·{" "}
-          {c.grounding.grounded ? (
-            <span className="text-emerald-400">✓ every figure traces to your data</span>
-          ) : (
-            <span className="text-amber-400">⚠ couldn&apos;t verify: {c.grounding.unverified.join(", ")}</span>
-          )}
-        </span>
-      </div>
+      <h3 className="text-sm font-semibold text-slate-100">Conclusions</h3>
       {c.bottomLine && <p className="mt-2 text-[15px] font-medium text-slate-100">{c.bottomLine}</p>}
       {c.summary && <p className="mt-2 text-[13px] leading-relaxed text-slate-300">{c.summary}</p>}
       {c.chartInsights && c.chartInsights.length > 0 && (

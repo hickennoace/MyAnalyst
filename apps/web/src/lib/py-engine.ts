@@ -129,6 +129,35 @@ export function sampleForPayload(columns: string[], rows: Record<string, unknown
   return out;
 }
 
+// POST JSON to the Python backend with retries. Cold-start 500s, gateway timeouts, and transient network
+// blips were silently blanking panels (a single failed /api/conclude → no conclusions; a failed /api/analyze
+// → no Python KPIs). Retry the transient classes (network error, 5xx, 408, 429) a couple of times with
+// backoff before giving up. 4xx (bad request, 413 payload-too-large) won't improve on retry, so fail fast.
+const backoff = (attempt: number) => new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+
+async function postJson<T>(path: string, payload: unknown, label: string, retries = 2): Promise<T> {
+  const body = JSON.stringify(payload);
+  let lastErr: Error = new Error(`${label} failed`);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(api(path), { method: "POST", headers: { "Content-Type": "application/json" }, body });
+    } catch (e) {
+      // Network-level failure (DNS, CORS, dropped connection) — transient, retry.
+      lastErr = e instanceof Error ? e : new Error(String(e));
+      if (attempt < retries) { await backoff(attempt); continue; }
+      throw lastErr;
+    }
+    if (res.ok) return res.json() as Promise<T>;
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    const msg = err.error || `${label} (${res.status})`;
+    if (res.status < 500 && res.status !== 408 && res.status !== 429) throw new Error(msg); // client error: don't retry
+    lastErr = new Error(msg);
+    if (attempt < retries) await backoff(attempt);
+  }
+  throw lastErr;
+}
+
 export async function runPythonAnalysis(
   columns: string[],
   rows: Record<string, unknown>[],
@@ -136,13 +165,7 @@ export async function runPythonAnalysis(
 ): Promise<PyAnalysisSpec> {
   // The client saw the raw cells and detected the currency; the data we send is already cleaned to plain
   // numbers, so pass the currency along so the Python KPIs/charts agree with the rest of the dashboard.
-  const body = JSON.stringify({ columns, rows: sampleForPayload(columns, rows), currency });
-  const res = await fetch(api("/api/analyze"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Python analysis failed (${res.status})`);
-  }
-  return res.json();
+  return postJson("/api/analyze", { columns, rows: sampleForPayload(columns, rows), currency }, "Python analysis failed");
 }
 
 export interface PyAnswer {
@@ -156,28 +179,20 @@ export async function runPythonAsk(
   rows: Record<string, unknown>[],
   facts?: PyFact[]
 ): Promise<PyAnswer> {
-  const body = JSON.stringify({ question, columns, rows: sampleForPayload(columns, rows), facts });
-  const res = await fetch(api("/api/ask"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Ask failed (${res.status})`);
-  }
-  return res.json();
+  return postJson("/api/ask", { question, columns, rows: sampleForPayload(columns, rows), facts }, "Ask failed");
 }
 
 export async function runPythonConclusions(spec: PyAnalysisSpec, userContext?: string): Promise<PyConclusions> {
-  const body = JSON.stringify({
-    facts: spec.facts,
-    kpis: spec.kpis.map((k) => ({ name: k.name, value: k.value })),
-    chartReadings: spec.chartReadings,
-    domain: spec.domain.domain,
-    userContext,
-    narrative: spec.narrative,
-  });
-  const res = await fetch(api("/api/conclude"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Conclusions failed (${res.status})`);
-  }
-  return res.json();
+  return postJson(
+    "/api/conclude",
+    {
+      facts: spec.facts,
+      kpis: spec.kpis.map((k) => ({ name: k.name, value: k.value })),
+      chartReadings: spec.chartReadings,
+      domain: spec.domain.domain,
+      userContext,
+      narrative: spec.narrative,
+    },
+    "Conclusions failed"
+  );
 }

@@ -56,6 +56,20 @@ function fmtBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }
 
+/** Build the spec the dashboard renders: when the Python engine has run, its KPIs + charts take over —
+ *  but only when they're non-empty. Python's smart-KPI selection can legitimately return nothing for some
+ *  datasets, and blindly swapping that in wiped the "Key metrics" panel; fall back to the TS engine's
+ *  KPIs/charts in that case so the dashboard is never blank. */
+function mergedDashboardSpec(spec: DashboardSpec, pySpec: PyAnalysisSpec | null): DashboardSpec {
+  if (!pySpec) return spec;
+  const pyCharts = pyChartsToSpecs(pySpec.charts);
+  return {
+    ...spec,
+    kpis: pySpec.kpis?.length ? pySpec.kpis : spec.kpis,
+    charts: pyCharts.length ? pyCharts : spec.charts,
+  };
+}
+
 export default function AnalyzePage() {
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
@@ -798,7 +812,7 @@ export default function AnalyzePage() {
                   the Groq conclusions (which read the Python KPIs + charts) render just beneath the tabs.
                   When the Python engine has run, its KPIs and charts populate it; otherwise the TS engine does. */}
               <DashboardView
-                spec={pySpec ? { ...spec, kpis: pySpec.kpis, charts: pyChartsToSpecs(pySpec.charts) } : spec}
+                spec={mergedDashboardSpec(spec, pySpec)}
                 table={table}
                 conclusions={pyConclusions}
                 innerRef={dashboardRef}

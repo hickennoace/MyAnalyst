@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { sampleForPayload } from "./py-engine";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { sampleForPayload, runPythonConclusions, type PyAnalysisSpec } from "./py-engine";
 
 const MAX = 3_800_000;
 
@@ -34,5 +34,48 @@ describe("sampleForPayload (adaptive byte-budget sampling)", () => {
   it("preserves column order in the emitted arrays", () => {
     const out = sampleForPayload(["x", "y", "z"], [{ z: 3, x: 1, y: 2 }]);
     expect(out[0]).toEqual([1, 2, 3]);
+  });
+});
+
+// Transient backend failures used to silently blank the conclusions/KPIs (no retry). These pin the retry
+// policy: retry the transient classes (5xx / network) a couple times; fail fast on a 4xx the retry can't fix.
+const CONCLUDE_SPEC = {
+  facts: [],
+  kpis: [],
+  chartReadings: [],
+  domain: { domain: "generic", confidence: 1, reason: "" },
+  narrative: "",
+} as unknown as PyAnalysisSpec;
+const okRes = (data: unknown) => ({ ok: true, status: 200, json: async () => data });
+const failRes = (status: number, error = "boom") => ({ ok: false, status, json: async () => ({ error }) });
+
+describe("postJson retry (via runPythonConclusions)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("retries a transient 5xx, then resolves with the eventual success", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(failRes(503))
+      .mockResolvedValueOnce(okRes({ provider: "none", conclusions: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(runPythonConclusions(CONCLUDE_SPEC)).resolves.toMatchObject({ provider: "none" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a network error (rejected fetch), then resolves", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(okRes({ provider: "groq", conclusions: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(runPythonConclusions(CONCLUDE_SPEC)).resolves.toMatchObject({ provider: "groq" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does NOT retry a 4xx client error — fails fast", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(failRes(400, "bad payload"));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(runPythonConclusions(CONCLUDE_SPEC)).rejects.toThrow("bad payload");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
