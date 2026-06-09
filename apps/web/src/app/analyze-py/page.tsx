@@ -11,6 +11,7 @@ import { PythonDashboard } from "@/components/PythonDashboard";
 export default function AnalyzePyPage() {
   const [spec, setSpec] = useState<PyAnalysisSpec | null>(null);
   const [conclusions, setConclusions] = useState<PyConclusions | null>(null);
+  const [parsed, setParsed] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,7 @@ export default function AnalyzePyPage() {
           const rows = res.data;
           const columns = res.meta.fields ?? Object.keys(rows[0] ?? {});
           if (!rows.length || !columns.length) throw new Error("No rows found in the file.");
+          setParsed({ columns, rows });
           setStatus(`Analyzing ${rows.length.toLocaleString()} rows with Python…`);
           const s = await runPythonAnalysis(columns, rows);
           setSpec(s);
@@ -77,7 +79,7 @@ export default function AnalyzePyPage() {
 
       {spec && (
         <div className="mt-8">
-          <PythonDashboard spec={spec} conclusions={conclusions} />
+          <PythonDashboard spec={spec} conclusions={conclusions} table={parsed} />
         </div>
       )}
     </main>

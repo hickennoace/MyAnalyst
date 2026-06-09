@@ -1,15 +1,23 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { KpiCard } from "./KpiCard";
 import { Chart } from "./Chart";
 import { pyChartsToSpecs } from "@/lib/py-charts";
-import type { PyAnalysisSpec, PyConclusions } from "@/lib/py-engine";
+import { runPythonAsk, type PyAnalysisSpec, type PyConclusions } from "@/lib/py-engine";
 
 // Renders a Python-engine analysis spec (Phase 5). Reuses the existing KPI cards + ECharts <Chart> via the
 // chart adapter, so a Python-computed dashboard looks identical to the TS one.
 
-export function PythonDashboard({ spec, conclusions }: { spec: PyAnalysisSpec; conclusions?: PyConclusions | null }) {
+export function PythonDashboard({
+  spec,
+  conclusions,
+  table,
+}: {
+  spec: PyAnalysisSpec;
+  conclusions?: PyConclusions | null;
+  table?: { columns: string[]; rows: Record<string, unknown>[] } | null;
+}) {
   const charts = pyChartsToSpecs(spec.charts);
   return (
     <div className="space-y-6">
@@ -24,6 +32,8 @@ export function PythonDashboard({ spec, conclusions }: { spec: PyAnalysisSpec; c
       </header>
 
       {conclusions && <ConclusionsCard c={conclusions} />}
+
+      {table && <AskBox spec={spec} table={table} />}
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {spec.kpis.slice(0, 8).map((k, i) => (
@@ -106,6 +116,61 @@ export function PythonDashboard({ spec, conclusions }: { spec: PyAnalysisSpec; c
         </ul>
       </section>
     </div>
+  );
+}
+
+function AskBox({ spec, table }: { spec: PyAnalysisSpec; table: { columns: string[]; rows: Record<string, unknown>[] } }) {
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [turns, setTurns] = useState<{ q: string; a: string; provider: string }[]>([]);
+
+  async function ask() {
+    const question = q.trim();
+    if (!question || busy) return;
+    setBusy(true);
+    setQ("");
+    try {
+      const res = await runPythonAsk(question, table.columns, table.rows, spec.facts);
+      setTurns((t) => [{ q: question, a: res.answer, provider: res.provider }, ...t]);
+    } catch (e) {
+      setTurns((t) => [{ q: question, a: e instanceof Error ? e.message : "Couldn't answer that.", provider: "error" }, ...t]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card p-5">
+      <h3 className="mb-2 text-sm font-semibold text-slate-100">Ask your data</h3>
+      <div className="flex gap-2">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && ask()}
+          placeholder="e.g. total revenue by region? average sale price?"
+          className="flex-1 rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2 text-[13px] text-slate-200 placeholder:text-slate-600 focus:border-slate-500 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={ask}
+          disabled={busy || !q.trim()}
+          className="rounded-lg border border-slate-700 px-3 py-2 text-[13px] text-slate-200 transition hover:bg-slate-800 disabled:opacity-40"
+        >
+          {busy ? "…" : "Ask"}
+        </button>
+      </div>
+      {turns.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {turns.map((t, i) => (
+            <div key={i} className="rounded-lg border border-[var(--line)] p-3">
+              <div className="text-[12px] font-medium text-slate-400">{t.q}</div>
+              <div className="mt-1 text-[13px] text-slate-200">{t.a}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-[11px] text-slate-500">Answers are computed in pandas; the AI only phrases them.</p>
+    </section>
   );
 }
 

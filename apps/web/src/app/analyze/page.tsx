@@ -851,7 +851,7 @@ export default function AnalyzePage() {
         {pySpec ? (
           <ErrorBoundary label="python-dashboard">
             <div ref={dashboardRef} className={busy ? "pointer-events-none opacity-50 transition-opacity" : "transition-opacity"}>
-              <PythonDashboard spec={pySpec} conclusions={pyConclusions} />
+              <PythonDashboard spec={pySpec} conclusions={pyConclusions} table={table} />
             </div>
           </ErrorBoundary>
         ) : (

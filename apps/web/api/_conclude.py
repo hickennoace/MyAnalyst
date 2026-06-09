@@ -8,11 +8,11 @@ depends on paid LLM capacity. Uses urllib (stdlib) so no SDK dependency is added
 from __future__ import annotations
 
 import json
-import os
 import re
-import urllib.request
 
-DISCLAIMER = ("Automated analysis — not financial or investment advice. Verify anything important "
+import _groq
+
+DISCLAIMER =("Automated analysis — not financial or investment advice. Verify anything important "
               "with a qualified professional.")
 
 SYSTEM = (
@@ -63,11 +63,6 @@ def check_grounding(answer: str, facts: list[dict]) -> dict:
 
 def call_groq(facts: list[dict], domain: str, user_context: str | None,
               kpis: list[dict] | None = None, chart_readings: list[dict] | None = None) -> str | None:
-    key = os.environ.get("LLM_API_KEY")
-    if not key:
-        return None
-    model = os.environ.get("LLM_MODEL", "openai/gpt-oss-120b")
-    base = os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
     kpi_text = "\n".join(f"- {k['name']}: {k['value']}" for k in (kpis or []))
     facts_text = "\n".join(f"- {f['text']}" for f in facts)
     charts_text = "\n".join(f"- {c['title']}: {c['reading']}" for c in (chart_readings or []))
@@ -78,27 +73,7 @@ def call_groq(facts: list[dict], domain: str, user_context: str | None,
         + (f"\nCHARTS the engine produced (read these and interpret them):\n{charts_text}\n" if charts_text else "")
         + "\nWrite the JSON now."
     )
-    body = {
-        "model": model,
-        "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
-        "temperature": 0.4,
-        "response_format": {"type": "json_object"},
-    }
-    if "gpt-oss" in model:  # reasoning model: keep thinking fast + hidden, don't starve output
-        body["reasoning_effort"] = "low"
-        body["max_tokens"] = 1600
-    req = urllib.request.Request(
-        f"{base}/chat/completions",
-        data=json.dumps(body).encode("utf-8"),
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        return data["choices"][0]["message"]["content"]
-    except Exception:
-        return None
+    return _groq.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}])
 
 
 def generate_conclusions(facts: list[dict], domain: str = "generic", user_context: str | None = None,

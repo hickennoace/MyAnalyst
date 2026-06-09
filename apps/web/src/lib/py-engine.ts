@@ -111,6 +111,27 @@ export async function runPythonAnalysis(columns: string[], rows: Record<string, 
   return res.json();
 }
 
+export interface PyAnswer {
+  provider: "groq" | "none";
+  answer: string;
+}
+
+export async function runPythonAsk(
+  question: string,
+  columns: string[],
+  rows: Record<string, unknown>[],
+  facts?: PyFact[]
+): Promise<PyAnswer> {
+  const sample = sampleRows(rows);
+  const body = JSON.stringify({ question, columns, rows: sample.map((r) => columns.map((c) => r[c] ?? null)), facts });
+  const res = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Ask failed (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function runPythonConclusions(spec: PyAnalysisSpec, userContext?: string): Promise<PyConclusions> {
   const body = JSON.stringify({
     facts: spec.facts,
