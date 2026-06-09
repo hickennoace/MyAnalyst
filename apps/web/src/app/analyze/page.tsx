@@ -8,7 +8,8 @@ import { parseFile, type SourceInfo } from "@/lib/parse";
 import { runAnalysis } from "@/lib/analyze-client";
 import { downloadCsv } from "@/lib/csv";
 import { sampleTable } from "@/lib/sample";
-import { combinedContext, INDUSTRY_TAGS } from "@/lib/industry-tags";
+import { combinedContext } from "@/lib/industry-tags";
+import { IndustryTagPicker } from "@/components/IndustryTagPicker";
 import { exportPdf, exportPng } from "@/lib/export";
 import { exportDeckPdf, exportReportPdf } from "@/lib/report-pdf";
 import { loadBrand } from "@/lib/brand";
@@ -660,24 +661,8 @@ export default function AnalyzePage() {
                 </p>
 
                 {/* Optional industry tag — another fast way to sharpen the analysis. */}
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  <span className="mr-1 text-[11px] uppercase tracking-wide text-slate-500">industry:</span>
-                  {INDUSTRY_TAGS.map((t) => {
-                    const active = industry === t.key;
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => updateIndustry(active ? null : t.key)}
-                        className={`rounded-full border px-2.5 py-0.5 text-xs transition ${
-                          active ? "border-blue-400 bg-blue-500/15 text-blue-200" : "border-slate-700 text-slate-300 hover:border-blue-500/50 hover:text-blue-300"
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    );
-                  })}
+                <div className="mt-3">
+                  <IndustryTagPicker value={industry} onChange={updateIndustry} label="industry:" justify="start" size="sm" />
                 </div>
 
                 <textarea

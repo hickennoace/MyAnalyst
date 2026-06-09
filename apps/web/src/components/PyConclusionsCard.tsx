@@ -9,7 +9,7 @@ export function PyConclusionsCard({ c }: { c: PyConclusions }) {
   return (
     <section className="card border border-blue-500/20 p-5">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-100">AI conclusions</h3>
+        <h3 className="font-display text-[15px] font-semibold text-slate-100">AI conclusions</h3>
         <span className="text-[11px] text-slate-500">
           {c.provider === "groq" ? "AI-written" : "templated"} ·{" "}
           {c.grounding.grounded ? (
@@ -19,7 +19,7 @@ export function PyConclusionsCard({ c }: { c: PyConclusions }) {
           )}
         </span>
       </div>
-      {c.bottomLine && <p className="mt-2 text-[15px] font-medium text-slate-100">{c.bottomLine}</p>}
+      {c.bottomLine && <p className="font-display mt-2 text-[19px] font-medium leading-snug text-slate-100">{c.bottomLine}</p>}
       {c.summary && <p className="mt-2 text-[13px] leading-relaxed text-slate-300">{c.summary}</p>}
       {c.chartInsights && c.chartInsights.length > 0 && (
         <div className="mt-3 space-y-1.5">

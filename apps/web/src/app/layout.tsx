@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Hanken_Grotesk, JetBrains_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 
-// Type system: one clean, neutral grotesque for everything (headings + body),
-// and a mono for small numerals & data labels. Kept deliberately plain.
+// Type system: a clean neutral grotesque for body + UI, a mono for numerals & data labels, and a
+// characterful display SERIF (Fraunces — optical sizing, soft brackets) for headlines. The serif gives the
+// product an intelligent, editorial voice that sets it apart from the usual all-grotesque SaaS look, while
+// data/UI stays in the crisp sans.
 const sans = Hanken_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -14,6 +16,11 @@ const sans = Hanken_Grotesk({
 const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  display: "swap",
+});
+const display = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -61,7 +68,7 @@ const THEME_INIT = `(function(){try{var t=localStorage.getItem('quantia:theme');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`} data-theme="light" suppressHydrationWarning>
+    <html lang="en" className={`${sans.variable} ${mono.variable} ${display.variable}`} data-theme="light" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>

@@ -366,7 +366,7 @@ function Section({
       <div className="mb-3">
         <div className="flex items-center gap-2">
           <span className="section-accent" aria-hidden />
-          <h2 className="text-base font-semibold text-slate-100">{title}</h2>
+          <h2 className="font-display text-[17px] font-semibold text-slate-100">{title}</h2>
           {badge}
         </div>
         {subtitle && <p className="ml-7 text-xs text-slate-400">{subtitle}</p>}

@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { fetchAsFile } from "@/lib/url-import";
-import { INDUSTRY_TAGS } from "@/lib/industry-tags";
+import { IndustryTagPicker } from "./IndustryTagPicker";
 
 export function Uploader({
   onFile,
@@ -106,26 +106,8 @@ export function Uploader({
 
       {/* Industry TAG for the file you're about to upload — sharpens domain detection + the AI's
           understanding. This does NOT load a sample; it just labels your data. */}
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-        <span className="text-[11px] uppercase tracking-wide text-slate-500">tag your industry:</span>
-        {INDUSTRY_TAGS.map((t) => {
-          const active = industry === t.key;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onIndustry?.(active ? null : t.key)}
-              className={`rounded-full border px-3 py-1 text-xs transition hover:-translate-y-0.5 ${
-                active
-                  ? "border-blue-400 bg-blue-500/15 text-blue-200"
-                  : "border-slate-700 text-slate-300 hover:border-blue-500/50 hover:text-blue-300"
-              }`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+      <div className="mt-4">
+        <IndustryTagPicker value={industry} onChange={(k) => onIndustry?.(k)} />
       </div>
       <p className="mt-1.5 text-[11px] text-slate-500">
         {industry

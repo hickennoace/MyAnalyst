@@ -77,7 +77,7 @@ const TICKER = ["Cleaning report", "Domain detection", "Ranked KPIs", "OLS regre
 
 export default function Landing() {
   return (
-    <main id="main-content" className="lp">
+    <main id="main-content" className="lp grain-layer">
       <div className="lp-aurora" aria-hidden />
       <HeroField className="lp-field" />
 

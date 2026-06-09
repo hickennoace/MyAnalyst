@@ -243,9 +243,19 @@ body {
 
 .lp ::selection { background: var(--accent-soft); color: var(--accent-hover); }
 
-/* Typographic voices — both the plain neutral grotesque. */
-.lp .display { font-family: var(--font-sans), system-ui, sans-serif; font-weight: 700; letter-spacing: -0.02em; }
+/* Typographic voices — a characterful display SERIF for headlines, clean grotesque for everything else. */
+.lp .display { font-family: var(--font-display), Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: -0.018em; font-optical-sizing: auto; }
 .lp .mono { font-family: var(--font-mono), ui-monospace, monospace; }
+
+/* Editorial display serif — opt in on any heading for an intelligent, distinctive voice. */
+.font-display { font-family: var(--font-display), Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: -0.015em; font-optical-sizing: auto; }
+
+/* Fine-grain film texture for atmospheric depth (kept barely-there so it never hurts legibility). */
+.grain-layer::after {
+  content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] .grain-layer::after { opacity: 0.045; }
 
 /* ── Subtle backdrop: one faint indigo wash, no busy texture ── */
 .lp-aurora {
