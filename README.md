@@ -28,7 +28,8 @@ myanalyst/
 │   └── adr/                  ← architecture decision records
 ├── apps/
 │   ├── web/                  ← Next.js frontend (Vercel)
-│   └── api/                  ← FastAPI backend (data crunching: pandas, scikit-learn, statsmodels)
+│   ├── pyapi/                ← LIVE Python compute service (pandas · statsmodels · scikit-learn), own Vercel project
+│   └── api/                  ← FastAPI backend — target architecture for scale (Postgres RLS, workers)
 ├── packages/
 │   └── shared/               ← shared schemas/types contracts across web & api
 ├── ml/                       ← models, prompt templates, experiment notebooks
@@ -36,15 +37,17 @@ myanalyst/
 └── scripts/                  ← dev & ops helper scripts
 ```
 
-## The core architectural idea (Hybrid AI)
+## The core architectural idea (Python compute + grounded AI)
 
-To honor the "zero data leaks" requirement, **raw rows never leave your infrastructure**. All numeric crunching (cleaning, KPIs, regression, forecasting) runs locally in the Python backend. Only **schema, column statistics, and small aggregates** are sent to a cloud LLM to generate insight narratives — never the underlying records. See [docs/03-security-privacy.md](docs/03-security-privacy.md).
+All numeric crunching — cleaning, KPIs, regression, time-series forecasting, correlation, segmentation, anomaly detection — runs **server-side in the Python engine** (`apps/pyapi`, built on pandas · statsmodels · scikit-learn). The engine computes deterministic **facts**; the LLM narrator only ever **writes prose over numbers the engine already produced**, so it can't invent a figure. Only **schema, column statistics, and small aggregates** are sent to the LLM — never the underlying records. See [docs/03-security-privacy.md](docs/03-security-privacy.md).
 
 ## Status
 
-🟢 **Working MVP in `apps/web`** (Vercel-first). A live Next.js app: upload a CSV/Excel file → instant auto-generated dashboard (auto-typed columns, domain detection, ranked KPIs, statistics, auto-charts, grounded plain-language insights) + an on-demand "generate a graph" builder (plain-English or manual). The full analysis engine runs **client-side in the browser** — no backend, no API key, no data leaves the page. The insight narrator is behind a pluggable `InsightProvider` interface so a cloud/self-hosted LLM can drop in later with no UI changes. See [apps/web/README.md](apps/web/README.md).
+🟢 **Live at [myanalyst.net](https://myanalyst.net).** Upload a CSV/Excel file → instant auto-generated dashboard (auto-typed columns, domain detection, revenue-first ranked KPIs, real statistics, forecasts, auto-charts, grounded plain-language insights) + an "ask your data" analyst and an on-demand "generate a graph" builder.
 
-The heavier blueprint below (FastAPI compute tier, Postgres RLS, Redis workers, multi-tenant SaaS) remains the target architecture for scale; the Vercel-first MVP is the fast path to a usable product today. Start with [docs/04-mvp-roadmap.md](docs/04-mvp-roadmap.md).
+The app is a **Next.js front end (`apps/web`)** backed by a **Python compute service (`apps/pyapi`)** — its own Vercel project at `quantia-api.vercel.app`, called cross-origin. The Python engine (pandas/statsmodels) does **all** the analysis; the LLM (Groq/Gemini, optional and off by default) only narrates the computed facts, and falls back to grounded templated text when no key is set. See [apps/web/README.md](apps/web/README.md).
+
+The heavier blueprint below (FastAPI compute tier, Postgres RLS, Redis workers, multi-tenant SaaS) remains the target architecture for scale. Start with [docs/04-mvp-roadmap.md](docs/04-mvp-roadmap.md).
 
 ## Quick links
 
