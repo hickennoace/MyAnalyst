@@ -301,7 +301,18 @@ export function DashboardView({
               profiles={spec.profiles}
               domain={spec.domain.domain}
               analysis={{
-                actions: spec.actions?.slice(0, 5).map((a) => ({ title: a.title, impact: a.impact })),
+                // Prefer the AI conclusions' action plan (it read the Python KPIs + charts); fall back to
+                // the templated actions. Details are included so advisory answers carry the rationale.
+                actions: conclusions?.actions?.length
+                  ? conclusions.actions.slice(0, 5).map((a) => ({ title: a.title, impact: "", detail: a.detail?.slice(0, 240) }))
+                  : spec.actions?.slice(0, 5).map((a) => ({ title: a.title, impact: a.impact, detail: a.detail?.slice(0, 240) })),
+                bottomLine: conclusions?.bottomLine,
+                findings: (conclusions?.conclusions?.length
+                  ? conclusions.conclusions
+                  : spec.insights.filter((i) => i.kind !== "summary").map((i) => i.text)
+                )
+                  .slice(0, 6)
+                  .map((f) => f.slice(0, 240)),
                 drivers: spec.drivers
                   ? { target: spec.drivers.target, r2Pct: Math.round(spec.drivers.r2 * 100), factors: spec.drivers.drivers.slice(0, 4).map((d) => ({ name: d.name, beta: Math.round(d.beta * 100) / 100, significant: d.significant })) }
                   : undefined,

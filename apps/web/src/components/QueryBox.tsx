@@ -38,11 +38,14 @@ export function QueryBox({
   const threadEndRef = useRef<HTMLDivElement>(null);
   const ai = useMemo(() => llmEnabled(), []);
 
-  // Domain-tuned example questions (grounded in real columns), falling back to generic ones.
-  const suggestions = useMemo(
-    () => (domain ? domainSuggestions(domain, profiles) : buildSuggestions(profiles)),
-    [domain, profiles]
-  );
+  // Domain-tuned example questions (grounded in real columns), falling back to generic ones. When the
+  // analysis carries an action plan / findings, lead with the advisory ask so users discover that the
+  // box answers open questions too — not just column computations.
+  const suggestions = useMemo(() => {
+    const base = domain ? domainSuggestions(domain, profiles) : buildSuggestions(profiles);
+    const advisory = analysis && ((analysis.actions?.length ?? 0) > 0 || (analysis.findings?.length ?? 0) > 0);
+    return advisory ? ["what actions should I take?", ...base].slice(0, 6) : base;
+  }, [domain, profiles, analysis]);
 
   // Keep the newest question/answer in view as the conversation grows. Skip the very first
   // render (nothing to scroll to) and honor reduced-motion preferences.

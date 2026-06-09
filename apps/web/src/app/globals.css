@@ -470,6 +470,8 @@ body:has(.lp) { background: #ffffff; }
 .theme-toggle:hover { border-color: #7c83ff; color: #7c83ff; }
 .lp .theme-toggle { border-color: var(--line-strong); color: var(--muted); }
 .lp .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+/* In light mode the inherited text color left the moon icon nearly invisible on the white header — force it dark. */
+:root[data-theme="light"] .theme-toggle { color: #0f172a; border-color: #cbd2dd; }
 
 /* Page transition — replays on every route change via app/template.tsx. */
 @keyframes pageEnter {

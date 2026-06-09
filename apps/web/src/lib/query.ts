@@ -1465,9 +1465,46 @@ export function buildFocalFacts(question: string, table: Table, profiles: Column
  *  should I do / what's driving X" questions are answered from the regression, ANOVA, trend and action
  *  analysis — not just raw aggregates. This is the multi-step reasoning, done up front. */
 export interface AskAnalysis {
-  actions?: { title: string; impact: string }[];
+  actions?: { title: string; impact: string; detail?: string }[];
   drivers?: { target: string; r2Pct?: number | null; factors: { name: string; beta: number; significant: boolean }[] };
   trends?: { metric: string; changePct: number | null; direction?: string }[];
+  /** The AI conclusions' one-line executive read, when available. */
+  bottomLine?: string;
+  /** Key findings (AI conclusions, falling back to the dashboard insights) — lets the box answer
+   *  open/advisory questions ("what should I do?", "summarize this") like the rest of the app would. */
+  findings?: string[];
+}
+
+/** Advisory questions ("what should I do?", "give me recommendations") answered locally from the
+ *  dashboard's ranked action plan + findings. This is the grounded base for such questions: with the LLM
+ *  on it becomes the authoritative input the model narrates from; with it off it IS the answer — either
+ *  way the box no longer shrugs at open questions. Returns undefined for anything non-advisory. */
+const ADVISORY_RE =
+  /(what\s+(should|can|do|would)\s+(i|we|you)\s+do|what\s+actions?|recommended?\s+actions?|recommendations?|next\s+steps?|how\s+(do|can)\s+(i|we)\s+improve|action\s+plan|advi[cs]e|key\s+takeaways?|main\s+conclusions?|summar(y|ize|ise))/i;
+
+export function advisoryAnswer(question: string, analysis?: AskAnalysis): QueryAnswer | undefined {
+  if (!analysis || !ADVISORY_RE.test(question)) return undefined;
+  const actions = analysis.actions ?? [];
+  const findings = analysis.findings ?? [];
+  if (!actions.length && !findings.length && !analysis.bottomLine) return undefined;
+  const parts: string[] = [];
+  if (analysis.bottomLine) parts.push(analysis.bottomLine);
+  if (actions.length) {
+    parts.push(
+      "Here's what I'd do, in priority order:\n" +
+        actions
+          .map((a, i) => `${i + 1}. ${a.title}${a.detail ? ` — ${a.detail}` : ""}${a.impact ? ` (${a.impact} impact)` : ""}`)
+          .join("\n")
+    );
+  } else if (findings.length) {
+    parts.push("The key findings:\n" + findings.map((f, i) => `${i + 1}. ${f}`).join("\n"));
+  }
+  return {
+    ok: true,
+    answer: parts.join("\n\n"),
+    method:
+      "From the dashboard's recommended-actions plan and key findings — each derived from the statistics computed on your data (not generic advice), ranked by impact.",
+  };
 }
 
 function buildEvidence(question: string, table: Table, profiles: ColumnProfile[], grounded: string, domain?: string, history?: QaTurn[], analysis?: AskAnalysis) {
@@ -1476,7 +1513,13 @@ function buildEvidence(question: string, table: Table, profiles: ColumnProfile[]
   // narrates the scoped numbers). The overview stays whole-dataset, as broader context.
   const filter = detectFilter(question, table, profiles);
   const view = filter ? applyFilter(table, filter) : table;
-  const hasAnalysis = analysis && ((analysis.actions?.length ?? 0) > 0 || (analysis.drivers?.factors?.length ?? 0) > 0 || (analysis.trends?.length ?? 0) > 0);
+  const hasAnalysis =
+    analysis &&
+    ((analysis.actions?.length ?? 0) > 0 ||
+      (analysis.drivers?.factors?.length ?? 0) > 0 ||
+      (analysis.trends?.length ?? 0) > 0 ||
+      (analysis.findings?.length ?? 0) > 0 ||
+      !!analysis.bottomLine);
   return {
     question,
     intent: grounded ? "specific" : "open-ended",
@@ -1638,6 +1681,14 @@ async function runAnswerAI(
   analysis?: AskAnalysis
 ): Promise<RichAnswer> {
   let base = answerQuestion(question, table, profiles);
+
+  // Advisory / open questions ("what should I do?", "summarize the takeaways") aren't computations —
+  // answer them from the dashboard's ranked actions + findings. With the LLM on, this becomes the
+  // authoritative grounded input the model narrates from; with it off, it's the answer itself.
+  if (!base.ok) {
+    const advisory = advisoryAnswer(question, analysis);
+    if (advisory) base = advisory;
+  }
   if (!llmOn()) return { ...base, source: "heuristic" };
 
   // Smart fallback: when the deterministic engine can't map the question, let the LLM PLAN the

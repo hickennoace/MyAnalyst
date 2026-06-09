@@ -547,3 +547,31 @@ describe("Wave 4 — statistical reasoning", () => {
     expect(r.chart?.type).toBe("scatter");
   });
 });
+
+describe("advisoryAnswer (open 'what should I do?' questions)", () => {
+  const analysis = {
+    bottomLine: "Revenue is concentrated in two products; protect them and fix the long tail.",
+    actions: [
+      { title: "Push volume on Product A", impact: "high", detail: "A carries 41% of revenue." },
+      { title: "Cut or fix the bottom 5 SKUs", impact: "medium", detail: "They add under 2% combined." },
+    ],
+    findings: ["Product A leads revenue at 41%."],
+  };
+
+  it("answers advisory questions from the ranked action plan", async () => {
+    const { advisoryAnswer } = await import("./query");
+    const r = advisoryAnswer("what actions should I take?", analysis);
+    expect(r?.ok).toBe(true);
+    expect(r?.answer).toContain("Push volume on Product A");
+    expect(r?.answer).toContain("41%");
+    expect(r?.answer).toContain("priority order");
+    expect(r?.method).toMatch(/ranked by impact/i);
+  });
+
+  it("stays out of the way for computational questions and empty analyses", async () => {
+    const { advisoryAnswer } = await import("./query");
+    expect(advisoryAnswer("total revenue by region", analysis)).toBeUndefined();
+    expect(advisoryAnswer("what should I do?", { actions: [], findings: [] })).toBeUndefined();
+    expect(advisoryAnswer("what should I do?", undefined)).toBeUndefined();
+  });
+});
