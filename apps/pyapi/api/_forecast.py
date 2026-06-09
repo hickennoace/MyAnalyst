@@ -75,5 +75,48 @@ def forecast_series(values, horizon: int, seasonal_periods: int | None = None) -
     return out
 
 
+def _fit_forecast(y: np.ndarray, horizon: int, seasonal_periods: int | None) -> np.ndarray | None:
+    """Just the point forecast (no band) — used by the backtest. Mirrors forecast_series's model choice."""
+    n = len(y)
+    if n < 4 or np.nanstd(y) == 0:
+        return None
+    if not HAS_STATSMODELS:
+        x = np.arange(n, dtype=float)
+        slope, intercept = np.polyfit(x, y, 1)
+        return intercept + slope * np.arange(n, n + horizon, dtype=float)
+    try:
+        if seasonal_periods and n >= 2 * seasonal_periods:
+            m = ExponentialSmoothing(y, trend="add", seasonal="add", seasonal_periods=seasonal_periods,
+                                     initialization_method="estimated").fit()
+        else:
+            m = Holt(y, initialization_method="estimated").fit()
+        fc = np.asarray(m.forecast(horizon), dtype=float)
+        return fc if np.all(np.isfinite(fc)) else None
+    except Exception:
+        return None
+
+
+def backtest(values, seasonal_periods: int | None = None) -> dict | None:
+    """Holdout backtest: hide the last few points, forecast them from the rest, and measure the error.
+    Gives the user an honest read on how much to trust the projection ("typically within ~X%")."""
+    y = np.asarray([v for v in values if np.isfinite(v)], dtype=float)
+    n = len(y)
+    test_n = min(max(2, n // 5), 6)
+    if n - test_n < 6:  # need enough training history for a meaningful fit
+        return None
+    train, actual = y[:-test_n], y[-test_n:]
+    pred = _fit_forecast(train, test_n, seasonal_periods)
+    if pred is None or len(pred) != test_n:
+        return None
+    # MAPE only over actuals large enough for a percentage to be meaningful (avoids divide-by-near-zero).
+    thresh = 0.01 * float(np.mean(np.abs(y))) or 1e-9
+    mask = np.abs(actual) > thresh
+    if mask.sum() < 2:
+        return None
+    mape = float(np.mean(np.abs((actual[mask] - pred[mask]) / actual[mask])))
+    mae = float(np.mean(np.abs(actual - pred)))
+    return {"mape": mape, "mae": mae, "testPoints": int(test_n)}
+
+
 def default_horizon(length: int) -> int:
     return max(3, min(12, round(length * 0.15)))

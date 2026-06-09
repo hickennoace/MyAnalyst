@@ -419,6 +419,10 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
                 trend["seasonalityStrength"] = _ts.seasonality_strength(series, 12)
             period = 12 if len(series) >= 24 else None
             forecast = _fc.forecast_series(series, _fc.default_horizon(len(series)), period)
+            if forecast:
+                bt = _fc.backtest(series, period)
+                if bt:
+                    forecast["backtest"] = bt
 
     # Rigorous inference (scipy + statsmodels).
     stats_block: dict[str, Any] = {}

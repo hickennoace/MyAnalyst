@@ -72,9 +72,12 @@ def build_facts(spec: dict) -> list[dict]:
 
     fc = spec.get("forecast")
     if fc:
+        bt = fc.get("backtest")
+        accuracy = (f" In backtests this model's forecasts landed within ~{_pct(bt['mape'])} of actuals."
+                    if bt and bt["mape"] < 0.5 else "")
         add("fact-forecast", f"Projected revenue {'rises' if fc['changePct']>=0 else 'falls'} "
             f"{_pct(abs(fc['changePct']))} over the next {len(fc['forecast'])} months "
-            f"({fc['method']}).", "forecast", fc["changePct"])
+            f"({fc['method']}).{accuracy}", "forecast", fc["changePct"])
 
     st = spec.get("stats", {})
     d = st.get("drivers")
@@ -178,10 +181,13 @@ def chart_readings(spec: dict) -> list[dict]:
                        f"({_pct(tr['revenueShare'])}); the top 3 make up {_pct(top3)} of revenue — "
                        f"{'concentrated' if top3 > 0.6 else 'fairly spread'}.")
         elif c["id"] == "chart-forecast" and fc:
+            bt = fc.get("backtest")
+            acc = (f" backtested accuracy ~{_pct(bt['mape'])} error" if bt and bt["mape"] < 0.5 else "")
             reading = (f"The {fc.get('method', 'model')} projects revenue "
                        f"{'rising' if fc['changePct'] >= 0 else 'falling'} {_pct(abs(fc['changePct']))} "
                        f"over the next {len(fc['forecast'])} months"
-                       + (" (seasonal pattern carried through)" if fc.get("seasonal") else "") + ".")
+                       + (" (seasonal pattern carried through)" if fc.get("seasonal") else "")
+                       + acc + ".")
         elif c["id"] == "chart-corr" and cors:
             strong = next((x for x in cors if not x["redundant"] and abs(x["r"]) > 0.3), None)
             if strong:

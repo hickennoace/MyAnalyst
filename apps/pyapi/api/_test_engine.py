@@ -87,9 +87,14 @@ check("biggest swing is a notable drop", sw["notable"] is True and sw["direction
 check("steady series has no notable swing", (_biggest_swing(step_labels, np.array([100.0, 101.0, 102.0, 103.0, 104.0])) or {}).get("notable") is False)
 
 # Forecast on a steeply declining non-negative series must never project below zero.
-from _forecast import forecast_series
+from _forecast import forecast_series, backtest
 decl = forecast_series([100.0, 80.0, 60.0, 40.0, 20.0, 10.0, 5.0], horizon=6)
 check("declining revenue forecast never goes negative", decl is not None and min(decl["forecast"]) >= 0 and min(decl["lower"]) >= 0)
+
+# Backtest: a clean linear series should be forecastable with small error; short series returns None.
+bt = backtest([10.0 * i + 50 for i in range(20)])
+check("backtest returns a low MAPE on a clean linear series", bt is not None and bt["mape"] < 0.1 and bt["testPoints"] >= 2)
+check("backtest returns None on too-short a series", backtest([1.0, 2.0, 3.0, 4.0]) is None)
 
 # RFM on transaction data with repeating customers.
 rng2 = np.random.default_rng(7)
