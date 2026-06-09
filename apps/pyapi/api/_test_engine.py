@@ -39,6 +39,16 @@ profiles = profile(df)
 dom = detect_domain(profiles, len(df))
 check("domain is sales-operational, not financial", dom["domain"] == "sales-operational")
 
+# A keyword-less transaction stream (fitness log) must NOT be labelled sales-operational just for its grain.
+fit = pd.DataFrame({
+    "Date": pd.date_range("2024-01-01", periods=60, freq="D").astype(str),
+    "Activity": (["Swim", "Run", "Yoga", "Strength"] * 15),
+    "Duration": np.random.default_rng(5).integers(20, 90, 60),
+    "Calories": np.random.default_rng(6).integers(150, 1200, 60),
+})
+fit_dom = detect_domain(profile(fit), len(fit))
+check("keyword-less fitness stream is NOT mislabelled sales-operational", fit_dom["domain"] != "sales-operational")
+
 # Revenue metric = Price (the sale value), never Cost.
 rev = revenue_metric(profiles, is_transaction_grain(profiles, len(df)), dom["domain"])
 check("revenue metric is Price (not Cost)", rev is not None and rev["name"] == "Price")

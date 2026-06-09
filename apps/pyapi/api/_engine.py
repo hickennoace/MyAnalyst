@@ -158,7 +158,10 @@ def detect_domain(profiles, n) -> dict[str, Any]:
 
     strong, weak = cnt(STRONG_FIN), cnt(WEAK_FIN)
     fin = strong * 2 + (0 if grain else weak + (1 if (has_time and strong + weak > 0) else 0))
-    sales = cnt(SALES_KW) + (1 if grain else 0)
+    # The transaction-grain bonus only REINFORCES a real sales signal — a keyword-less stream (e.g. a
+    # fitness log: Date + Activity + Duration + Calories) is a transaction grain but isn't sales/ops.
+    sales_kw = cnt(SALES_KW)
+    sales = sales_kw + (1 if grain else 0) if sales_kw else 0
     scores = [
         ("sales-operational", sales, "sales/order/product columns"),
         ("financial-timeseries", fin, "price/return/volume columns over time"),

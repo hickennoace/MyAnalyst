@@ -32,8 +32,11 @@ export function detectDomain(profiles: ColumnProfile[], userContext?: string, ro
   const finSignal = strongFin + weakFin;
   const financialScore = strongFin * 2 + (grain ? 0 : weakFin + (hasTime && finSignal > 0 ? 1 : 0)) + ctxHit(STRONG_FINANCIAL);
 
-  // Operational/sales: keyword matches plus a structural bonus — a transaction stream IS sales/ops data.
-  const salesScore = count(SALES) + (grain ? 1 : 0) + ctxHit(SALES);
+  // Operational/sales: keyword matches plus a structural bonus. The transaction-grain bonus only
+  // REINFORCES a real sales signal — it must not invent "sales" from a keyword-less stream (e.g. a
+  // fitness log: Date + Activity + Duration + Calories is a transaction grain but isn't sales/ops).
+  const salesKw = count(SALES) + ctxHit(SALES);
+  const salesScore = salesKw > 0 ? salesKw + (grain ? 1 : 0) : 0;
   const marketingScore = count(MARKETING) + ctxHit(MARKETING);
   const surveyScore = count(SURVEY) + ctxHit(SURVEY);
 
