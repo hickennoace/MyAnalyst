@@ -26,16 +26,24 @@ SYSTEM = (
     "MEANS for the business (reference the chart by its title); (4) conclusions — 2-4 crisp findings (number "
     "+ meaning + implication); (5) actions — 1-3 prioritized, concrete next steps.\n"
     "Rules: use ONLY figures that appear in the KPIs/FACTS/chart readings — never invent or extrapolate "
-    "numbers; lead with business meaning, not statistics; be honest about uncertainty. Output STRICT JSON: "
+    "numbers; you MAY divide two given figures to state a share/ratio. Lead with business meaning, not "
+    "statistics; quantify the size of the opportunity or risk; be honest about uncertainty. Do NOT number "
+    "the conclusions (no '1.', '2.' prefixes) — they render as a list. Output STRICT JSON: "
     '{"bottomLine": str, "summary": str, "chartInsights": [{"chart": str, "insight": str}], '
     '"conclusions": [str], "actions": [{"title": str, "detail": str}]}'
 )
 
 
+# Strip list enumeration the model adds itself ("1. …", "2) …", "3 - …") at the start of a line/clause —
+# those ordinals are formatting, not data claims, and must not count as "figures to verify".
+_ORDINAL = re.compile(r"(?m)(?:^|[;\n])\s*\d{1,2}\s*[.):\-]\s+")
+
+
 def _num_tokens(text: str) -> set[str]:
-    """Significant numbers in a string (ignores tiny ints/years that are structural, not claims)."""
+    """Significant numbers in a string (ignores tiny ints/years/ordinals that are structural, not claims)."""
+    text = _ORDINAL.sub(" ", text or "")
     out = set()
-    for m in re.findall(r"-?\d[\d,]*\.?\d*", text or ""):
+    for m in re.findall(r"-?\d[\d,]*\.?\d*", text):
         norm = m.replace(",", "")
         try:
             v = float(norm)
@@ -46,16 +54,35 @@ def _num_tokens(text: str) -> set[str]:
     return out
 
 
+def _derivable_percent(v: float, vals: list[float]) -> bool:
+    """A percentage the model wrote (e.g. '20%') is grounded if it equals 100·a/b for a real pair of
+    grounded values — covers shares/ratios computed from two facts (top customer ÷ total, etc.)."""
+    if not (0 < v <= 100):
+        return False
+    for a in vals:
+        for b in vals:
+            if b > 0 and a <= b and abs(v - 100.0 * a / b) <= 0.6:
+                return True
+    return False
+
+
 def check_grounding(answer: str, facts: list[dict]) -> dict:
-    """Flag figures in the answer that don't trace to any fact (rounded match within 2%)."""
-    fact_nums = set()
+    """Flag figures in the answer that don't trace to the grounded numbers (facts + KPIs + chart readings).
+
+    A figure passes if it matches a grounded value within 2% (rounding), OR is a percentage derivable as a
+    ratio of two grounded values. List ordinals and 4-digit years are never treated as claims.
+    """
+    fact_nums: set[str] = set()
     for f in facts:
         fact_nums |= _num_tokens(f.get("text", ""))
     fact_vals = [float(x) for x in fact_nums]
     unverified = []
     for tok in _num_tokens(answer):
         v = float(tok)
-        if any(abs(v - fv) <= max(0.02 * abs(fv), 0.5) for fv in fact_vals):
+        # Match on MAGNITUDE — prose drops the sign ("fell 33.8%" vs a "-33.8%" trend KPI).
+        if any(abs(abs(v) - abs(fv)) <= max(0.02 * abs(fv), 0.5) for fv in fact_vals):
+            continue
+        if _derivable_percent(abs(v), [abs(x) for x in fact_vals]):
             continue
         unverified.append(tok)
     return {"grounded": not unverified, "unverified": unverified[:6]}
@@ -73,7 +100,10 @@ def call_groq(facts: list[dict], domain: str, user_context: str | None,
         + (f"\nCHARTS the engine produced (read these and interpret them):\n{charts_text}\n" if charts_text else "")
         + "\nWrite the JSON now."
     )
-    return _groq.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}])
+    # A touch more room + warmth than the defaults: a full conclusion (bottom line + summary + up to 4
+    # chart insights + 4 conclusions + 3 actions) must not truncate, and reads better slightly less terse.
+    return _groq.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
+                      temperature=0.45, max_tokens=2200)
 
 
 def generate_conclusions(facts: list[dict], domain: str = "generic", user_context: str | None = None,
@@ -90,8 +120,13 @@ def generate_conclusions(facts: list[dict], domain: str = "generic", user_contex
                 + [ci.get("insight", "") for ci in chart_insights]
                 + [a.get("detail", "") for a in parsed.get("actions", [])]
             )
-            # Ground against facts + chart readings (the LLM is told to use only those numbers).
-            ground_src = list(facts) + [{"text": c.get("reading", "")} for c in (chart_readings or [])]
+            # Ground against EVERY number the model was shown — facts, KPI values, and chart readings —
+            # so a figure lifted from a KPI (e.g. a trend %) isn't wrongly flagged "couldn't verify".
+            ground_src = (
+                list(facts)
+                + [{"text": f"{k.get('name','')} {k.get('value','')}"} for k in (kpis or [])]
+                + [{"text": c.get("reading", "")} for c in (chart_readings or [])]
+            )
             return {
                 "provider": "groq",
                 "bottomLine": parsed.get("bottomLine", ""),

@@ -37,12 +37,37 @@ def trend_analysis(labels: list[str], values: np.ndarray, metric: str) -> dict |
     x = np.arange(len(values), dtype=float)
     slope, _, r, p, _ = stats.linregress(x, values)
     bi, wi = int(np.argmax(values)), int(np.argmin(values))
-    return {
+    out = {
         "metric": metric, "latest": latest, "changePct": mom, "yoyChangePct": yoy,
         "best": {"label": labels[bi], "value": float(values[bi])},
         "worst": {"label": labels[wi], "value": float(values[wi])},
         "direction": "up" if slope > 0 else "down" if slope < 0 else "flat",
         "slopeP": float(p), "significant": bool(p < 0.05), "rSquared": float(r ** 2),
+    }
+    out["biggestSwing"] = _biggest_swing(labels, values)
+    return out
+
+
+def _biggest_swing(labels: list[str], values: np.ndarray) -> dict | None:
+    """The single sharpest period-over-period move, flagged `notable` when it dwarfs the usual wobble —
+    i.e. a regime change ('revenue dropped 40% after March'), the most actionable kind of trend insight."""
+    if len(values) < 4:
+        return None
+    diffs = np.diff(values)
+    base = np.abs(values[:-1])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rel = np.where(base > 0, diffs / base, np.nan)
+    finite = np.abs(rel[np.isfinite(rel)])
+    if finite.size < 2:
+        return None
+    i = int(np.nanargmax(np.where(np.isfinite(rel), np.abs(rel), -1)))
+    pct = float(rel[i])
+    typical = float(np.median(finite))
+    return {
+        "fromLabel": labels[i], "toLabel": labels[i + 1],
+        "fromValue": float(values[i]), "toValue": float(values[i + 1]),
+        "changePct": pct, "direction": "jump" if pct >= 0 else "drop",
+        "notable": bool(abs(pct) >= 0.2 and abs(pct) >= 2.5 * typical),
     }
 
 

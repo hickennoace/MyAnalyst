@@ -48,6 +48,11 @@ def build_facts(spec: dict) -> list[dict]:
     if tr and tr.get("significant"):
         add("fact-trend", f"{tr['metric']} has a statistically real {tr['direction']}ward trend "
             f"(p={tr['slopeP']:.3f}). Best month {tr['best']['label']} ({_money(tr['best']['value'])}).", "trend")
+    sw = (tr or {}).get("biggestSwing")
+    if sw and sw.get("notable"):
+        add("fact-swing", f"The sharpest move was a {_pct(abs(sw['changePct']))} {sw['direction']} from "
+            f"{sw['fromLabel']} ({_money(sw['fromValue'])}) to {sw['toLabel']} ({_money(sw['toValue'])}) — "
+            f"a likely turning point worth explaining.", "trend", sw["changePct"])
 
     fc = spec.get("forecast")
     if fc:

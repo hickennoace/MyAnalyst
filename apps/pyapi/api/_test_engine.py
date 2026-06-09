@@ -58,6 +58,16 @@ check("stats: correlations + group comparisons", "correlations" in spec["stats"]
 check("charts: revenue-by-product + forecast", any("Revenue by" in c["title"] for c in spec["charts"]) and any("forecast" in c["title"].lower() for c in spec["charts"]))
 check("grounded facts built (>=5)", len(spec.get("facts", [])) >= 5)
 check("k-means segments found", spec.get("segments") is not None and len(spec["segments"]["segments"]) >= 2)
+check("trend carries a biggestSwing block", "biggestSwing" in (spec.get("trend") or {}))
+
+# Biggest-swing detection: a clean step-change is flagged notable and points at the right months.
+from _timeseries import _biggest_swing
+step_labels = ["2024-01", "2024-02", "2024-03", "2024-04", "2024-05"]
+step_vals = np.array([100.0, 105.0, 102.0, 60.0, 58.0])  # ~41% drop Mar→Apr
+sw = _biggest_swing(step_labels, step_vals)
+check("biggest swing finds the Mar->Apr drop", sw is not None and sw["fromLabel"] == "2024-03" and sw["toLabel"] == "2024-04")
+check("biggest swing is a notable drop", sw["notable"] is True and sw["direction"] == "drop" and sw["changePct"] < -0.3)
+check("steady series has no notable swing", (_biggest_swing(step_labels, np.array([100.0, 101.0, 102.0, 103.0, 104.0])) or {}).get("notable") is False)
 
 # RFM on transaction data with repeating customers.
 rng2 = np.random.default_rng(7)
