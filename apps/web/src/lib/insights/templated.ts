@@ -93,9 +93,9 @@ export class TemplatedInsightProvider implements InsightProvider {
           confidence: conf(lead.p),
           cites: ["drivers"],
           text:
-            `Of all the factors, ${lead.name} is the real driver of ${ctx.drivers.target} — it moves the outcome more than the rest, even after accounting for them` +
+            `Of all the factors, ${lead.name} is the real driver of ${ctx.drivers.target} — a one-standard-deviation rise in it shifts the outcome by about ${Math.abs(lead.beta).toFixed(2)} SD, more than any other factor even after accounting for them` +
             (dead.length ? `, while ${dead.slice(0, 2).join(" and ")} add little once ${lead.name} is considered.` : ".") +
-            ` Put your effort into ${lead.name} for the most leverage.`,
+            ` The factors together explain ${Math.round(ctx.drivers.r2 * 100)}% of ${ctx.drivers.target}'s variation, so put your effort into ${lead.name} for the most leverage.`,
         });
       }
     }

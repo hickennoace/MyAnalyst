@@ -19,9 +19,6 @@ import { BrandEditor } from "@/components/BrandEditor";
 import { AiKeyEditor } from "@/components/AiKeyEditor";
 import { encodeSpec, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
-import { compareDatasets, type DatasetComparison } from "@/lib/compare-datasets";
-import { profileTable } from "@/lib/profile";
-import { ComparisonCard } from "@/components/ComparisonCard";
 import { PresenterMode } from "@/components/PresenterMode";
 import { Uploader } from "@/components/Uploader";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -90,9 +87,6 @@ export default function AnalyzePage() {
   const [sourceKind, setSourceKind] = useState<"sheet" | "table" | undefined>(undefined);
   const [joinId, setJoinId] = useState<string>("");
   const [exporting, setExporting] = useState<null | "png" | "pdf" | "report" | "deck">(null);
-  const [comparison, setComparison] = useState<DatasetComparison | null>(null);
-  const [comparing, setComparing] = useState(false);
-  const compareInputRef = useRef<HTMLInputElement>(null);
   const [presenting, setPresenting] = useState(false);
   const [branding, setBranding] = useState(false);
   const [aiKeyOpen, setAiKeyOpen] = useState(false);
@@ -183,21 +177,6 @@ export default function AnalyzePage() {
       setToast({ text: `🔗 Read-only link copied (${(url.length / 1024).toFixed(0)} KB) — paste it anywhere.`, tone: "info" });
     } catch {
       setToast({ text: "Couldn't create the link in this browser.", tone: "error" });
-    }
-  }
-
-  // Compare the current dataset with a second uploaded file → ranked "what changed".
-  async function handleCompare(file: File) {
-    if (!table || comparing) return;
-    setComparing(true);
-    try {
-      const result = await parseFile(file);
-      if (!result.table.columns.length || !result.table.rowCount) throw new Error("That file has no usable data to compare.");
-      setComparison(compareDatasets(table, result.table, spec?.profiles, profileTable(result.table)));
-    } catch (e) {
-      setToast({ text: e instanceof Error ? e.message : "Couldn't read that file.", tone: "error" });
-    } finally {
-      setComparing(false);
     }
   }
 
@@ -479,25 +458,6 @@ export default function AnalyzePage() {
               >
                 ▶ Present
               </button>
-              <button
-                onClick={() => compareInputRef.current?.click()}
-                disabled={comparing}
-                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800/60 disabled:opacity-50"
-                title="Compare this dataset with another file (this month vs last, store A vs B…)"
-              >
-                {comparing ? "Comparing…" : "⇄ Compare"}
-              </button>
-              <input
-                ref={compareInputRef}
-                type="file"
-                accept=".csv,.tsv,.txt,.xlsx,.xls,.json,.sqlite,.sqlite3,.db,.db3,.parquet,.pq,.pdf,.png,.jpg,.jpeg,.webp"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleCompare(f);
-                  e.target.value = "";
-                }}
-              />
               <button
                 onClick={() => handleExport("png")}
                 disabled={!!exporting}
@@ -795,15 +755,9 @@ export default function AnalyzePage() {
           </div>
         )}
 
-        {presenting && spec && <PresenterMode spec={spec} onClose={() => setPresenting(false)} />}
+        {presenting && spec && <PresenterMode spec={mergedDashboardSpec(spec, pySpec)} conclusions={pyConclusions} onClose={() => setPresenting(false)} />}
         {branding && <BrandEditor onClose={() => setBranding(false)} />}
         {aiKeyOpen && <AiKeyEditor onClose={() => setAiKeyOpen(false)} />}
-
-        {comparison && (
-          <div className="mb-6">
-            <ComparisonCard comparison={comparison} onClose={() => setComparison(null)} />
-          </div>
-        )}
 
         {spec && table && (
           <ErrorBoundary label="dashboard">

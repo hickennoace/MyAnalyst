@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { DashboardSpec } from "@/lib/types";
+import type { PyConclusions } from "@/lib/py-engine";
 import { buildExecutiveSummary } from "@/lib/report";
 import { Portal } from "./Portal";
 
@@ -16,7 +17,7 @@ interface Slide {
   eyebrow?: string;
 }
 
-function buildSlides(spec: DashboardSpec): Slide[] {
+function buildSlides(spec: DashboardSpec, conclusions?: PyConclusions | null): Slide[] {
   const slides: Slide[] = [];
   slides.push({
     kind: "title",
@@ -25,10 +26,24 @@ function buildSlides(spec: DashboardSpec): Slide[] {
     body: [`${spec.rowCount.toLocaleString()} rows · ${spec.profiles.length} columns`],
     badge: spec.quality ? `Data quality ${spec.quality.grade} · ${spec.quality.score}/100` : undefined,
   });
-  const summary = buildExecutiveSummary(spec);
-  if (summary.length) slides.push({ kind: "summary", eyebrow: "Executive summary", title: "The big picture", body: summary });
-  (spec.actions ?? []).forEach((a, i) => slides.push({ kind: "action", eyebrow: `Action ${i + 1}`, title: a.title, body: [a.detail], badge: `${a.impact} impact` }));
-  (spec.insights ?? []).slice(0, 4).forEach((ins) => slides.push({ kind: "insight", eyebrow: "Finding", title: ins.text, body: [] }));
+
+  // The headline read is the AI conclusions (the same "AI conclusions" panel shown on the dashboard):
+  // a bottom-line slide, then one slide per conclusion. Fall back to the templated executive summary +
+  // findings only when the AI engine hasn't produced conclusions (backend unreachable / LLM off).
+  const aiPoints = conclusions?.conclusions?.filter((t) => t.trim()) ?? [];
+  if (conclusions && (aiPoints.length || conclusions.bottomLine)) {
+    const lead = [conclusions.bottomLine, conclusions.summary].filter((t): t is string => !!t && !!t.trim());
+    if (lead.length) slides.push({ kind: "summary", eyebrow: "AI conclusions", title: "The big picture", body: lead });
+    aiPoints.slice(0, 6).forEach((t, i) => slides.push({ kind: "insight", eyebrow: `Conclusion ${i + 1}`, title: t, body: [] }));
+  } else {
+    const summary = buildExecutiveSummary(spec);
+    if (summary.length) slides.push({ kind: "summary", eyebrow: "Executive summary", title: "The big picture", body: summary });
+    (spec.insights ?? []).slice(0, 4).forEach((ins) => slides.push({ kind: "insight", eyebrow: "Finding", title: ins.text, body: [] }));
+  }
+
+  // Action slides: prefer the AI engine's actions, else the templated ones.
+  const actions = conclusions?.actions?.length ? conclusions.actions.map((a) => ({ title: a.title, detail: a.detail, impact: "" })) : (spec.actions ?? []);
+  actions.forEach((a, i) => slides.push({ kind: "action", eyebrow: `Action ${i + 1}`, title: a.title, body: [a.detail], badge: a.impact ? `${a.impact} impact` : undefined }));
   return slides;
 }
 
@@ -38,8 +53,8 @@ const IMPACT_TONE: Record<string, string> = {
   "low impact": "text-slate-400",
 };
 
-export function PresenterMode({ spec, onClose }: { spec: DashboardSpec; onClose: () => void }) {
-  const slides = useMemo(() => buildSlides(spec), [spec]);
+export function PresenterMode({ spec, conclusions, onClose }: { spec: DashboardSpec; conclusions?: PyConclusions | null; onClose: () => void }) {
+  const slides = useMemo(() => buildSlides(spec, conclusions), [spec, conclusions]);
   const [i, setI] = useState(0);
   const last = slides.length - 1;
 

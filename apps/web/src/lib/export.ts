@@ -100,17 +100,27 @@ function prepareCapture(node: HTMLElement, title: string, meta: string, brand: B
   };
 }
 
-/** Vertical positions (in captured-image pixels) where a page break can safely land — the bottom
- *  edge of each top-level block. Measured while the node is in capture state. */
+/** Vertical positions (in captured-image pixels) where a page break can safely land. Measured while
+ *  the node is in capture state.
+ *
+ *  A safe cut is the bottom edge of a *full-width* block — a section, card, or grid row that spans the
+ *  whole content column, so nothing sits beside it to be sliced. The full-width test is what makes this
+ *  robust for grids: side-by-side cells (KPI tiles, paired charts) are narrower than the column and are
+ *  excluded, while the grid's full-width wrapper is kept — so breaks land in the gaps between rows, never
+ *  through a column. Collecting every such block (not just the node's direct children) gives the dozens of
+ *  candidates needed to fill each page; without them, pagination hard-cuts mid-chart. */
 function blockBoundaries(node: HTMLElement): number[] {
-  const top = node.getBoundingClientRect().top;
-  const bounds: number[] = [];
-  for (const child of Array.from(node.children)) {
-    const r = (child as HTMLElement).getBoundingClientRect();
-    if (r.height < 1) continue; // skip hidden / collapsed blocks
-    bounds.push((r.bottom - top) * PIXEL_RATIO);
-  }
-  return bounds;
+  const nodeRect = node.getBoundingClientRect();
+  const top = nodeRect.top;
+  const minWidth = nodeRect.width * 0.85; // "full-width" = spans ≥85% of the content column
+  const bounds = new Set<number>();
+  node.querySelectorAll<HTMLElement>("*").forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.height < 40) return; // skip thin elements (headings, dividers) so a break never orphans them
+    if (r.width < minWidth) return; // skip non-full-width blocks (grid cells) — cutting there slices a neighbor
+    bounds.add(Math.round((r.bottom - top) * PIXEL_RATIO));
+  });
+  return Array.from(bounds).sort((a, b) => a - b);
 }
 
 async function snapshot(node: HTMLElement): Promise<string> {

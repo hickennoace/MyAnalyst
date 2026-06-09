@@ -43,12 +43,29 @@ function Sparkline({ values, ma }: { values: number[]; ma: (number | null)[] }) 
   );
 }
 
+// A one-line plain-English takeaway that ties the periods together: the overall move across the whole
+// series (start → latest) and whether the latest reading sits above or below the period average — the
+// "so what" the deltas and sparkline only imply.
+function trendRead(a: TimeSeriesAnalysis, p: ColumnProfile | undefined, noun: string): string {
+  const vals = a.periods.map((q) => q.value).filter((v) => Number.isFinite(v));
+  if (vals.length < 2) return "";
+  const first = vals[0];
+  const latest = a.latest.value;
+  const overall = first ? (latest - first) / Math.abs(first) : 0;
+  const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
+  const dir = overall > 0.02 ? "climbed" : overall < -0.02 ? "declined" : "held roughly flat";
+  const mag = Math.abs(overall) > 0.02 ? ` about ${Math.abs(overall * 100).toFixed(0)}%` : "";
+  const vsAvg = latest > avg * 1.02 ? "above" : latest < avg * 0.98 ? "below" : "in line with";
+  return `Across ${vals.length} ${noun}s, ${a.metric} ${dir}${mag} (${fmt(first, p)} → ${fmt(latest, p)}). The latest ${noun} sits ${vsAvg} the period average.`;
+}
+
 export function TimeTrendCard({ analyses, profiles }: { analyses: TimeSeriesAnalysis[]; profiles: ColumnProfile[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       {analyses.map((a) => {
         const p = profiles.find((x) => x.name === a.metric);
         const noun = cadenceNoun(a.cadence);
+        const read = trendRead(a, p, noun);
         return (
           <div key={a.metric} className="card p-5">
             <div className="flex items-start justify-between gap-2">
@@ -74,6 +91,8 @@ export function TimeTrendCard({ analyses, profiles }: { analyses: TimeSeriesAnal
               <span>Best: {a.best.label} ({fmt(a.best.value, p)})</span>
               <span>Worst: {a.worst.label} ({fmt(a.worst.value, p)})</span>
             </div>
+
+            {read && <p className="mt-2 text-[12px] leading-relaxed text-slate-300">{read}</p>}
 
             {a.seasonality && (
               <p className="mt-2 rounded-lg bg-violet-500/10 px-2.5 py-1.5 text-[11px] leading-snug text-violet-200">
