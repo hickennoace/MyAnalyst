@@ -29,7 +29,10 @@ def chat(messages: list[dict], *, json_mode: bool = True, temperature: float = 0
     req = urllib.request.Request(
         f"{base}/chat/completions",
         data=json.dumps(body).encode("utf-8"),
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        # A real User-Agent is REQUIRED: Groq is fronted by Cloudflare, which 403s urllib's default
+        # `Python-urllib/x.y` UA when the call originates from a datacenter IP (e.g. Vercel functions).
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                 "User-Agent": "MyAnalyst/1.0 (+https://myanalyst.net)"},
         method="POST",
     )
     try:

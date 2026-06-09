@@ -18,6 +18,7 @@ import pandas as pd
 # via vercel.json includeFiles) fail with ModuleNotFoundError. Put this file's dir on the path first.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import _groq  # noqa: E402
 from _engine import analyze  # noqa: E402
 from _conclude import generate_conclusions  # noqa: E402
 from _ask import answer_question  # noqa: E402
@@ -50,7 +51,8 @@ class handler(BaseHTTPRequestHandler):
         return p.rsplit("/", 1)[-1]  # last path segment (analyze/conclude/ask)
 
     def do_GET(self):
-        self._send(200, {"ok": True, "engine": "python-pandas", "fn": self._fn()})
+        self._send(200, {"ok": True, "engine": "python-pandas", "fn": self._fn(),
+                         "llm": _groq.available()})
 
     def do_POST(self):
         try:
