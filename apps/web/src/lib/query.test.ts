@@ -630,3 +630,26 @@ describe("rank guard + stemmed column matching (the 'money we saved' bug)", () =
     expect(r.ok).toBe(false); // falls through to the AI/open-ended path instead of a fake answer
   });
 });
+
+describe("metaAnswer must not hijack data questions", () => {
+  const t: Table = {
+    name: "x.csv",
+    columns: ["Region", "Revenue"],
+    rows: [{ Region: "EU", Revenue: 10 }],
+    rowCount: 1,
+  };
+  const profiles = profileTable(t);
+
+  it("'what is this dataset about?' is a data question, not a capability question", async () => {
+    const { metaAnswer } = await import("./query");
+    expect(metaAnswer("what is this dataset about?", t, profiles)).toBeUndefined();
+    expect(metaAnswer("what is this data showing", t, profiles)).toBeUndefined();
+  });
+
+  it("still answers true capability phrasings", async () => {
+    const { metaAnswer } = await import("./query");
+    for (const q of ["what can you do?", "what are you able to do", "what can I ask", "how does this work", "who are you?"]) {
+      expect(metaAnswer(q, t, profiles)?.ok, q).toBe(true);
+    }
+  });
+});

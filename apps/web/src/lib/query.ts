@@ -1527,8 +1527,10 @@ export function advisoryAnswer(question: string, analysis?: AskAnalysis): QueryA
 // your columns" shrug. The capabilities answer is grounded in the dataset's real column names.
 
 const GREETING_RE = /^\s*(hi+|hello|hey+|yo|howdy|good\s+(morning|afternoon|evening)|thanks?(\s+you)?|thank\s+you|thx|ty)[\s!.,?]*$/i;
+// Note: must NOT match data questions like "what is this dataset about?" — only questions about the
+// assistant itself ("you/u" subjects, help, capabilities).
 const CAPABILITY_RE =
-  /(what\s+(can|are|is|do)\s+(you|u|this)\s*(do|able|capable)?|what\s+(you|u)\s+able\s+to\s+do|what\s+can\s+i\s+ask|how\s+(do|does)\s+(you|this|it)\s+work|^\s*help\s*\??\s*$|help\s+me|who\s+are\s+(you|u)|what\s+are\s+(you|u)\b|your\s+capabilit|what\s+questions?\s+can)/i;
+  /(what\s+(can|do)\s+(you|u)\s+do|what\s+can\s+i\s+ask|what\s+(are\s+)?(you|u)\s+able\s+to\s+do|what\s+are\s+(you|u)\s+capable|how\s+(do|does)\s+(you|this|it)\s+work|^\s*help\s*\??\s*$|help\s+me|who\s+are\s+(you|u)\b|what\s+are\s+(you|u)\??\s*$|your\s+capabilit|what\s+questions?\s+can|what\s+is\s+this\s+(tool|box|chat|assistant))/i;
 
 export function metaAnswer(question: string, table: Table, profiles: ColumnProfile[], analysis?: AskAnalysis): QueryAnswer | undefined {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);

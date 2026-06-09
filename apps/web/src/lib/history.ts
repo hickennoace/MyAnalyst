@@ -1,4 +1,5 @@
 import type { DashboardSpec, Table } from "./types";
+import type { PyAnalysisSpec, PyConclusions } from "./py-engine";
 import { compress, decompress } from "./share";
 
 // Local dataset history, stored in IndexedDB. Past analyses are gzip-compressed and kept entirely
@@ -21,6 +22,11 @@ interface StoredItem {
   domain: string;
   specPayload: string; // compressed DashboardSpec
   tablePayload: string; // compressed Table (enables the chart builder on reopen)
+  /** compressed PyAnalysisSpec — the Python engine's KPIs/charts, so reopened dashboards don't degrade
+   *  to the TS fallback. Absent on entries saved before this field existed. */
+  pyPayload?: string;
+  /** compressed PyConclusions — the AI conclusions panel survives a reopen without another LLM call. */
+  conclusionsPayload?: string;
 }
 
 /** Lightweight metadata for the history list (no heavy payloads). */
@@ -133,7 +139,11 @@ export async function listHistory(): Promise<HistoryEntry[]> {
 }
 
 /** Save an analysis. Newest first; evicts the oldest beyond MAX_ITEMS. Returns the entry id. */
-export async function saveAnalysis(spec: DashboardSpec, table: Table): Promise<string> {
+export async function saveAnalysis(
+  spec: DashboardSpec,
+  table: Table,
+  extras?: { pySpec?: PyAnalysisSpec | null; conclusions?: PyConclusions | null }
+): Promise<string> {
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
   if (!hasIDB()) return id;
   await ensureMigrated();
@@ -146,6 +156,8 @@ export async function saveAnalysis(spec: DashboardSpec, table: Table): Promise<s
     domain: spec.domain.domain,
     specPayload: await compress(spec),
     tablePayload: await compress(table),
+    ...(extras?.pySpec ? { pyPayload: await compress(extras.pySpec) } : {}),
+    ...(extras?.conclusions ? { conclusionsPayload: await compress(extras.conclusions) } : {}),
   };
   await tx("readwrite", (s) => s.put(item));
 
@@ -158,16 +170,20 @@ export async function saveAnalysis(spec: DashboardSpec, table: Table): Promise<s
   return id;
 }
 
-export async function getAnalysis(id: string): Promise<{ spec: DashboardSpec; table: Table } | null> {
+export async function getAnalysis(
+  id: string
+): Promise<{ spec: DashboardSpec; table: Table; pySpec: PyAnalysisSpec | null; conclusions: PyConclusions | null } | null> {
   if (!hasIDB()) return null;
   await ensureMigrated();
   const item = await tx<StoredItem | undefined>("readonly", (s) => s.get(id) as IDBRequest<StoredItem | undefined>);
   if (!item) return null;
-  const [spec, table] = await Promise.all([
+  const [spec, table, pySpec, conclusions] = await Promise.all([
     decompress<DashboardSpec>(item.specPayload),
     decompress<Table>(item.tablePayload),
+    item.pyPayload ? decompress<PyAnalysisSpec>(item.pyPayload).catch(() => null) : Promise.resolve(null),
+    item.conclusionsPayload ? decompress<PyConclusions>(item.conclusionsPayload).catch(() => null) : Promise.resolve(null),
   ]);
-  return { spec, table };
+  return { spec, table, pySpec, conclusions };
 }
 
 export async function deleteAnalysis(id: string): Promise<void> {

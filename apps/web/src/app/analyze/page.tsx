@@ -147,6 +147,10 @@ export default function AnalyzePage() {
     }
     setTable(loaded.table);
     setSpec(loaded.spec);
+    // Restore the entry's own Python KPIs/charts + AI conclusions — and, crucially, CLEAR any left over
+    // from the previously open dataset (they'd otherwise merge into this one's dashboard and share link).
+    setPySpec(loaded.pySpec);
+    setPyConclusions(loaded.conclusions);
     // Re-runnable from the loaded table.
     setSourceTable(loaded.table);
     // History entries have no underlying file, so there's no sheet/table picker.
@@ -189,8 +193,10 @@ export default function AnalyzePage() {
       const brand = loadBrand();
       if (kind === "png") await exportPng(dashboardRef.current!, spec.datasetName, meta, brand);
       else if (kind === "pdf") await exportPdf(dashboardRef.current!, spec.datasetName, meta, brand);
-      else if (kind === "report") await exportReportPdf(spec, brand);
-      else await exportDeckPdf(spec, brand);
+      // Report/Deck render from the MERGED spec so their KPIs match what's on screen (the Python
+      // engine's), not the TS fallback's.
+      else if (kind === "report") await exportReportPdf(mergedDashboardSpec(spec, pySpec), brand);
+      else await exportDeckPdf(mergedDashboardSpec(spec, pySpec), brand);
       const label = kind === "report" ? "Report PDF" : kind === "deck" ? "Deck PDF" : kind.toUpperCase();
       setToast({ text: `✓ ${label} downloaded.`, tone: "info" });
     } catch {
@@ -266,7 +272,7 @@ export default function AnalyzePage() {
           .catch(() => setToast(null));
       }
       try {
-        await saveAnalysis(result, cleaned);
+        await saveAnalysis(result, cleaned, { pySpec: py, conclusions });
         setHistory(await listHistory());
       } catch {
         /* history is best-effort; never block the dashboard on it */
