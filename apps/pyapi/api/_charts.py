@@ -13,6 +13,31 @@ def _num(df, name):
     return pd.to_numeric(df[name], errors="coerce")
 
 
+def _compact(x: float) -> str:
+    a = abs(x)
+    if a >= 1e6:
+        return f"{x/1e6:.1f}M"
+    if a >= 1e3:
+        return f"{x/1e3:.0f}K"
+    return f"{x:.0f}" if a >= 10 else f"{x:.1f}"
+
+
+def _histogram(df, name, bins: int = 12) -> dict | None:
+    """A distribution histogram for one metric, as a bar chart with bin-range labels — so the user SEES
+    the skew/spread the stats describe (the mean-vs-median story made visual)."""
+    v = _num(df, name).dropna().to_numpy()
+    v = v[np.isfinite(v)]
+    if len(v) < 20 or v.min() == v.max():
+        return None
+    counts, edges = np.histogram(v, bins=bins)
+    labels = [f"{_compact(edges[i])}–{_compact(edges[i + 1])}" for i in range(len(counts))]
+    return {
+        "id": "chart-histogram", "type": "bar", "title": f"Distribution of {name}",
+        "subtitle": "how the values are spread",
+        "x": labels, "series": [{"name": "count", "values": [int(c) for c in counts]}],
+    }
+
+
 def build_charts(df, profiles, ctx) -> list[dict]:
     """ctx carries the already-computed pieces: revenue, bestsellers, monthly (labels/values),
     forecast, correlations, metric_names, time_col."""
@@ -39,6 +64,13 @@ def build_charts(df, profiles, ctx) -> list[dict]:
             "id": "chart-bestsellers", "type": "bar", "title": f"Revenue by {bs['dimension']}",
             "x": [p["name"] for p in rows], "series": series,
         })
+
+    # 2b. Distribution histogram of the key metric (revenue if present, else the first metric).
+    hist_metric = (revenue or {}).get("name") or (ctx.get("metric_names") or [None])[0]
+    if hist_metric:
+        hist = _histogram(df, hist_metric)
+        if hist:
+            charts.append(hist)
 
     # 3. Monthly revenue forecast (history + projection + 95% band).
     fc = ctx.get("forecast")

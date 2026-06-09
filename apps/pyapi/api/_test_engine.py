@@ -62,6 +62,7 @@ check("Holt-Winters forecast computed", spec.get("forecast") is not None and "me
 check("monthly trend computed", spec.get("trend") is not None and "slopeP" in spec["trend"])
 check("stats: correlations + group comparisons", "correlations" in spec["stats"] and "groupComparisons" in spec["stats"])
 check("charts: revenue-by-product + forecast", any("Revenue by" in c["title"] for c in spec["charts"]) and any("forecast" in c["title"].lower() for c in spec["charts"]))
+check("charts: distribution histogram of the key metric", any(c["id"] == "chart-histogram" and c["type"] == "bar" and len(c["x"]) > 0 for c in spec["charts"]))
 check("grounded facts built (>=5)", len(spec.get("facts", [])) >= 5)
 check("k-means segments found", spec.get("segments") is not None and len(spec["segments"]["segments"]) >= 2)
 check("trend carries a biggestSwing block", "biggestSwing" in (spec.get("trend") or {}))

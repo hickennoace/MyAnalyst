@@ -171,6 +171,15 @@ def chart_readings(spec: dict) -> list[dict]:
         elif c["id"] == "chart-scatter" and cors:
             s = cors[0]
             reading = f"{s['a']} vs {s['b']} scatter: r={s['r']:.2f} ({s['strength']})."
+        elif c["id"] == "chart-histogram":
+            name = title.replace("Distribution of ", "")
+            dd = next((d for d in spec.get("distributions", []) if d["column"] == name), None)
+            if dd:
+                mean_s = _money(dd["mean"]) if abs(dd["mean"]) > 100 else f"{dd['mean']:.1f}"
+                med_s = _money(dd["median"]) if abs(dd["median"]) > 100 else f"{dd['median']:.1f}"
+                rel = "sits near" if dd["normal"] else "is pulled away from"
+                norm = "" if dd["normal"] else " and not normally distributed"
+                reading = f"{name} is {dd['shape']}{norm}; the mean ({mean_s}) {rel} the median ({med_s})."
         if reading:
             readings.append({"title": title, "reading": reading})
     return readings
