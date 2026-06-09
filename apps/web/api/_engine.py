@@ -23,6 +23,7 @@ import _insights as _ins
 import _segments as _sg
 import _rfm as _rf
 import _quality as _ql
+import _distribution as _dist
 
 # ─────────────────────────── Profiling: type + role per column ───────────────────────────
 
@@ -431,6 +432,7 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
         "outliers": outliers[:5],
         "segments": segments,
         "rfm": rfm,
+        "distributions": _dist.distributions(df, profiles),
     }
     spec["charts"] = _ch.build_charts(df, profiles, {
         "revenue": revenue, "bestsellers": bs, "monthly": monthly, "forecast": forecast,

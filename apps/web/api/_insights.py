@@ -105,6 +105,17 @@ def build_facts(spec: dict) -> list[dict]:
         else:
             add("fact-anomaly", f"{o['column']} has {o['count']} isolated extreme value(s) worth checking.", "anomaly")
 
+    # Distribution shape for a key metric — only if a skew/outlier fact didn't already cover that column.
+    covered = {f["text"].split(" is ")[0].strip('"') for f in facts if f["kind"] == "distribution"}
+    for d in spec.get("distributions", []):
+        if not d["normal"] and abs(d["skew"]) > 0.6 and d["column"] not in covered:
+            mean_s = _money(d["mean"]) if abs(d["mean"]) > 100 else f"{d['mean']:.1f}"
+            med_s = _money(d["median"]) if abs(d["median"]) > 100 else f"{d['median']:.1f}"
+            add("fact-distribution", f"{d['column']} is {d['shape']} and not normally distributed — its average "
+                f"({mean_s}) is pulled by the tail, so the median ({med_s}) is the more honest 'typical' value.",
+                "distribution")
+            break
+
     return facts
 
 
