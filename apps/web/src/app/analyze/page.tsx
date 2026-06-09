@@ -233,7 +233,7 @@ export default function AnalyzePage() {
       // `next dev`, or a transient error), we keep the TS dashboard above so the page never goes blank.
       setStage("Analyzing with Python (pandas/statsmodels)…");
       try {
-        const py = await runPythonAnalysis(cleaned.columns, cleaned.rows);
+        const py = await runPythonAnalysis(cleaned.columns, cleaned.rows, result.currency);
         setPySpec(py);
         runPythonConclusions(py, ctx).then(setPyConclusions).catch(() => setPyConclusions(null));
       } catch {

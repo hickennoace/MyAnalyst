@@ -129,8 +129,14 @@ export function sampleForPayload(columns: string[], rows: Record<string, unknown
   return out;
 }
 
-export async function runPythonAnalysis(columns: string[], rows: Record<string, unknown>[]): Promise<PyAnalysisSpec> {
-  const body = JSON.stringify({ columns, rows: sampleForPayload(columns, rows) });
+export async function runPythonAnalysis(
+  columns: string[],
+  rows: Record<string, unknown>[],
+  currency?: { symbol: string; code: string }
+): Promise<PyAnalysisSpec> {
+  // The client saw the raw cells and detected the currency; the data we send is already cleaned to plain
+  // numbers, so pass the currency along so the Python KPIs/charts agree with the rest of the dashboard.
+  const body = JSON.stringify({ columns, rows: sampleForPayload(columns, rows), currency });
   const res = await fetch(api("/api/analyze"), { method: "POST", headers: { "Content-Type": "application/json" }, body });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

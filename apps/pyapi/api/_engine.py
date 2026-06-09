@@ -390,7 +390,7 @@ def compute_kpis(df, profiles, domain, bestsellers, currency=None) -> list[dict[
 
 # ─────────────────────────── Orchestrator ───────────────────────────
 
-def analyze(df: pd.DataFrame) -> dict[str, Any]:
+def analyze(df: pd.DataFrame, currency: dict | None = None) -> dict[str, Any]:
     df = df.dropna(axis=1, how="all").copy()
     n = len(df)
     profiles = profile(df)
@@ -398,7 +398,10 @@ def analyze(df: pd.DataFrame) -> dict[str, Any]:
     grain = is_transaction_grain(profiles, n)
     revenue = revenue_metric(profiles, grain, domain["domain"])
     qty = quantity_metric(profiles, revenue)
-    currency = _cur.detect(df, _money_columns(profiles))
+    # The web client sees the RAW cells (e.g. "12,500 ₪") and detects the currency there; the data reaching
+    # us is already cleaned to plain numbers, so trust the client's currency when it sends one.
+    if not (isinstance(currency, dict) and currency.get("symbol")):
+        currency = _cur.detect(df, _money_columns(profiles))
     bs = best_sellers(df, profiles, revenue, qty)
     kpis = compute_kpis(df, profiles, domain["domain"], bs, currency)
 

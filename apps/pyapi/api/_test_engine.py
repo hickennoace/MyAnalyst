@@ -160,6 +160,11 @@ eur_spec = analyze(eur_df)
 check("engine detects EUR end-to-end", eur_spec["currency"]["code"] == "EUR")
 check("KPI money values use €, not $", any("€" in k["value"] for k in eur_spec["kpis"]) and not any("$" in k["value"] for k in eur_spec["kpis"]))
 
+# Client-passed currency override: cells are clean numbers (symbol stripped by the web), so the web tells
+# us the currency it detected on the raw data — Python must honor it (the Shekel-salary fix).
+ils_spec = analyze(car_sales(200).rename(columns={"Price": "Total paid"}), currency={"symbol": "₪", "code": "ILS"})
+check("honors client currency override (ILS)", ils_spec["currency"]["code"] == "ILS" and any("₪" in k["value"] for k in ils_spec["kpis"]))
+
 # A non-money skewed column (CustomerAge) must NOT be printed with a currency symbol.
 age_df = _pd.DataFrame({"CustomerAge": list(np.random.default_rng(3).gamma(2, 12, 300).astype(int) + 18)})
 age_spec = analyze(age_df)

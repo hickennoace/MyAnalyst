@@ -79,7 +79,7 @@ class handler(BaseHTTPRequestHandler):
             df = _df_from(payload)
             if df.empty:
                 return self._send(400, {"error": "Provide 'csv' or 'rows'."})
-            return self._send(200, analyze(df))
+            return self._send(200, analyze(df, currency=payload.get("currency")))
         except Exception as exc:  # noqa: BLE001
             self._send(400, {"error": str(exc)})
 
