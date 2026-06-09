@@ -107,6 +107,12 @@ survey = pd.DataFrame({"Respondent": range(60), "NPS Score": np.random.default_r
 s2 = analyze(survey)
 check("survey keeps rate-like averages", any("NPS" in k["name"] or "Satisfaction" in k["name"] for k in s2["kpis"]))
 
+# Data quality flags a constant column and docks the score for it.
+from _quality import data_quality
+const_df = pd.DataFrame({"Region": ["US"] * 50, "Sales": np.random.default_rng(2).integers(1, 100, 50)})
+dq = data_quality(const_df, profile(const_df))
+check("quality flags the constant column", "Region" in dq.get("constantColumns", []) and any("single value" in i for i in dq["issues"]))
+
 print()
 if check.failed:
     print(f"{check.failed} FAILED")
