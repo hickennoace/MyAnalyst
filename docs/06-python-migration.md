@@ -146,6 +146,11 @@ Original scope:
 - `api/analyze.py` (✅ exists) verified on the **preview deploy** (pandas/scipy/statsmodels install < 250 MB).
 - **4a:** confirm `vercel.json` builds the Python function alongside Next (add a `functions`/runtime entry if
   auto-detect fails); set `maxDuration` (Pro: up to 300 s) for big analyses.
+- **4a-CSP (REQUIRED when the API is a separate origin):** the browser POSTs to the Python API, so its origin
+  **must** be in the `connect-src` CSP directive in `next.config.mjs`, or the fetch is silently blocked and
+  the app falls back to the TS engine (this masqueraded as "Python KPIs don't populate"). The config now
+  derives the origin from `NEXT_PUBLIC_PY_API` automatically — so **set `NEXT_PUBLIC_PY_API` in the web
+  project's Vercel env at build time** (cross-origin separate API). Same-origin `/api` needs nothing extra.
 - **4b (if needed):** Vercel Blob for >4.5 MB uploads (client → Blob → Python reads URL); or split a heavy
   `/api/analyze-heavy`. If the full stack (sklearn) won't fit, stand up a small **FastAPI** service instead
   and point the frontend at it.
