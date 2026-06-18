@@ -481,6 +481,198 @@ body:has(.lp) { background: #ffffff; }
 .page-transition { animation: pageEnter 0.42s cubic-bezier(0.21, 0.6, 0.35, 1) both; }
 @media (prefers-reduced-motion: reduce) { .page-transition { animation: none !important; } }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   CINEMATIC HERO — "warp" (dark, high-energy, motion-forward)
+   A full-bleed dark band at the top of the landing: a receding perspective
+   speed-grid, racing red/ember light-streaks (Canvas), and a glowing animated
+   data core. Always dark regardless of theme (like the reference hero). Scoped
+   under `.cine`; the rest of the page keeps the `.lp` surface untouched.
+   ═══════════════════════════════════════════════════════════════════════ */
+.cine {
+  --c-bg: #08050a;
+  --c-ink: #fdf6f3;
+  --c-muted: #cdb9b6;
+  --c-faint: #8f7b79;
+  --c-red: #ff3b30;
+  --c-ember: #ff8a4c;
+  --c-line: rgba(255, 120, 90, 0.16);
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(900px 520px at 66% 30%, rgba(255, 58, 40, 0.22), transparent 60%),
+    radial-gradient(700px 600px at 8% 0%, rgba(120, 20, 18, 0.32), transparent 62%),
+    linear-gradient(180deg, #0c0608 0%, #08050a 60%, #0a0d13 100%);
+  color: var(--c-ink);
+}
+
+/* Receding "road" — a perspective grid that scrolls toward the camera. */
+.cine-grid {
+  position: absolute;
+  inset: 38% -40% -10% -40%;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 90, 60, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 90, 60, 0.5) 1px, transparent 1px);
+  background-size: 64px 64px;
+  transform: perspective(420px) rotateX(74deg);
+  transform-origin: 50% 0;
+  -webkit-mask-image: radial-gradient(80% 120% at 50% 0%, #000 10%, transparent 72%);
+  mask-image: radial-gradient(80% 120% at 50% 0%, #000 10%, transparent 72%);
+  animation: cineGrid 2.6s linear infinite;
+  opacity: 0.5;
+}
+@keyframes cineGrid {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 0 64px, 0 0; }
+}
+
+/* Pulsing bloom that anchors the data core. */
+.cine-glow {
+  position: absolute;
+  z-index: 0;
+  top: 14%;
+  right: 6%;
+  width: 620px;
+  height: 620px;
+  max-width: 70vw;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 64, 42, 0.34), transparent 60%);
+  filter: blur(8px);
+  animation: cineBloom 6s ease-in-out infinite;
+}
+@keyframes cineBloom {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+.cine-streaks { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; }
+
+/* Top vignette so the nav reads cleanly over the streaks. */
+.cine::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 180px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(8, 5, 10, 0.85), transparent);
+}
+
+/* ── Cinematic nav + type ── */
+.cine-nav-link { font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em; color: var(--c-muted); transition: color 0.16s ease; }
+.cine-nav-link:hover { color: var(--c-ink); }
+
+/* Theme toggle reads on the dark band regardless of site theme. */
+.cine .theme-toggle { border-color: rgba(255, 130, 100, 0.3); color: var(--c-muted); }
+.cine .theme-toggle:hover { border-color: var(--c-ember); color: var(--c-ember); }
+:root[data-theme="light"] .cine .theme-toggle { color: var(--c-muted); border-color: rgba(255, 130, 100, 0.3); }
+
+.cine-title {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 0.98;
+  text-transform: uppercase;
+  text-shadow: 0 8px 40px rgba(255, 58, 40, 0.25);
+}
+.cine-accent {
+  background: linear-gradient(100deg, #ff8a4c, #ff3b30 55%, #ff5a3c);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradientPan 6s linear infinite;
+}
+
+/* Entrance reveals for the hero copy. */
+.cine-rise { opacity: 0; animation: cineRiseIn 0.85s cubic-bezier(0.16, 0.7, 0.3, 1) both; }
+@keyframes cineRiseIn { from { opacity: 0; transform: translateY(26px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+
+/* Cinematic primary / ghost buttons (red glow). */
+.cine-cta {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  border-radius: 11px; padding: 0.85rem 1.5rem;
+  font-weight: 700; font-size: 0.92rem; color: #fff;
+  background: linear-gradient(180deg, #ff5740, #e51d12);
+  box-shadow: 0 10px 30px -8px rgba(255, 45, 36, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+.cine-cta:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 16px 40px -10px rgba(255, 45, 36, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+.cine-ghost {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  border-radius: 11px; padding: 0.85rem 1.4rem;
+  font-weight: 600; font-size: 0.92rem; color: var(--c-ink);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 130, 100, 0.3);
+  backdrop-filter: blur(6px);
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+.cine-ghost:hover { border-color: var(--c-ember); background: rgba(255, 138, 76, 0.12); transform: translateY(-2px); }
+
+/* Floating glass stat card (echoes the consultation card in the reference). */
+.cine-card {
+  position: absolute; left: 2%; bottom: 8%; z-index: 3;
+  display: flex; align-items: center; gap: 0.8rem;
+  padding: 0.85rem 1rem; border-radius: 14px;
+  background: rgba(20, 10, 12, 0.55);
+  border: 1px solid rgba(255, 130, 100, 0.25);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.8);
+  animation: cineFloat 7s ease-in-out infinite;
+}
+.cine-card-ico {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px;
+  background: linear-gradient(180deg, #ff5740, #e51d12); color: #fff; flex: none;
+  box-shadow: 0 0 22px rgba(255, 58, 40, 0.6);
+}
+
+/* ── Data core (centerpiece) ── */
+.cine-core { position: relative; width: 100%; }
+.cine-core-svg { width: 100%; height: auto; overflow: visible; animation: cineFloat 8s ease-in-out infinite; }
+@keyframes cineFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+.cine-floor { animation: cineBloom 5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
+.cine-bar {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scaleY(0);
+  animation:
+    cineBarRise 0.85s cubic-bezier(0.16, 0.8, 0.3, 1) forwards,
+    cineBarPulse 3.6s ease-in-out infinite;
+  animation-delay: 0s, var(--pulse-delay, 1.2s);
+}
+@keyframes cineBarRise { to { transform: scaleY(1); } }
+@keyframes cineBarPulse { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.93); } }
+
+.cine-reflection { transform-box: fill-box; transform-origin: center; transform: scaleY(-1); opacity: 0.16; filter: blur(1px); }
+
+.cine-orbit { transform-box: fill-box; transform-origin: center; animation: cineSpin 22s linear infinite; }
+.cine-orbit-inner { transform-box: fill-box; transform-origin: center; animation: cineSpin 16s linear infinite reverse; }
+@keyframes cineSpin { to { transform: rotate(360deg); } }
+.cine-orbit-node { filter: drop-shadow(0 0 4px rgba(255, 90, 60, 0.9)); }
+
+.cine-trend { stroke-dasharray: 520; stroke-dashoffset: 520; animation: drawLine 2s 0.8s ease forwards; }
+
+.cine-scan {
+  transform-box: fill-box;
+  animation: cineScan 4.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  opacity: 0.65;
+}
+@keyframes cineScan { 0% { transform: translateY(90px); opacity: 0; } 20% { opacity: 0.65; } 80% { opacity: 0.65; } 100% { transform: translateY(304px); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cine-grid, .cine-glow, .cine-floor, .cine-core-svg, .cine-orbit, .cine-orbit-inner,
+  .cine-scan, .cine-accent, .cine-card { animation: none !important; }
+  .cine-bar { animation: none !important; transform: scaleY(1) !important; }
+  .cine-reflection { transform: scaleY(-1) !important; }
+  .cine-rise { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
+  .cine-trend { stroke-dashoffset: 0 !important; animation: none !important; }
+}
+
 /* Native print (Ctrl+P / Save as PDF) bypasses the JS export, so reveal every dashboard tab panel —
    inactive ones are clipped to height:0 on screen — and drop the tab bar + interactive-only sections,
    matching what the in-app PNG/PDF export produces. */

@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { Reveal } from "@/components/Reveal";
-import { HeroChart } from "@/components/HeroChart";
-import { HeroField } from "@/components/HeroField";
+import { SpeedStreaks } from "@/components/SpeedStreaks";
+import { DataCore } from "@/components/DataCore";
 import { Magnetic } from "@/components/Magnetic";
-import { Tilt } from "@/components/Tilt";
-import { Stagger, StaggerItem, Float } from "@/components/Motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
@@ -78,87 +76,71 @@ const TICKER = ["Cleaning report", "Domain detection", "Ranked KPIs", "OLS regre
 export default function Landing() {
   return (
     <main id="main-content" className="lp grain-layer">
-      <div className="lp-aurora" aria-hidden />
-      <HeroField className="lp-field" />
+      {/* ── Cinematic hero band (always dark, motion-forward) ── */}
+      <section className="cine">
+        <div className="cine-grid" aria-hidden />
+        <div className="cine-glow" aria-hidden />
+        <SpeedStreaks className="cine-streaks" />
 
-      <div className="relative z-10 mx-auto max-w-6xl px-5 sm:px-6">
-        {/* Nav */}
-        <nav className="flex items-center justify-between py-5" aria-label="Primary">
-          <div className="flex items-center gap-2.5">
-            <BrandMark className="h-9 w-9" />
-            <span className="display text-xl text-[var(--ink)]">MyAnalyst</span>
-          </div>
-          <div className="flex items-center gap-4 sm:gap-6">
-            <a href="#features" className="lp-link hidden sm:inline">Features</a>
-            <a href="#how" className="lp-link hidden sm:inline">How it works</a>
-            <ThemeToggle />
-            <Link href="/analyze" className="lp-cta !px-4 !py-2 !text-[0.82rem]">Open the app</Link>
-          </div>
-        </nav>
+        <div className="relative z-10 mx-auto max-w-6xl px-5 sm:px-6">
+          {/* Nav */}
+          <nav className="flex items-center justify-between py-5" aria-label="Primary">
+            <div className="flex items-center gap-2.5">
+              <BrandMark className="h-9 w-9" />
+              <span className="text-xl font-extrabold tracking-tight text-[var(--c-ink)]">MyAnalyst</span>
+            </div>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <a href="#features" className="cine-nav-link hidden sm:inline">Features</a>
+              <a href="#how" className="cine-nav-link hidden sm:inline">How it works</a>
+              <ThemeToggle />
+              <Link href="/analyze" className="cine-cta !px-4 !py-2 !text-[0.82rem]">Open the app</Link>
+            </div>
+          </nav>
 
-        {/* ── Hero ── */}
-        <section className="grid items-center gap-12 pt-12 pb-16 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24">
-          <Stagger mount>
-            <StaggerItem>
-              <h1 className="display text-[2.6rem] leading-[1.06] text-[var(--ink)] sm:text-[3.7rem]">
-                Turn a spreadsheet into an{" "}
-                <span className="lp-accent">explained dashboard</span>
+          {/* ── Hero ── */}
+          <section className="relative grid items-center gap-10 pt-10 pb-20 sm:pt-16 lg:grid-cols-[1.02fr_0.98fr] lg:pb-28">
+            <div>
+              <h1 className="cine-title cine-rise text-[2.9rem] text-[var(--c-ink)] sm:text-[4.4rem]" style={{ animationDelay: "0.05s" }}>
+                Turn raw data<br />into <span className="cine-accent">answers</span>
               </h1>
-            </StaggerItem>
-            <StaggerItem>
-              <p className="mt-6 max-w-lg text-[1.05rem] leading-relaxed text-[var(--muted)]">
-                MyAnalyst cleans your data, runs real statistics, and explains what it means —
-                automatically. Upload a spreadsheet and get a clear, trustworthy dashboard in
+              <p className="cine-rise mt-6 max-w-lg text-[1.05rem] leading-relaxed text-[var(--c-muted)]" style={{ animationDelay: "0.18s" }}>
+                MyAnalyst cleans your spreadsheet, runs real statistics, and explains what it means —
+                automatically. Drop in a file and watch a clear, trustworthy dashboard build itself in
                 seconds, with the rigor of a working data scientist.
               </p>
-            </StaggerItem>
-            <StaggerItem>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              <div className="cine-rise mt-9 flex flex-wrap items-center gap-3" style={{ animationDelay: "0.3s" }}>
                 <Magnetic>
-                  <Link href="/analyze" className="lp-cta">
+                  <Link href="/analyze" className="cine-cta">
                     Analyze your data
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </Link>
                 </Magnetic>
                 <Magnetic>
-                  <Link href="/analyze?demo=1" className="lp-ghost">
+                  <Link href="/analyze?demo=1" className="cine-ghost">
                     <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5"><path d="M7 5v14l11-7z" /></svg>
                     Try a live sample
                   </Link>
                 </Magnetic>
               </div>
-            </StaggerItem>
-            <StaggerItem>
-              <p className="mt-5 text-[0.82rem] text-[var(--faint)]">No account · processed securely · never stored or shared.</p>
-            </StaggerItem>
-          </Stagger>
+              <p className="cine-rise mt-6 text-[0.82rem] text-[var(--c-faint)]" style={{ animationDelay: "0.42s" }}>No account · processed securely · never stored or shared.</p>
+            </div>
 
-          {/* Chart panel — entrance, gentle idle float, and pointer tilt. */}
-          <Reveal>
-           <Float distance={6} duration={7}>
-            <Tilt>
-            <div className="lp-panel lp-panel-glow overflow-hidden p-4">
-              <div className="flex items-center justify-between border-b border-[var(--line)] px-1 pb-3">
-                <span className="lp-tape text-[var(--muted)]">revenue.csv · 12 periods</span>
-                <span className="lp-tape lp-up">▲ +23.4%</span>
-              </div>
-              <div className="px-1 pt-3">
-                <HeroChart className="w-full" />
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {[["+23.4%", "growth"], ["0.47", "r · p<.001"], ["A+", "data quality"]].map(([v, l]) => (
-                  <div key={l} className="rounded-lg border border-[var(--line)] bg-[var(--bg-soft)] px-3 py-2.5">
-                    <p className="mono text-[0.95rem] font-bold text-[var(--ink)]">{v}</p>
-                    <p className="mt-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-[var(--faint)]">{l}</p>
-                  </div>
-                ))}
+            {/* Animated data core — the data-themed centerpiece. */}
+            <div className="relative">
+              <DataCore />
+              <div className="cine-card">
+                <span className="cine-card-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M3 21h18" /><path d="M5 17l4-5 3 3 5-7" /><path d="M17 8h3v3" /></svg>
+                </span>
+                <div>
+                  <p className="text-[0.9rem] font-semibold text-[var(--c-ink)]">Live analysis</p>
+                  <p className="text-[0.72rem] text-[var(--c-muted)]">+23.4% trend · r=0.47 · p&lt;.001</p>
+                </div>
               </div>
             </div>
-            </Tilt>
-           </Float>
-          </Reveal>
-        </section>
-      </div>
+          </section>
+        </div>
+      </section>
 
       {/* ── Capability ticker ── */}
       <div className="lp-ticker relative z-10">
