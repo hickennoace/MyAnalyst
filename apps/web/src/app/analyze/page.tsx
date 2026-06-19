@@ -32,7 +32,14 @@ import { PipelineProgress } from "@/components/PipelineProgress";
 const CONTEXT_KEY = "quantia:context";
 const INDUSTRY_KEY = "quantia:industry";
 
-const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights", "Deep analysis (Python)", "Writing AI conclusions"];
+// Pipeline shown in the progress UI. The deep Python analysis is the authoritative engine and the
+// long pole, so it sits right after the data is prepared (cleaned + profiled) and IS the headline step
+// the user waits on. The in-browser TS engine's finer stages (domain, KPIs, stats, insights) now run
+// quickly IN PARALLEL underneath the "Deep analysis" window, so they're not shown as separate steps.
+const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Deep analysis (Python)", "Writing AI conclusions"];
+// Worker stages that count as data prep (shown directly); everything else it emits is the fast,
+// parallel TS detail that runs under the Deep-analysis window and is folded into it.
+const PREP_STAGES = new Set(["Reading file", "Cleaning & normalizing", "Profiling columns"]);
 
 /** A file that's been read and is waiting for the user to confirm before analysis starts - so nobody
  *  analyzes the wrong file, and they get a chance to pick the right sheet and add context first. */
@@ -234,11 +241,15 @@ export default function AnalyzePage() {
       const { spec: result, table: cleaned } = await runAnalysis(
         sourceTbl,
         ctx,
-        (s) => setStage(s),
+        // Only surface the prep stages; the TS engine's finer stages run in parallel under the
+        // "Deep analysis (Python)" step (set on onPrepared below), so we don't bounce the progress.
+        (s) => { if (PREP_STAGES.has(s)) setStage(s); },
         {},
         activeLlmConfig() ?? undefined,
         (cleanedTbl, currency) => {
-          // Data is cleaned & profiled - start the deep Python analysis now, in parallel.
+          // Data is cleaned & profiled - start the deep Python analysis now, in parallel, and show it
+          // as the active step (it's the long pole everything else overlaps).
+          setStage("Deep analysis (Python)");
           pyPromise = runPythonAnalysis(cleanedTbl.columns, cleanedTbl.rows, currency);
           pyPromise.catch(() => {}); // mark handled; the await below turns any failure into the TS fallback
         }
@@ -247,7 +258,7 @@ export default function AnalyzePage() {
       let py: PyAnalysisSpec | null = null;
       let conclusions: PyConclusions | null = null;
       try {
-        setStage("Deep analysis (Python)");
+        setStage("Deep analysis (Python)"); // idempotent safety if onPrepared never fired
         // Started in parallel via onPrepared (so it's often already finished here). Fall back to
         // starting it now if, on some unusual path, onPrepared never fired.
         py = await (pyPromise ?? runPythonAnalysis(cleaned.columns, cleaned.rows, result.currency));
