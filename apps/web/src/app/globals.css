@@ -135,13 +135,13 @@ body {
 }
 .skip-link {
   position: fixed; left: 12px; top: -60px; z-index: 100;
-  background: #3d8bff; color: #fff; padding: 8px 14px; border-radius: 10px;
+  background: #ff5740; color: #fff; padding: 8px 14px; border-radius: 10px;
   font-size: 14px; font-weight: 600; transition: top 0.2s ease;
 }
 .skip-link:focus { top: 12px; }
 
 /* Clear keyboard focus ring everywhere. */
-:focus-visible { outline: 2px solid #7fb0ff; outline-offset: 2px; border-radius: 8px; }
+:focus-visible { outline: 2px solid #ff7a5c; outline-offset: 2px; border-radius: 8px; }
 
 /* Subtle, fixed brand background for the app pages (kept faint for readability). */
 .app-bg::before {
@@ -154,7 +154,7 @@ body {
 /* Animated gradient accent bar before section titles. */
 .section-accent {
   display: inline-block; width: 18px; height: 3px; border-radius: 9999px;
-  background: linear-gradient(90deg, #3d8bff, #5fd2e0); background-size: 200% auto;
+  background: linear-gradient(90deg, #ff5740, #ff8a4c); background-size: 200% auto;
   animation: gradientPan 5s linear infinite;
 }
 
@@ -162,8 +162,8 @@ body {
 .scroll-progress {
   position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 70;
   transform-origin: 0 50%; transform: scaleX(0);
-  background: linear-gradient(90deg, #3d8bff, #5fd2e0, #5a9dff);
-  box-shadow: 0 0 10px rgba(61, 139, 255, 0.5);
+  background: linear-gradient(90deg, #ff3b30, #ff5740, #ff8a4c);
+  box-shadow: 0 0 10px rgba(255, 87, 64, 0.5);
   pointer-events: none; will-change: transform;
 }
 
@@ -216,18 +216,19 @@ body {
    product/app pages are untouched.
    ═══════════════════════════════════════════════════════════════════════ */
 .lp {
-  --bg: #ffffff;
-  --bg-soft: #f7f8fa;
+  --bg: #fffaf7;              /* warm bright cream-white */
+  --bg-soft: #fff2ec;        /* faint peach wash for bands */
   --card: #ffffff;
-  --ink: #111318;
-  --muted: #565b66;
-  --faint: #8c919c;
-  --line: rgba(17, 19, 24, 0.09);
-  --line-strong: rgba(17, 19, 24, 0.16);
+  --ink: #1c1410;            /* warm near-black */
+  --muted: #6b5a54;
+  --faint: #a08c85;
+  --line: rgba(40, 22, 16, 0.09);
+  --line-strong: rgba(40, 22, 16, 0.16);
 
-  --accent: #4f46e5;          /* single professional indigo accent */
-  --accent-hover: #4338ca;
-  --accent-soft: #eef0fe;
+  --accent: #ff5740;          /* warm coral — matches the warp animation */
+  --accent-hover: #ff3b30;
+  --accent-soft: #fff0ea;
+  --ember: #ff8a4c;
   --positive: #15803d;
 
   --shadow-sm: 0 1px 2px rgba(17, 19, 40, 0.04), 0 2px 8px rgba(17, 19, 40, 0.04);
@@ -255,15 +256,37 @@ body {
   content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.03;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-:root[data-theme="dark"] .grain-layer::after { opacity: 0.045; }
 
 /* ── Subtle backdrop: one faint indigo wash, no busy texture ── */
 .lp-aurora {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(720px 380px at 88% -12%, rgba(79, 70, 229, 0.07), transparent 62%),
-    radial-gradient(640px 360px at 6% -6%, rgba(79, 70, 229, 0.045), transparent 60%);
+    radial-gradient(720px 380px at 88% -12%, rgba(255, 87, 64, 0.10), transparent 62%),
+    radial-gradient(640px 360px at 6% -6%, rgba(255, 138, 76, 0.08), transparent 60%);
 }
+
+/* ── Site-wide faint warp backdrop: a slow perspective speed-grid in coral that
+   carries the hero's motion language behind the whole landing (fixed, decorative,
+   never blocks input). The hero's own brighter grid sits on top of this. ── */
+.lp-warp {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 88%, transparent 100%);
+}
+.lp-warp::before {
+  content: ""; position: absolute; inset: -20% -40% -20% -40%;
+  background-image:
+    linear-gradient(rgba(255, 110, 80, 0.11) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 110, 80, 0.11) 1px, transparent 1px);
+  background-size: 72px 72px;
+  transform: perspective(680px) rotateX(66deg);
+  transform-origin: 50% 0;
+  -webkit-mask-image: radial-gradient(60% 80% at 50% 34%, #000 6%, transparent 66%);
+  mask-image: radial-gradient(60% 80% at 50% 34%, #000 6%, transparent 66%);
+  animation: cineGrid 5.5s linear infinite;
+  opacity: 0.6;
+}
+@media (prefers-reduced-motion: reduce) { .lp-warp::before { animation: none !important; } }
 
 /* ── Eyebrow + pill + live dot ── */
 .lp-eyebrow {
@@ -274,7 +297,7 @@ body {
 .lp-pill {
   display: inline-flex; align-items: center; gap: 0.55rem;
   border-radius: 9999px; padding: 0.4rem 0.85rem;
-  background: var(--accent-soft); border: 1px solid rgba(79, 70, 229, 0.16);
+  background: var(--accent-soft); border: 1px solid rgba(255, 87, 64, 0.2);
   font-size: 0.78rem; font-weight: 500; color: var(--accent-hover);
 }
 .lp-dot {
@@ -333,10 +356,42 @@ body {
 /* ── Cards / panels ── */
 .lp-panel { position: relative; border-radius: 14px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
 
+/* Final CTA promoted to a mini cinematic band — echoes the hero (warm wash, a
+   receding speed-grid, a pulsing bloom) so the page closes on the same energy. */
+.lp-cta-band {
+  overflow: hidden; isolation: isolate;
+  border-color: rgba(255, 110, 80, 0.22);
+  background:
+    radial-gradient(620px 320px at 50% 8%, rgba(255, 134, 84, 0.16), transparent 64%),
+    linear-gradient(180deg, #fff4ec 0%, #ffe7da 100%);
+  box-shadow: 0 18px 50px -24px rgba(255, 90, 50, 0.4);
+}
+.lp-cta-grid {
+  position: absolute; inset: 30% -40% -14% -40%; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 96, 60, 0.34) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 96, 60, 0.34) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: perspective(420px) rotateX(72deg);
+  transform-origin: 50% 0;
+  -webkit-mask-image: radial-gradient(80% 120% at 50% 0%, #000 6%, transparent 70%);
+  mask-image: radial-gradient(80% 120% at 50% 0%, #000 6%, transparent 70%);
+  animation: cineGrid 3s linear infinite;
+  opacity: 0.5;
+}
+.lp-cta-glow {
+  position: absolute; z-index: 0; top: 18%; left: 50%; width: 420px; height: 320px;
+  transform: translateX(-50%); pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 120, 80, 0.28), transparent 62%);
+  mix-blend-mode: multiply; filter: blur(6px);
+  animation: cineBloom 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .lp-cta-grid, .lp-cta-glow { animation: none !important; } }
+
 /* Cursor-follow highlight on the tilting hero panel (reads --mx/--my set by <Tilt>). */
 .lp-panel-glow::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1;
-  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(79, 70, 229, 0.12), transparent 60%);
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 87, 64, 0.14), transparent 60%);
   opacity: 0; transition: opacity 0.3s ease;
 }
 .lp-panel-glow:hover::before { opacity: 1; }
@@ -346,7 +401,7 @@ body {
   background: var(--card); border: 1px solid var(--line);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
-.lp-feature:hover { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: var(--shadow-md); }
+.lp-feature:hover { transform: translateY(-2px); border-color: rgba(255, 110, 80, 0.45); box-shadow: 0 16px 38px -18px rgba(255, 90, 50, 0.4); }
 .lp-ico {
   display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px;
   color: var(--accent); background: var(--accent-soft);
@@ -372,9 +427,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) { .lp-dot, .lp-ticker-track { animation: none !important; } }
 
-/* Keep the page chrome in sync with the landing surface (flips with theme). */
-body:has(.lp) { background: #ffffff; }
-:root[data-theme="dark"] body:has(.lp) { background: #0a0d13; }
+/* Keep the page chrome in sync with the landing surface (single bright theme). */
+body:has(.lp) { background: #fffaf7; }
 
 /* ═══════════════════════════════════════════════════════════════════════
    THEME SYSTEM — light / dark for the WHOLE site
@@ -435,44 +489,6 @@ body:has(.lp) { background: #ffffff; }
 }
 :root[data-theme="light"] ::-webkit-scrollbar-thumb { background: #cbd2dd; }
 
-/* Landing (.lp) dark palette — applied only in dark mode. */
-:root[data-theme="dark"] .lp {
-  --bg: #0a0d13;
-  --bg-soft: #11151e;
-  --card: #141926;
-  --ink: #eef1f7;
-  --muted: #a3abbb;
-  --faint: #717a8a;
-  --line: rgba(230, 235, 245, 0.09);
-  --line-strong: rgba(230, 235, 245, 0.17);
-
-  --accent: #7c83ff;
-  --accent-hover: #9aa0ff;
-  --accent-soft: rgba(124, 131, 255, 0.15);
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 10px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 8px 30px -12px rgba(0, 0, 0, 0.55);
-}
-:root[data-theme="dark"] .lp-cta { color: #0a0d13; }
-:root[data-theme="dark"] .lp-aurora {
-  background:
-    radial-gradient(720px 380px at 88% -12%, rgba(124, 131, 255, 0.16), transparent 62%),
-    radial-gradient(640px 360px at 6% -6%, rgba(124, 131, 255, 0.10), transparent 60%);
-}
-
-/* ── Theme toggle button ── */
-.theme-toggle {
-  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px;
-  border: 1px solid var(--color-border); color: inherit;
-  background: transparent; cursor: pointer;
-  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
-}
-.theme-toggle:hover { border-color: #7c83ff; color: #7c83ff; }
-.lp .theme-toggle { border-color: var(--line-strong); color: var(--muted); }
-.lp .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
-/* In light mode the inherited text color left the moon icon nearly invisible on the white header — force it dark. */
-:root[data-theme="light"] .theme-toggle { color: #0f172a; border-color: #cbd2dd; }
-
 /* Page transition — replays on every route change via app/template.tsx. */
 @keyframes pageEnter {
   from { opacity: 0; transform: translateY(8px); }
@@ -489,40 +505,43 @@ body:has(.lp) { background: #ffffff; }
    under `.cine`; the rest of the page keeps the `.lp` surface untouched.
    ═══════════════════════════════════════════════════════════════════════ */
 .cine {
-  --c-bg: #08050a;
-  --c-ink: #fdf6f3;
-  --c-muted: #cdb9b6;
-  --c-faint: #8f7b79;
+  --c-bg: #fff6f0;
+  --c-ink: #2a1812;          /* deep warm near-black for a bright band */
+  --c-muted: #7a5750;
+  --c-faint: #a98a82;
   --c-red: #ff3b30;
   --c-ember: #ff8a4c;
-  --c-line: rgba(255, 120, 90, 0.16);
+  --c-line: rgba(255, 110, 80, 0.3);
 
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  /* Bright luminous warm band: peach/coral glows over a cream→peach wash that
+     melts into the page's cream surface at the bottom. */
   background:
-    radial-gradient(900px 520px at 66% 30%, rgba(255, 58, 40, 0.22), transparent 60%),
-    radial-gradient(700px 600px at 8% 0%, rgba(120, 20, 18, 0.32), transparent 62%),
-    linear-gradient(180deg, #0c0608 0%, #08050a 60%, #0a0d13 100%);
+    radial-gradient(900px 520px at 70% 26%, rgba(255, 120, 80, 0.34), transparent 60%),
+    radial-gradient(760px 620px at 6% 4%, rgba(255, 178, 120, 0.40), transparent 62%),
+    radial-gradient(640px 480px at 96% 88%, rgba(255, 90, 64, 0.22), transparent 60%),
+    linear-gradient(180deg, #fff3ea 0%, #ffe4d4 48%, #fffaf7 100%);
   color: var(--c-ink);
 }
 
 /* Receding "road" — a perspective grid that scrolls toward the camera. */
 .cine-grid {
   position: absolute;
-  inset: 38% -40% -10% -40%;
+  inset: 40% -40% -10% -40%;
   z-index: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(255, 90, 60, 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 90, 60, 0.5) 1px, transparent 1px);
+    linear-gradient(rgba(255, 96, 60, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 96, 60, 0.4) 1px, transparent 1px);
   background-size: 64px 64px;
   transform: perspective(420px) rotateX(74deg);
   transform-origin: 50% 0;
   -webkit-mask-image: radial-gradient(80% 120% at 50% 0%, #000 10%, transparent 72%);
   mask-image: radial-gradient(80% 120% at 50% 0%, #000 10%, transparent 72%);
   animation: cineGrid 2.6s linear infinite;
-  opacity: 0.5;
+  opacity: 0.55;
 }
 @keyframes cineGrid {
   from { background-position: 0 0, 0 0; }
@@ -533,42 +552,38 @@ body:has(.lp) { background: #ffffff; }
 .cine-glow {
   position: absolute;
   z-index: 0;
-  top: 14%;
-  right: 6%;
-  width: 620px;
-  height: 620px;
-  max-width: 70vw;
+  top: 12%;
+  right: 4%;
+  width: 640px;
+  height: 640px;
+  max-width: 72vw;
   pointer-events: none;
-  background: radial-gradient(circle, rgba(255, 64, 42, 0.34), transparent 60%);
-  filter: blur(8px);
+  background: radial-gradient(circle, rgba(255, 134, 84, 0.45), rgba(255, 90, 64, 0.16) 38%, transparent 62%);
+  filter: blur(6px);
+  mix-blend-mode: multiply;
   animation: cineBloom 6s ease-in-out infinite;
 }
 @keyframes cineBloom {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.1); opacity: 1; }
+  0%, 100% { transform: scale(1); opacity: 0.75; }
+  50% { transform: scale(1.1); opacity: 0.95; }
 }
 
 .cine-streaks { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; }
 
-/* Top vignette so the nav reads cleanly over the streaks. */
+/* Soft bottom fade so the bright band melts seamlessly into the page surface. */
 .cine::before {
   content: "";
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 180px;
+  inset: auto 0 0 0;
+  height: 160px;
   z-index: 2;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(8, 5, 10, 0.85), transparent);
+  background: linear-gradient(180deg, transparent, #fffaf7);
 }
 
 /* ── Cinematic nav + type ── */
 .cine-nav-link { font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em; color: var(--c-muted); transition: color 0.16s ease; }
 .cine-nav-link:hover { color: var(--c-ink); }
-
-/* Theme toggle reads on the dark band regardless of site theme. */
-.cine .theme-toggle { border-color: rgba(255, 130, 100, 0.3); color: var(--c-muted); }
-.cine .theme-toggle:hover { border-color: var(--c-ember); color: var(--c-ember); }
-:root[data-theme="light"] .cine .theme-toggle { color: var(--c-muted); border-color: rgba(255, 130, 100, 0.3); }
 
 .cine-title {
   font-family: var(--font-sans), system-ui, sans-serif;
@@ -576,7 +591,7 @@ body:has(.lp) { background: #ffffff; }
   letter-spacing: -0.02em;
   line-height: 0.98;
   text-transform: uppercase;
-  text-shadow: 0 8px 40px rgba(255, 58, 40, 0.25);
+  text-shadow: 0 6px 28px rgba(255, 90, 50, 0.18);
 }
 .cine-accent {
   background: linear-gradient(100deg, #ff8a4c, #ff3b30 55%, #ff5a3c);
@@ -605,22 +620,22 @@ body:has(.lp) { background: #ffffff; }
   display: inline-flex; align-items: center; gap: 0.5rem;
   border-radius: 11px; padding: 0.85rem 1.4rem;
   font-weight: 600; font-size: 0.92rem; color: var(--c-ink);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 130, 100, 0.3);
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 110, 80, 0.4);
   backdrop-filter: blur(6px);
   transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
 }
-.cine-ghost:hover { border-color: var(--c-ember); background: rgba(255, 138, 76, 0.12); transform: translateY(-2px); }
+.cine-ghost:hover { border-color: var(--c-ember); background: rgba(255, 255, 255, 0.85); transform: translateY(-2px); }
 
 /* Floating glass stat card (echoes the consultation card in the reference). */
 .cine-card {
   position: absolute; left: 2%; bottom: 8%; z-index: 3;
   display: flex; align-items: center; gap: 0.8rem;
   padding: 0.85rem 1rem; border-radius: 14px;
-  background: rgba(20, 10, 12, 0.55);
-  border: 1px solid rgba(255, 130, 100, 0.25);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 120, 90, 0.3);
   backdrop-filter: blur(12px);
-  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 18px 44px -20px rgba(255, 90, 50, 0.45);
   animation: cineFloat 7s ease-in-out infinite;
 }
 .cine-card-ico {

@@ -9,7 +9,6 @@ import { DashboardView } from "@/components/DashboardView";
 import { PresenterMode } from "@/components/PresenterMode";
 import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { exportPdf, exportPng } from "@/lib/export";
 
@@ -67,7 +66,6 @@ export default function ViewPage() {
             </div>
           </Link>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
             {spec && (
               <>
                 <button

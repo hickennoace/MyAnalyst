@@ -63,11 +63,11 @@ export function DataCore({ className = "" }: { className?: string }) {
 
         {/* Platform glow + reflective base */}
         <ellipse cx="230" cy={baseY} rx="210" ry="40" fill="url(#cFloor)" className="cine-floor" />
-        <ellipse cx="230" cy={baseY} rx="186" ry="30" fill="none" stroke="rgba(255,90,60,0.35)" strokeWidth="1" />
+        <ellipse cx="230" cy={baseY} rx="186" ry="30" fill="none" stroke="rgba(220,56,36,0.45)" strokeWidth="1" />
 
         {/* Orbiting data ring (outer, slow) */}
         <g className="cine-orbit">
-          <ellipse cx="230" cy={baseY - 64} rx="178" ry="52" fill="none" stroke="rgba(255,80,60,0.22)" strokeWidth="1" />
+          <ellipse cx="230" cy={baseY - 64} rx="178" ry="52" fill="none" stroke="rgba(220,60,40,0.3)" strokeWidth="1" />
           {ORBIT.map((n, i) => (
             <circle
               key={i}
@@ -131,11 +131,11 @@ export function DataCore({ className = "" }: { className?: string }) {
 
         {/* Inner counter-rotating ring */}
         <g className="cine-orbit-inner">
-          <ellipse cx="230" cy={baseY - 40} rx="120" ry="34" fill="none" stroke="rgba(255,140,90,0.18)" strokeWidth="1" strokeDasharray="2 9" />
+          <ellipse cx="230" cy={baseY - 40} rx="120" ry="34" fill="none" stroke="rgba(220,90,50,0.28)" strokeWidth="1" strokeDasharray="2 9" />
         </g>
 
         {/* Sweeping scan line */}
-        <line x1="78" x2="382" y1="0" y2="0" stroke="rgba(255,160,110,0.7)" strokeWidth="1.5" className="cine-scan" />
+        <line x1="78" x2="382" y1="0" y2="0" stroke="rgba(220,70,40,0.6)" strokeWidth="1.5" className="cine-scan" />
       </svg>
     </div>
   );

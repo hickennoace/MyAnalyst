@@ -3,8 +3,10 @@
 import { useEffect, useRef } from "react";
 
 // Cinematic "warp-speed" light streaks for the hero — thin glowing trails that
-// race outward from a vanishing point, the way the headlights/road streak past
-// the car in the reference hero. Pure Canvas 2D, additive blending for bloom.
+// race outward from a vanishing point. Tuned for the BRIGHT luminous band: warm
+// coral→ember comets drawn with normal (source-over) blending over a transparent
+// canvas, so they read as saturated streaks on the light backdrop instead of the
+// additive white bloom that only worked on a near-black scene.
 //
 // Performance guardrails (mirrors HeroField):
 //   • streak count is fixed + small; one O(n) pass per frame
@@ -18,15 +20,16 @@ interface Streak {
   r: number; // current distance from the vanishing point
   speed: number; // px/frame growth
   len: number; // trail length factor
-  hue: number; // 0 = deep red … 1 = warm ember
+  hue: number; // 0 = deep crimson … 1 = warm ember
   w: number; // line width
 }
 
-// Warm red → ember palette, matching the cinematic hero.
+// Deep coral → ember palette — kept saturated/dark enough to read on the bright
+// peach band. (Lower hues = deeper red, higher = orange ember.)
 function color(hue: number, a: number) {
-  const r = 255;
-  const g = Math.round(36 + hue * 90); // 36 → 126
-  const b = Math.round(28 + hue * 30); // 28 → 58
+  const r = Math.round(214 + hue * 41); // 214 → 255
+  const g = Math.round(26 + hue * 102); // 26 → 128
+  const b = Math.round(14 + hue * 30); // 14 → 44
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
@@ -79,12 +82,12 @@ export function SpeedStreaks({ className = "" }: { className?: string }) {
     const maxR = () => Math.hypot(Math.max(vx, w - vx), Math.max(vy, h - vy)) + 60;
 
     function draw() {
-      // Fade the previous frame slightly instead of clearing — leaves a soft motion wake.
+      // Transparent canvas over the bright band — clear each frame and redraw the
+      // comets fresh (their own gradient tail provides the motion trail), so the
+      // band's glow stays visible through the gaps.
+      c!.clearRect(0, 0, w, h);
       c!.globalCompositeOperation = "source-over";
-      c!.fillStyle = "rgba(8, 5, 7, 0.28)";
-      c!.fillRect(0, 0, w, h);
-
-      c!.globalCompositeOperation = "lighter";
+      c!.lineCap = "round";
       const limit = maxR();
       for (const s of streaks) {
         s.r += s.speed * (1 + s.r / 240); // accelerate as it nears the camera
@@ -98,7 +101,7 @@ export function SpeedStreaks({ className = "" }: { className?: string }) {
         const x2 = vx + cos * tail;
         const y2 = vy + sin * tail;
 
-        const a = Math.min(0.85, (s.r / limit) * 0.95);
+        const a = Math.min(0.5, (s.r / limit) * 0.6);
         const grad = c!.createLinearGradient(x2, y2, x1, y1);
         grad.addColorStop(0, color(s.hue, 0));
         grad.addColorStop(1, color(s.hue, a));
@@ -109,7 +112,6 @@ export function SpeedStreaks({ className = "" }: { className?: string }) {
         c!.lineTo(x1, y1);
         c!.stroke();
       }
-      c!.globalCompositeOperation = "source-over";
     }
 
     let raf = 0;
@@ -131,18 +133,18 @@ export function SpeedStreaks({ className = "" }: { className?: string }) {
     build();
     if (reduce) {
       // One static, settled frame: draw streaks mid-flight once.
-      c!.globalCompositeOperation = "lighter";
+      c!.globalCompositeOperation = "source-over";
+      c!.lineCap = "round";
       for (const s of streaks) {
         const cos = Math.cos(s.ang);
         const sin = Math.sin(s.ang);
-        c!.strokeStyle = color(s.hue, 0.4);
+        c!.strokeStyle = color(s.hue, 0.35);
         c!.lineWidth = s.w;
         c!.beginPath();
         c!.moveTo(vx + cos * (s.r - s.len), vy + sin * (s.r - s.len));
         c!.lineTo(vx + cos * s.r, vy + sin * s.r);
         c!.stroke();
       }
-      c!.globalCompositeOperation = "source-over";
     } else {
       start();
     }

@@ -57,21 +57,15 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0e16" },
-  ],
+  themeColor: "#fff6f0",
 };
 
-// Set the theme on <html> before first paint to avoid a flash of the wrong theme.
-const THEME_INIT = `(function(){try{var t=localStorage.getItem('quantia:theme');if(t!=='dark'&&t!=='light'){t='light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
-
+// The site ships a single bright theme — no light/dark switch. `data-theme="light"`
+// is fixed on <html> so the shared app surfaces (and chart-theme's isLight()) stay
+// bright. There is intentionally no theme-init script and no localStorage flag.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} ${display.variable}`} data-theme="light" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
-      </head>
+    <html lang="en" className={`${sans.variable} ${mono.variable} ${display.variable}`} data-theme="light">
       <body>
         <a href="#main-content" className="skip-link">Skip to content</a>
         <ScrollProgress />

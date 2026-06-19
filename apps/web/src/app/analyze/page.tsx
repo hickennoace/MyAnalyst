@@ -21,7 +21,6 @@ import { encodeShare, MAX_LINK_CHARS } from "@/lib/share";
 import { deleteAnalysis, getAnalysis, listHistory, saveAnalysis, type HistoryEntry } from "@/lib/history";
 import { PresenterMode } from "@/components/PresenterMode";
 import { Uploader } from "@/components/Uploader";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { DashboardView } from "@/components/DashboardView";
 import { pyChartsToSpecs } from "@/lib/py-charts";
@@ -451,7 +450,6 @@ export default function AnalyzePage() {
             </div>
           </Link>
           <div className="flex flex-wrap items-center justify-end gap-2">
-          <ThemeToggle />
           {spec ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button

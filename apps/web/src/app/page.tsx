@@ -3,7 +3,6 @@ import { Reveal } from "@/components/Reveal";
 import { SpeedStreaks } from "@/components/SpeedStreaks";
 import { DataCore } from "@/components/DataCore";
 import { Magnetic } from "@/components/Magnetic";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandMark } from "@/components/BrandMark";
 import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 
@@ -76,7 +75,11 @@ const TICKER = ["Cleaning report", "Domain detection", "Ranked KPIs", "OLS regre
 export default function Landing() {
   return (
     <main id="main-content" className="lp grain-layer">
-      {/* ── Cinematic hero band (always dark, motion-forward) ── */}
+      {/* Site-wide faint warp backdrop — carries the hero's motion language behind
+          every section (fixed, decorative). */}
+      <div className="lp-warp" aria-hidden />
+
+      {/* ── Cinematic hero band (bright luminous, motion-forward) ── */}
       <section className="cine">
         <div className="cine-grid" aria-hidden />
         <div className="cine-glow" aria-hidden />
@@ -92,7 +95,6 @@ export default function Landing() {
             <div className="flex items-center gap-4 sm:gap-6">
               <a href="#features" className="cine-nav-link hidden sm:inline">Features</a>
               <a href="#how" className="cine-nav-link hidden sm:inline">How it works</a>
-              <ThemeToggle />
               <Link href="/analyze" className="cine-cta !px-4 !py-2 !text-[0.82rem]">Open the app</Link>
             </div>
           </nav>
@@ -229,12 +231,14 @@ export default function Landing() {
         {/* ── CTA ── */}
         <section className="py-16">
           <Reveal>
-            <div className="lp-panel px-8 py-14 text-center sm:px-16">
-              <h2 className="display mx-auto max-w-2xl text-[2rem] leading-tight text-[var(--ink)] sm:text-[2.6rem]">
+            <div className="lp-panel lp-cta-band px-8 py-14 text-center sm:px-16">
+              <div className="lp-cta-grid" aria-hidden />
+              <div className="lp-cta-glow" aria-hidden />
+              <h2 className="display relative z-10 mx-auto max-w-2xl text-[2rem] leading-tight text-[var(--ink)] sm:text-[2.6rem]">
                 See your data <span className="lp-accent">clearly</span>.
               </h2>
-              <p className="mx-auto mt-4 max-w-md text-[var(--muted)]">No setup, no spreadsheet skills, no waiting. Just answers.</p>
-              <div className="mt-8 flex justify-center">
+              <p className="relative z-10 mx-auto mt-4 max-w-md text-[var(--muted)]">No setup, no spreadsheet skills, no waiting. Just answers.</p>
+              <div className="relative z-10 mt-8 flex justify-center">
                 <Magnetic>
                   <Link href="/analyze" className="lp-cta">
                     Open MyAnalyst

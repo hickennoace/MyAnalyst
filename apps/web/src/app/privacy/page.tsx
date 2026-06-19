@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -15,7 +14,6 @@ export default function Privacy() {
           <Link href="/" className="text-sm text-slate-400 transition hover:text-slate-200">
             ← MyAnalyst
           </Link>
-          <ThemeToggle />
         </div>
         <h1 className="mt-6 text-3xl font-bold text-slate-50">Privacy</h1>
         <p className="mt-2 text-sm text-slate-400">
