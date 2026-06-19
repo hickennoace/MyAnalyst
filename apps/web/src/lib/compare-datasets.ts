@@ -4,7 +4,7 @@ import { welchTTest } from "./inference";
 
 // Compare two datasets (e.g. this month vs last, store A vs store B, you vs a benchmark): align the
 // shared numeric columns and report the biggest changes, ranked. Self-serve benchmarking, no
-// integration — pure, metadata-only output.
+// integration - pure, metadata-only output.
 
 export interface MetricChange {
   metric: string;

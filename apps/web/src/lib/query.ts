@@ -16,21 +16,21 @@ import { verifyAnswerGrounding, type GroundingResult } from "./grounding";
 // When the optional LLM is enabled (NEXT_PUBLIC_LLM_ENABLED=1), `answerQuestionAI` keeps the exact
 // numbers from the deterministic heuristic below but lets the model narrate a thorough, professional
 // analyst answer grounded in pre-computed aggregates. Privacy: only aggregates/metadata cross the wire
-// (the same boundary as /api/insights) — never raw rows. Any failure falls back to the heuristic answer.
+// (the same boundary as /api/insights) - never raw rows. Any failure falls back to the heuristic answer.
 
 export interface RichAnswer extends QueryAnswer {
   /** Which narrator produced the prose. */
   source: "llm" | "heuristic";
   /** Suggested next questions (LLM only). */
   followups?: string[];
-  /** Numeric grounding check of an LLM answer (W3.6) — present only when the LLM narrated and stated at
+  /** Numeric grounding check of an LLM answer (W3.6) - present only when the LLM narrated and stated at
    *  least one salient number. Lets the UI show a "grounded in your data" / "unverified figure" signal. */
   grounding?: GroundingResult;
 }
 
 const CATEGORY_HINT = /(reason|category|type|status|segment|group|class|gender|channel|source|outcome|result|stage|priority|label|tag|product|region|country|state|city|department)/i;
 
-// "What share of the total is this slice?" — triggers the share/percentage-of-total branch. Kept
+// "What share of the total is this slice?" - triggers the share/percentage-of-total branch. Kept
 // distinct from "percentile" (handled separately) so the two never collide.
 const SHARE_SIGNAL = /\bwhat\s+(?:%|percent|percentage|fraction|proportion|share)\b|\b(?:percent|percentage|proportion|fraction|share)\s+of\b|\bhow much of\b/;
 // Concentration / Pareto phrasing: "80–20", "how concentrated", "the vital few", "top N drive most of …".
@@ -38,7 +38,7 @@ const CONCENTRATION_SIGNAL = /(concentrat|pareto|\b80\s*[\/\- ]\s*20\b|vital few
 // RFM / customer-value phrasing: "best customers", "who's at risk", "customer segments", "rfm".
 const RFM_SIGNAL = /\brfm\b|\b(?:best|top|most valuable|loyal|at[- ]?risk|churn(?:ing|ed)?|dormant|lapsed|new) customers\b|customer (?:segments?|value|tiers?)|who are my .*customers|champions/;
 
-// "Ask your data" — a heuristic natural-language Q&A engine. No LLM, no key. It maps plain-English
+// "Ask your data" - a heuristic natural-language Q&A engine. No LLM, no key. It maps plain-English
 // questions to exact computations over the local data (aggregates, group-bys, rankings, correlation,
 // trends) and answers with the real numbers, optionally attaching a chart.
 
@@ -46,7 +46,7 @@ export interface QueryAnswer {
   ok: boolean;
   answer: string;
   chart?: ChartSpec;
-  /** Plain-language account of HOW the number was computed — the rows, the aggregation, the filter.
+  /** Plain-language account of HOW the number was computed - the rows, the aggregation, the filter.
    *  Surfaced as a collapsible "How I computed this" so users can trust (and audit) every figure. */
   method?: string;
 }
@@ -62,7 +62,7 @@ const AGG_WORDS: { agg: Agg; re: RegExp; label: string }[] = [
   { agg: "min", re: /\b(min|minimum|lowest|smallest|least)\b/, label: "minimum" },
 ];
 
-/** Human label for an aggregator — used in answer prose so a median is never mislabelled a "total". */
+/** Human label for an aggregator - used in answer prose so a median is never mislabelled a "total". */
 function labelForAgg(agg: Agg): string {
   return agg === "mean" ? "average" : agg === "sum" ? "total" : agg; // median/max/min read as their own name
 }
@@ -114,7 +114,7 @@ function columnMatchesWord(word: string, col: ColumnProfile): boolean {
   return tokenize(cl).some((ct) => stemMatch(ct, word));
 }
 
-/** Columns referenced in the text — by exact name, else by a loose (stemmed) word match. Ordered
+/** Columns referenced in the text - by exact name, else by a loose (stemmed) word match. Ordered
  *  by where they appear so "spend vs revenue" keeps spend first. */
 function resolveCols(text: string, cols: ColumnProfile[]): ColumnProfile[] {
   const lower = text.toLowerCase();
@@ -150,7 +150,7 @@ const RANK_STOP = new Set([
 ]);
 
 /** Pick sum vs mean for a ranking: averages for rate/score-like metrics (intensity, price, rating),
- *  sums for additive quantities (revenue, units) — unless the question says otherwise. */
+ *  sums for additive quantities (revenue, units) - unless the question says otherwise. */
 function chooseAgg(metric: ColumnProfile, lower: string): Agg {
   if (/\bmedian\b/.test(lower)) return "median";
   if (/\b(average|avg|mean|typical|per)\b/.test(lower)) return "mean";
@@ -159,7 +159,7 @@ function chooseAgg(metric: ColumnProfile, lower: string): Agg {
 }
 
 function fmt(n: number, profile?: ColumnProfile): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   if (profile?.type === "currency")
     return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
@@ -181,7 +181,7 @@ function aggregate(values: number[], agg: Agg): number {
   }
 }
 
-/** Metric values for the rows matching a predicate (finite only) — the raw arrays a t-test needs. */
+/** Metric values for the rows matching a predicate (finite only) - the raw arrays a t-test needs. */
 function valuesWhere(table: Table, metric: string, pred: (row: Record<string, unknown>) => boolean): number[] {
   const vals = numericColumn(table, metric);
   const out: number[] = [];
@@ -202,7 +202,7 @@ function groupBy(table: Table, dim: string, metric: string, agg: Agg): [string, 
   const vals = numericColumn(table, metric);
   table.rows.forEach((r, i) => {
     if (!Number.isFinite(vals[i])) return;
-    const key = String(r[dim] ?? "—");
+    const key = String(r[dim] ?? "-");
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key)!.push(vals[i]);
   });
@@ -230,8 +230,8 @@ function crossTab(table: Table, dimA: string, dimB: string, metric: string | und
   const bSet = new Set<string>();
   table.rows.forEach((r, i) => {
     if (metric && !Number.isFinite(vals![i])) return;
-    const a = String(r[dimA] ?? "—");
-    const b = String(r[dimB] ?? "—");
+    const a = String(r[dimA] ?? "-");
+    const b = String(r[dimB] ?? "-");
     const key = a + SEP + b;
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key)!.push(metric ? vals![i] : 1);
@@ -260,7 +260,7 @@ function crossTab(table: Table, dimA: string, dimB: string, metric: string | und
   return { cells, aCount: aSet.size, bCount: bSet.size, xCats, seriesNames, matrix };
 }
 
-/** "N of M rows (scope)" or "M rows" — the row basis quoted in every `method` string. */
+/** "N of M rows (scope)" or "M rows" - the row basis quoted in every `method` string. */
 function rowsNote(view: Table, table: Table, filter?: DataFilter): string {
   return filter ? `${view.rowCount.toLocaleString()} of ${table.rowCount.toLocaleString()} rows ${filter.phrase}` : `${table.rowCount.toLocaleString()} rows`;
 }
@@ -280,7 +280,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
 
   // "Most <quality> <thing>" intent: a superlative plus a leftover subject noun ("most intense workout")
   // or an explicit dimension means "rank a group", not "give the overall extreme". Subject nouns are the
-  // question words that don't refer to any column and aren't filler — their presence flips us to ranking.
+  // question words that don't refer to any column and aren't filler - their presence flips us to ranking.
   const hasSuper = SUPER_HI.test(lower) || SUPER_LO.test(lower);
   const subjectNouns = tokenize(lower).filter((w) => !RANK_STOP.has(w) && !profiles.some((p) => columnMatchesWord(w, p)));
   const rankingIntent =
@@ -300,10 +300,10 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         const m2 = aggregate(rv, "mean");
         const verdict = tt.significant
           ? `This difference **is** statistically significant (p ${fmtP(tt.p)}), so it's unlikely to be random chance.`
-          : `This difference is **not** statistically significant (p ${fmtP(tt.p)}), so it could be random variation — treat it as suggestive, not proven.`;
+          : `This difference is **not** statistically significant (p ${fmtP(tt.p)}), so it could be random variation - treat it as suggestive, not proven.`;
         return {
           ok: true,
-          answer: `Average ${cmp.metric.name}: "${cmp.left.label}" ${fmt(m1, cmp.metric)} vs "${cmp.right.label}" ${fmt(m2, cmp.metric)} — a gap of ${fmt(Math.abs(m1 - m2), cmp.metric)}. ${verdict} (Based on ${tt.n1} vs ${tt.n2} records.)`,
+          answer: `Average ${cmp.metric.name}: "${cmp.left.label}" ${fmt(m1, cmp.metric)} vs "${cmp.right.label}" ${fmt(m2, cmp.metric)} - a gap of ${fmt(Math.abs(m1 - m2), cmp.metric)}. ${verdict} (Based on ${tt.n1} vs ${tt.n2} records.)`,
           chart: buildComparisonChart(cmp.metric.name, "mean", [[cmp.left.label, m1], [cmp.right.label, m2]]),
           method: `Welch's two-sample t-test on ${cmp.metric.name} for "${cmp.left.label}" (n=${tt.n1}) vs "${cmp.right.label}" (n=${tt.n2}): t=${tt.t.toFixed(2)}, df=${tt.df.toFixed(0)}, two-sided p ${fmtP(tt.p)}.`,
         };
@@ -311,7 +311,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     }
   }
 
-  // Comparison questions ("North vs South revenue", "how does 2023 compare to 2022") — two slices of
+  // Comparison questions ("North vs South revenue", "how does 2023 compare to 2022") - two slices of
   // the same dimension or two periods, answered with the gap, ratio and % difference plus a paired bar.
   // Detected before the single filter so a "vs" question isn't collapsed to one slice.
   const comparison = detectComparison(text, table, profiles);
@@ -357,7 +357,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
       if (Number.isFinite(v)) {
         return {
           ok: true,
-          answer: `The ${ordinal(p)} percentile of ${m.name}${scope} is ${fmt(v, m)} — ${p}% of values fall at or below it.`,
+          answer: `The ${ordinal(p)} percentile of ${m.name}${scope} is ${fmt(v, m)} - ${p}% of values fall at or below it.`,
           method: `${ordinal(p)} percentile of ${m.name} across ${rowsNote(view, table, filter)} (linear interpolation between order statistics).`,
         };
       }
@@ -383,7 +383,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         }
         return {
           ok: true,
-          answer: `${filter.label} accounts for ${pct.toFixed(1)}% of total ${shareMetric.name} — ${fmt(num, shareMetric)} of ${fmt(den, shareMetric)}.`,
+          answer: `${filter.label} accounts for ${pct.toFixed(1)}% of total ${shareMetric.name} - ${fmt(num, shareMetric)} of ${fmt(den, shareMetric)}.`,
           chart,
           method: `Divided ${shareMetric.name} ${filter.phrase} (${fmt(num, shareMetric)}) by the grand total (${fmt(den, shareMetric)}) across ${rowsNote(view, table, filter)}.`,
         };
@@ -393,7 +393,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
       const pct = (view.rowCount / table.rowCount) * 100;
       return {
         ok: true,
-        answer: `Records ${filter.phrase} are ${pct.toFixed(1)}% of all rows — ${view.rowCount.toLocaleString()} of ${table.rowCount.toLocaleString()}.`,
+        answer: `Records ${filter.phrase} are ${pct.toFixed(1)}% of all rows - ${view.rowCount.toLocaleString()} of ${table.rowCount.toLocaleString()}.`,
         method: `Counted rows ${filter.phrase} (${view.rowCount.toLocaleString()}) ÷ all ${table.rowCount.toLocaleString()} rows.`,
       };
     }
@@ -413,7 +413,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         const biggest = conc.segments[0];
         const lvl =
           conc.level === "high"
-            ? "That's heavy concentration — a few names carry the whole figure, which is a risk worth watching."
+            ? "That's heavy concentration - a few names carry the whole figure, which is a risk worth watching."
             : conc.level === "moderate"
               ? "That's moderate concentration."
               : "It's fairly evenly spread.";
@@ -441,9 +441,9 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
       const parts: string[] = [
         `I scored your ${rfm.customers.toLocaleString()} ${rfm.entity}s on recency, frequency, and spend (${rfm.valueColumn}, as of ${rfm.asOf}).`,
       ];
-      if (champ) parts.push(`Champions — recent, frequent, high-spend — are ${champ.size} ${rfm.entity}s (${champ.sharePct.toFixed(0)}%) and ${(champ.monetaryShare * 100).toFixed(0)}% of revenue.`);
+      if (champ) parts.push(`Champions - recent, frequent, high-spend - are ${champ.size} ${rfm.entity}s (${champ.sharePct.toFixed(0)}%) and ${(champ.monetaryShare * 100).toFixed(0)}% of revenue.`);
       parts.push(`"${top.label}" is the most valuable segment by total spend.`);
-      if (risk && risk.size > 0) parts.push(`Watch the ${risk.size} At Risk ${rfm.entity}s (${(risk.monetaryShare * 100).toFixed(0)}% of revenue) — they were valuable but have gone quiet; a win-back is the clearest opportunity.`);
+      if (risk && risk.size > 0) parts.push(`Watch the ${risk.size} At Risk ${rfm.entity}s (${(risk.monetaryShare * 100).toFixed(0)}% of revenue) - they were valuable but have gone quiet; a win-back is the clearest opportunity.`);
       let chart: ChartSpec | undefined;
       try {
         chart = buildComparisonChart(`Revenue by RFM segment`, "sum", rfm.segments.map((s) => [s.label, s.totalMonetary] as [string, number]));
@@ -457,7 +457,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         method: `RFM: scored each ${rfm.entity} on recency (days since last ${rfm.dateColumn}), frequency (transaction count), and monetary (${rfm.valueColumn} sum) into 1–5 quintiles across ${rowsNote(view, table, filter)}, then mapped scores to named value segments.`,
       };
     }
-    // Intent was clearly RFM but the data isn't transaction-shaped — say why instead of misfiring.
+    // Intent was clearly RFM but the data isn't transaction-shaped - say why instead of misfiring.
     return {
       ok: false,
       answer: "RFM customer segmentation needs three things in the data: a customer/account id, a date, and a spend (or value) column. I couldn't find all three here, so I can't score recency, frequency, and monetary value.",
@@ -484,7 +484,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     }
   }
 
-  // W4.2 Drivers: "what drives revenue?", "what predicts price?" — multiple regression of the other
+  // W4.2 Drivers: "what drives revenue?", "what predicts price?" - multiple regression of the other
   // numeric columns on the target; report the strongest standardized driver, significance, and R².
   if (/\b(drives?|drivers?|predicts?|prediction|influences?|affects?|explains?|depends? on|biggest factor|key factor|what factor|drivers of)\b/.test(lower) && metrics.length >= 2) {
     const target = mMetrics[0] ?? metrics[0];
@@ -503,7 +503,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         const dir = top.beta >= 0 ? "higher" : "lower";
         return {
           ok: true,
-          answer: `The strongest driver of ${target.name} is ${top.name} (standardized β = ${top.beta.toFixed(2)}) — ${dir} ${top.name} goes with ${top.beta >= 0 ? "higher" : "lower"} ${target.name}, even after accounting for the other factors. Together the factors explain ${Math.round(reg.r2 * 100)}% of the variation in ${target.name} (R²)${scope}. ${sigNote}`,
+          answer: `The strongest driver of ${target.name} is ${top.name} (standardized β = ${top.beta.toFixed(2)}) - ${dir} ${top.name} goes with ${top.beta >= 0 ? "higher" : "lower"} ${target.name}, even after accounting for the other factors. Together the factors explain ${Math.round(reg.r2 * 100)}% of the variation in ${target.name} (R²)${scope}. ${sigNote}`,
           chart: buildChart(view, profiles, { type: "scatter", x: top.name, y: [target.name] }),
           method: `Multiple linear regression of ${target.name} on ${predictors.map((p) => p.name).join(", ")} across ${rowsNote(view, table, filter)}; drivers ranked by |standardized β|, R² = ${reg.r2.toFixed(2)}, model p ${fmtP(reg.fP)}.`,
         };
@@ -520,14 +520,14 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         const top = [...outs].sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
         return {
           ok: true,
-          answer: `${m.name} has ${outs.length} outlier${outs.length === 1 ? "" : "s"} beyond 3 standard deviations${scope}. The most extreme is ${fmt(top.value, m)} (${top.z > 0 ? "+" : ""}${top.z.toFixed(1)}σ from the mean). Extreme values like these can quietly skew averages — check they're real before trusting ${m.name} summaries.`,
+          answer: `${m.name} has ${outs.length} outlier${outs.length === 1 ? "" : "s"} beyond 3 standard deviations${scope}. The most extreme is ${fmt(top.value, m)} (${top.z > 0 ? "+" : ""}${top.z.toFixed(1)}σ from the mean). Extreme values like these can quietly skew averages - check they're real before trusting ${m.name} summaries.`,
           chart: buildChart(view, profiles, { type: "histogram", x: m.name, y: [] }),
           method: `Z-score outlier scan of ${m.name} across ${rowsNote(view, table, filter)} (flagging |z| > 3).`,
         };
       }
       return {
         ok: true,
-        answer: `No values in ${m.name} fall beyond 3 standard deviations${scope} — the distribution looks clean of extreme outliers.`,
+        answer: `No values in ${m.name} fall beyond 3 standard deviations${scope} - the distribution looks clean of extreme outliers.`,
         method: `Z-score outlier scan of ${m.name} across ${rowsNote(view, table, filter)} (none with |z| > 3).`,
       };
     }
@@ -564,11 +564,11 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     return {
       ok: true,
       answer: `There are ${view.rowCount.toLocaleString()} records${filter ? scope : " in the dataset"}.`,
-      method: `Counted rows — ${rowsNote(view, table, filter)}.`,
+      method: `Counted rows - ${rowsNote(view, table, filter)}.`,
     };
   }
 
-  // 1b. Most-common / distribution of a CATEGORICAL column — e.g. "the most common reason for not buying".
+  // 1b. Most-common / distribution of a CATEGORICAL column - e.g. "the most common reason for not buying".
   // Explicit frequency phrasing always counts; the "which <category>" shortcut only counts when no
   // metric is involved (otherwise "which region has the highest revenue" is a ranking, handled below).
   const explicitFreq = /\b(most common|commonest|most frequent|most popular|main reason|top reason|biggest reason|usual|distribution|breakdown|how often|frequency)\b/.test(lower);
@@ -589,9 +589,9 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         const tail = second ? `, then "${second[0]}" (${Math.round((second[1] / total) * 100)}%)` : "";
         return {
           ok: true,
-          answer: `The most common ${col.name} is "${top[0]}" — ${top[1]} of ${total} (${Math.round((top[1] / total) * 100)}%)${tail}${scope}.`,
+          answer: `The most common ${col.name} is "${top[0]}" - ${top[1]} of ${total} (${Math.round((top[1] / total) * 100)}%)${tail}${scope}.`,
           chart: buildChart(view, profiles, { type: "bar", x: col.name, y: [], count: true }),
-          method: `Tallied how often each ${col.name} occurs across ${rowsNote(view, table, filter)} — ${counts.length} distinct values.`,
+          method: `Tallied how often each ${col.name} occurs across ${rowsNote(view, table, filter)} - ${counts.length} distinct values.`,
         };
       }
     }
@@ -599,7 +599,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
 
   // 2. Correlation / relationship.
   if (/correlat|relationship|related|associat|vs\.?|versus/.test(lower)) {
-    // "What's most correlated with revenue?" — one metric named → find its strongest (non-redundant) correlate.
+    // "What's most correlated with revenue?" - one metric named → find its strongest (non-redundant) correlate.
     if (mMetrics.length === 1 && metrics.length >= 2) {
       const a = mMetrics[0];
       let best: { col: ColumnProfile; r: number } | undefined;
@@ -613,7 +613,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
         const dir = best.r > 0 ? "positively" : "negatively";
         return {
           ok: true,
-          answer: `Among your numbers, ${a.name} is most ${strength} ${dir} related to ${best.col.name} (r = ${best.r.toFixed(2)})${scope}. ${best.r > 0 ? "They tend to rise together" : "As one rises, the other tends to fall"} — but that's association, not proof of cause.`,
+          answer: `Among your numbers, ${a.name} is most ${strength} ${dir} related to ${best.col.name} (r = ${best.r.toFixed(2)})${scope}. ${best.r > 0 ? "They tend to rise together" : "As one rises, the other tends to fall"} - but that's association, not proof of cause.`,
           chart: buildChart(view, profiles, { type: "scatter", x: a.name, y: [best.col.name] }),
           method: `Pearson correlation of ${a.name} against each other numeric column across ${rowsNote(view, table, filter)}; reported the strongest, excluding near-duplicate columns.`,
         };
@@ -667,7 +667,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     const metric = mMetrics[0] ?? metrics[0];
     // Only answer when the question actually referenced a column. With neither the metric nor the
     // dimension mentioned, defaulting both is a guess dressed up as an answer ("most money we saved"
-    // once came back as usage-by-region) — fall through so the AI/open-ended path handles it instead.
+    // once came back as usage-by-region) - fall through so the AI/open-ended path handles it instead.
     if (dim && metric && (mMetrics.length > 0 || mDims.length > 0)) {
       const wantLowest = SUPER_LO.test(lower);
       const agg = chooseAgg(metric, lower);
@@ -692,7 +692,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
     const metric = mMetrics[0] ?? metrics[0];
     // Same no-guessing rule as ranking: a superlative ("most/least …") aimed at words that resolve to
     // NO column ("most impressive thing") must not silently become max-of-the-first-metric. Explicit
-    // aggregations ("total", "average") keep the headline-metric default — that's a useful shorthand.
+    // aggregations ("total", "average") keep the headline-metric default - that's a useful shorthand.
     const guessing = (aggMatch.agg === "max" || aggMatch.agg === "min") && mMetrics.length === 0 && subjectNouns.length > 0;
     if (metric && !guessing) {
       const wantsGroup = /\b(by|per|across|for each|grouped)\b/.test(lower);
@@ -733,7 +733,7 @@ export function answerQuestion(question: string, table: Table, profiles: ColumnP
       'I couldn\'t match that to your data. Try: "total ' +
       (metrics[0]?.name ?? "value") +
       '", "average ' + (metrics[0]?.name ?? "value") + " by " + (dims[0]?.name ?? "category") +
-      '", "what actions should I take?" — or ask "what can you do?" for the full list.',
+      '", "what actions should I take?" - or ask "what can you do?" for the full list.',
   };
 }
 
@@ -763,7 +763,7 @@ export function applyFilter(table: Table, filter: DataFilter): Table {
   return { ...table, rows, rowCount: rows.length };
 }
 
-// Words that can coincide with a category value but are really question grammar — never treat as a filter value.
+// Words that can coincide with a category value but are really question grammar - never treat as a filter value.
 const FILTER_STOP = new Set([
   "total", "sum", "average", "avg", "mean", "median", "count", "number", "max", "min", "maximum", "minimum",
   "highest", "lowest", "top", "bottom", "most", "least", "data", "value", "values", "record", "records", "row",
@@ -776,7 +776,7 @@ function coerceNum(v: unknown): number {
   return parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, ""));
 }
 
-/** Exact count of distinct non-empty values of a column (uncapped — this is the answer, not a sample). */
+/** Exact count of distinct non-empty values of a column (uncapped - this is the answer, not a sample). */
 function distinctCount(table: Table, col: string): number {
   const seen = new Set<string>();
   for (const r of table.rows) {
@@ -976,7 +976,7 @@ function answerComparison(c: Comparison, table: Table, profiles: ColumnProfile[]
 
   const chart = buildComparisonChart(c.metric.name, c.agg, [[c.left.label, l], [c.right.label, r]]);
   const head = `${cap(aggLabel)} ${c.metric.name}: ${c.left.label} ${fmt(l, c.metric)} vs ${c.right.label} ${fmt(r, c.metric)}.`;
-  const method = `Computed the ${aggLabel} ${c.metric.name} for each ${c.kind === "time" ? "period" : c.column} slice — "${c.left.label}" and "${c.right.label}" — then took the difference and ratio.`;
+  const method = `Computed the ${aggLabel} ${c.metric.name} for each ${c.kind === "time" ? "period" : c.column} slice - "${c.left.label}" and "${c.right.label}" - then took the difference and ratio.`;
 
   if (l === r) return { ok: true, answer: `${head} They're equal.`, chart, method };
 
@@ -997,9 +997,9 @@ function answerComparison(c: Comparison, table: Table, profiles: ColumnProfile[]
 
 // ── LLM query plan ───────────────────────────────────────────────────────────
 // For questions the deterministic engine can't parse, the LLM acts as a query PLANNER: given only the
-// schema (column names/roles/types + small samples — never raw rows), it returns a structured plan. We
+// schema (column names/roles/types + small samples - never raw rows), it returns a structured plan. We
 // validate that plan against the real columns and execute it LOCALLY here, so the numbers are always
-// exact and grounded — the model chooses the method, this code computes the answer. Privacy intact.
+// exact and grounded - the model chooses the method, this code computes the answer. Privacy intact.
 
 export interface PlanFilter {
   column: string;
@@ -1054,7 +1054,7 @@ export function validatePlan(raw: unknown, profiles: ColumnProfile[]): QueryPlan
 
 const PLAN_INTENTS = new Set(["metric", "groupRank", "groupAggregate", "aggregate", "compare", "trend", "correlation", "count", "distribution", "describe"]);
 
-/** Why a raw LLM plan can't be used as-is — a human-readable reason fed back to the model for ONE repair
+/** Why a raw LLM plan can't be used as-is - a human-readable reason fed back to the model for ONE repair
  *  attempt (W3.8). Returns null when the plan's intent is supported and every column it names exists.
  *  Pure + exported so it's unit-testable; the actual repair round-trip lives in planQuestion. */
 export function planRejectionReason(raw: unknown, profiles: ColumnProfile[]): string | null {
@@ -1124,7 +1124,7 @@ export function executePlan(plan: QueryPlan, table: Table, profiles: ColumnProfi
 
   switch (plan.intent) {
     case "count":
-      return { ok: true, answer: `There are ${view.rowCount.toLocaleString()} records${filter ? scope : " in the dataset"}.`, method: `Counted rows — ${rowsNote(view, table, filter)}.` };
+      return { ok: true, answer: `There are ${view.rowCount.toLocaleString()} records${filter ? scope : " in the dataset"}.`, method: `Counted rows - ${rowsNote(view, table, filter)}.` };
     case "metric": {
       if (!metric) break;
       const vals = numericColumn(view, metric.name);
@@ -1162,7 +1162,7 @@ export function executePlan(plan: QueryPlan, table: Table, profiles: ColumnProfi
       const t1 = counts[1];
       return {
         ok: true,
-        answer: `The most common ${dim.name} is "${t0[0]}" — ${t0[1]} of ${total} (${Math.round((t0[1] / total) * 100)}%)${t1 ? `, then "${t1[0]}" (${Math.round((t1[1] / total) * 100)}%)` : ""}${scope}.`,
+        answer: `The most common ${dim.name} is "${t0[0]}" - ${t0[1]} of ${total} (${Math.round((t0[1] / total) * 100)}%)${t1 ? `, then "${t1[0]}" (${Math.round((t1[1] / total) * 100)}%)` : ""}${scope}.`,
         chart: buildChart(view, profiles, { type: "bar", x: dim.name, y: [], count: true }),
         method: `Tallied ${dim.name} across ${rowsNote(view, table, filter)} (${counts.length} distinct values).`,
       };
@@ -1219,7 +1219,7 @@ const CONTEXT_KEY = "quantia:context";
 
 /** Whether the optional server-side LLM narrator is switched on (the key itself stays server-side). */
 function llmOn(): boolean {
-  // A user's own key (BYOK) enables the AI path regardless of the server flag — same rule as the
+  // A user's own key (BYOK) enables the AI path regardless of the server flag - same rule as the
   // dashboard narrator. query.ts runs on the main thread, so localStorage (activeLlmConfig) is available.
   if (activeLlmConfig()) return true;
   return typeof process !== "undefined" && process.env.NEXT_PUBLIC_LLM_ENABLED === "1";
@@ -1247,7 +1247,7 @@ function groupStats(table: Table, dim: string, metric: string) {
   table.rows.forEach((r, i) => {
     const v = vals[i];
     if (!Number.isFinite(v)) return;
-    const k = String(r[dim] ?? "—");
+    const k = String(r[dim] ?? "-");
     const e = m.get(k) ?? { sum: 0, count: 0 };
     e.sum += v;
     e.count++;
@@ -1396,7 +1396,7 @@ export function buildFocalFacts(question: string, table: Table, profiles: Column
       total: round2(grandTotal),
       topGroupSharePct: grandTotal && stats[0] ? round2((stats[0].sum / grandTotal) * 100) : null,
       top3SharePct: grandTotal ? round2((top3 / grandTotal) * 100) : null,
-      // Each group with BOTH its total and its average (+ row count) — so questions about per-unit
+      // Each group with BOTH its total and its average (+ row count) - so questions about per-unit
       // value ("highest average order", "most efficient channel") are answerable, not just totals.
       topGroups: stats.slice(0, 8).map((g) => ({
         key: g.key,
@@ -1411,7 +1411,7 @@ export function buildFocalFacts(question: string, table: Table, profiles: Column
   }
 
   // Multi-facet breakdowns: pre-compute the focal metric across up to two relevant dimensions, so the
-  // model can reason over several facets in a single grounded answer — a lightweight stand-in for
+  // model can reason over several facets in a single grounded answer - a lightweight stand-in for
   // multi-step tool use, with no extra round-trips and no raw rows ever leaving the page.
   if (metric) {
     const dimsToBreak = (mDims.length ? mDims : dims).slice(0, 2);
@@ -1474,25 +1474,25 @@ export function buildFocalFacts(question: string, table: Table, profiles: Column
 /**
  * Assemble the full aggregates-only evidence payload: dataset metadata (+ the user's goal), the
  * deterministic one-liner, question-specific facts, and a whole-dataset statistical overview. No raw
- * rows ever leave — this mirrors the /api/insights privacy boundary.
+ * rows ever leave - this mirrors the /api/insights privacy boundary.
  */
 /** The deep, pre-computed findings (from the full pipeline) handed to the narrator so "why / what
  *  should I do / what's driving X" questions are answered from the regression, ANOVA, trend and action
- *  analysis — not just raw aggregates. This is the multi-step reasoning, done up front. */
+ *  analysis - not just raw aggregates. This is the multi-step reasoning, done up front. */
 export interface AskAnalysis {
   actions?: { title: string; impact: string; detail?: string }[];
   drivers?: { target: string; r2Pct?: number | null; factors: { name: string; beta: number; significant: boolean }[] };
   trends?: { metric: string; changePct: number | null; direction?: string }[];
   /** The AI conclusions' one-line executive read, when available. */
   bottomLine?: string;
-  /** Key findings (AI conclusions, falling back to the dashboard insights) — lets the box answer
+  /** Key findings (AI conclusions, falling back to the dashboard insights) - lets the box answer
    *  open/advisory questions ("what should I do?", "summarize this") like the rest of the app would. */
   findings?: string[];
 }
 
 /** Advisory questions ("what should I do?", "give me recommendations") answered locally from the
  *  dashboard's ranked action plan + findings. This is the grounded base for such questions: with the LLM
- *  on it becomes the authoritative input the model narrates from; with it off it IS the answer — either
+ *  on it becomes the authoritative input the model narrates from; with it off it IS the answer - either
  *  way the box no longer shrugs at open questions. Returns undefined for anything non-advisory. */
 const ADVISORY_RE =
   /(what\s+(should|can|do|would)\s+(i|we|you)\s+do|what\s+actions?|recommended?\s+actions?|recommendations?|next\s+steps?|how\s+(do|can)\s+(i|we)\s+improve|action\s+plan|advi[cs]e|key\s+takeaways?|main\s+conclusions?|summar(y|ize|ise))/i;
@@ -1508,7 +1508,7 @@ export function advisoryAnswer(question: string, analysis?: AskAnalysis): QueryA
     parts.push(
       "Here's what I'd do, in priority order:\n" +
         actions
-          .map((a, i) => `${i + 1}. ${a.title}${a.detail ? ` — ${a.detail}` : ""}${a.impact ? ` (${a.impact} impact)` : ""}`)
+          .map((a, i) => `${i + 1}. ${a.title}${a.detail ? ` - ${a.detail}` : ""}${a.impact ? ` (${a.impact} impact)` : ""}`)
           .join("\n")
     );
   } else if (findings.length) {
@@ -1518,16 +1518,16 @@ export function advisoryAnswer(question: string, analysis?: AskAnalysis): QueryA
     ok: true,
     answer: parts.join("\n\n"),
     method:
-      "From the dashboard's recommended-actions plan and key findings — each derived from the statistics computed on your data (not generic advice), ranked by impact.",
+      "From the dashboard's recommended-actions plan and key findings - each derived from the statistics computed on your data (not generic advice), ranked by impact.",
   };
 }
 
 // ── Meta questions ("what can you do?", greetings) ────────────────────────────
-// Answered locally and instantly, like any chat assistant would — never the "couldn't map that to
+// Answered locally and instantly, like any chat assistant would - never the "couldn't map that to
 // your columns" shrug. The capabilities answer is grounded in the dataset's real column names.
 
 const GREETING_RE = /^\s*(hi+|hello|hey+|yo|howdy|good\s+(morning|afternoon|evening)|thanks?(\s+you)?|thank\s+you|thx|ty)[\s!.,?]*$/i;
-// Note: must NOT match data questions like "what is this dataset about?" — only questions about the
+// Note: must NOT match data questions like "what is this dataset about?" - only questions about the
 // assistant itself ("you/u" subjects, help, capabilities).
 const CAPABILITY_RE =
   /(what\s+(can|do)\s+(you|u)\s+do|what\s+can\s+i\s+ask|what\s+(are\s+)?(you|u)\s+able\s+to\s+do|what\s+are\s+(you|u)\s+capable|how\s+(do|does)\s+(you|this|it)\s+work|^\s*help\s*\??\s*$|help\s+me|who\s+are\s+(you|u)\b|what\s+are\s+(you|u)\??\s*$|your\s+capabilit|what\s+questions?\s+can|what\s+is\s+this\s+(tool|box|chat|assistant))/i;
@@ -1543,23 +1543,23 @@ export function metaAnswer(question: string, table: Table, profiles: ColumnProfi
   if (GREETING_RE.test(question)) {
     return {
       ok: true,
-      answer: `Hi! I'm your data analyst for "${table.name}". Ask me anything about it — try "average ${m} by ${d}" or "what actions should I take?".`,
+      answer: `Hi! I'm your data analyst for "${table.name}". Ask me anything about it - try "average ${m} by ${d}" or "what actions should I take?".`,
     };
   }
   if (!CAPABILITY_RE.test(question)) return undefined;
 
   const lines = [
-    `I'm an AI data analyst for "${table.name}" (${table.rowCount.toLocaleString()} rows). Ask in plain English and I compute the answer from your actual data — every figure comes with a "How I computed this" note. I can:`,
-    `• Totals, averages & medians — "total ${m}", "average ${m} by ${d}"`,
-    `• Rankings — "which ${d} has the highest ${m}"`,
-    `• Comparisons — "A vs B ${m}", and whether a gap is statistically real`,
-    ...(m2 ? [`• Relationships — "correlation between ${m} and ${m2}"`] : []),
-    ...(time ? [`• Time — "how did ${m} change over time"`] : []),
-    `• Shares & spread — "what % of ${m} comes from …", "90th percentile of ${m}"`,
+    `I'm an AI data analyst for "${table.name}" (${table.rowCount.toLocaleString()} rows). Ask in plain English and I compute the answer from your actual data - every figure comes with a "How I computed this" note. I can:`,
+    `• Totals, averages & medians - "total ${m}", "average ${m} by ${d}"`,
+    `• Rankings - "which ${d} has the highest ${m}"`,
+    `• Comparisons - "A vs B ${m}", and whether a gap is statistically real`,
+    ...(m2 ? [`• Relationships - "correlation between ${m} and ${m2}"`] : []),
+    ...(time ? [`• Time - "how did ${m} change over time"`] : []),
+    `• Shares & spread - "what % of ${m} comes from …", "90th percentile of ${m}"`,
     ...((analysis?.actions?.length ?? 0) > 0 || (analysis?.findings?.length ?? 0) > 0
-      ? [`• Advice — "what actions should I take?", "summarize the key takeaways"`]
+      ? [`• Advice - "what actions should I take?", "summarize the key takeaways"`]
       : []),
-    `Follow-ups work too — I keep the thread's context.`,
+    `Follow-ups work too - I keep the thread's context.`,
   ];
   return { ok: true, answer: lines.join("\n") };
 }
@@ -1600,7 +1600,7 @@ function buildEvidence(question: string, table: Table, profiles: ColumnProfile[]
 // ── Chart selection for AI answers ───────────────────────────────────────────
 // Specific questions already attach a chart from the deterministic engine. Open-ended (and streamed)
 // AI answers didn't get one. Here we give every AI answer a relevant chart: the LLM may emit a
-// CONSTRAINED chart request (validated against real columns — it only chooses a type + columns, never
+// CONSTRAINED chart request (validated against real columns - it only chooses a type + columns, never
 // raw ECharts), and when it doesn't (e.g. the streaming path carries prose only) we derive one locally
 // from the question via the same NL→chart parser the chart builder uses. Privacy is untouched.
 
@@ -1638,7 +1638,7 @@ function buildSuggestedChart(question: string, table: Table, profiles: ColumnPro
  * heuristic answer when the LLM is off or fails.
  */
 /** Privacy-safe schema brief for the LLM planner: column metadata + a few sample category values and
- *  numeric ranges — never raw rows. */
+ *  numeric ranges - never raw rows. */
 function buildSchemaBrief(table: Table, profiles: ColumnProfile[], domain?: string) {
   return {
     rowCount: table.rowCount,
@@ -1694,7 +1694,7 @@ async function planQuestion(question: string, table: Table, profiles: ColumnProf
 }
 
 // In-memory cache of answered questions (per dataset), so asking the same thing twice is instant and
-// doesn't spend another LLM call — cheaper, and far less likely to hit the provider's rate limit.
+// doesn't spend another LLM call - cheaper, and far less likely to hit the provider's rate limit.
 const answerCache = new Map<string, RichAnswer>();
 const ANSWER_CACHE_MAX = 80;
 const cacheKey = (question: string, table: Table): string => `${table.name}|${table.rowCount}|${question.trim().toLowerCase().replace(/\s+/g, " ")}`;
@@ -1713,7 +1713,7 @@ export async function answerQuestionAI(
   analysis?: AskAnalysis
 ): Promise<RichAnswer> {
   // Self-sufficient currency: a history-loaded analysis may not have run through analyze-client, so detect
-  // here too — so a "$" / "€" answer matches the dashboard regardless of how we got to this dataset.
+  // here too - so a "$" / "€" answer matches the dashboard regardless of how we got to this dataset.
   setActiveCurrency(detectCurrency(table, profiles));
   // Cache hits only apply to fresh questions (no prior conversation), so follow-ups still get context.
   const key = cacheKey(question, table);
@@ -1737,14 +1737,14 @@ async function runAnswerAI(
   onToken?: (delta: string) => void,
   analysis?: AskAnalysis
 ): Promise<RichAnswer> {
-  // Meta questions ("what can you do?", "hi") get an instant local answer — no network, no LLM,
+  // Meta questions ("what can you do?", "hi") get an instant local answer - no network, no LLM,
   // and never the "couldn't map that" failure.
   const meta = metaAnswer(question, table, profiles, analysis);
   if (meta) return { ...meta, source: "heuristic", followups: localFollowups(profiles) };
 
   let base = answerQuestion(question, table, profiles);
 
-  // Advisory / open questions ("what should I do?", "summarize the takeaways") aren't computations —
+  // Advisory / open questions ("what should I do?", "summarize the takeaways") aren't computations -
   // answer them from the dashboard's ranked actions + findings. With the LLM on, this becomes the
   // authoritative grounded input the model narrates from; with it off, it's the answer itself.
   if (!base.ok) {
@@ -1798,7 +1798,7 @@ async function runAnswerAI(
         }
       }
     } catch {
-      // streaming failed — fall through to the non-streaming JSON call below
+      // streaming failed - fall through to the non-streaming JSON call below
     }
   }
 
@@ -1834,7 +1834,7 @@ async function runAnswerAI(
 
 /** Verify the LLM answer's numbers against the evidence it was given (W3.6). Returns undefined when the
  *  answer states no salient numbers (nothing to vouch for), so the UI only shows a signal when it means
- *  something. Never throws — grounding is a trust nicety, not a correctness gate. */
+ *  something. Never throws - grounding is a trust nicety, not a correctness gate. */
 function checkGrounding(answer: string, evidence: unknown): GroundingResult | undefined {
   try {
     const g = verifyAnswerGrounding(answer, evidence);

@@ -34,7 +34,7 @@ import type { PyConclusions } from "@/lib/py-engine";
 // only appear when the raw `table` is available.
 //
 // To keep ~20 findings from overwhelming the reader, the body is organised into tabs (Overview first).
-// All panels stay mounted — hidden ones use the `hidden` attribute — so (a) interactive state survives
+// All panels stay mounted - hidden ones use the `hidden` attribute - so (a) interactive state survives
 // tab switches and (b) the PNG/PDF export can reveal every panel for a complete report. Switching a tab
 // dispatches a window resize so ECharts canvases that first laid out inside a hidden panel size up.
 
@@ -88,7 +88,7 @@ export function DashboardView({
 
   return (
     <div className="space-y-6" ref={innerRef}>
-      {/* Persistent context — shown on every tab and kept in exports. */}
+      {/* Persistent context - shown on every tab and kept in exports. */}
       <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <p className="text-sm font-semibold text-slate-100">{spec.datasetName}</p>
@@ -106,7 +106,7 @@ export function DashboardView({
 
       <CaveatStrip caveats={spec.caveats} smallSample={spec.smallSample} />
 
-      {/* Tab bar — sticky, and excluded from the static export (the report shows all panels instead). */}
+      {/* Tab bar - sticky, and excluded from the static export (the report shows all panels instead). */}
       <nav
         data-export-exclude
         aria-label="Dashboard sections"
@@ -132,12 +132,12 @@ export function DashboardView({
 
       {/* ── Overview ───────────────────────────────────────────────────────── */}
       <Panel id="overview" active={active}>
-        {/* AI conclusions (Groq reads the Python-computed KPIs + charts) — the decision-first read at the
+        {/* AI conclusions (Groq reads the Python-computed KPIs + charts) - the decision-first read at the
             top of the Overview tab, and only there. Replaces the old auto-generated Executive summary. */}
         {conclusions && <PyConclusionsCard c={conclusions} />}
 
         {spec.actions && spec.actions.length > 0 && (
-          <Section title="Your action plan" subtitle="What to do next — ranked by impact, grounded in the numbers.">
+          <Section title="Your action plan" subtitle="What to do next - ranked by impact, grounded in the numbers.">
             <ActionPlanCard actions={spec.actions} />
           </Section>
         )}
@@ -179,7 +179,7 @@ export function DashboardView({
       {has.insights && (
         <Panel id="insights" active={active}>
           {spec.insights.length > 0 && (
-            <Section title="What the data is telling you" subtitle="The most important, statistically-backed findings — and what to do about them." badge={aiBadge}>
+            <Section title="What the data is telling you" subtitle="The most important, statistically-backed findings - and what to do about them." badge={aiBadge}>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {spec.insights.map((ins, i) => (
                   <InsightCard key={ins.id} insight={ins} index={i} />
@@ -195,25 +195,25 @@ export function DashboardView({
           )}
 
           {spec.segmentation && spec.segmentation.segments.length > 1 && (
-            <Section title="Natural segments" subtitle="Groups the data falls into on its own — and what defines each.">
+            <Section title="Natural segments" subtitle="Groups the data falls into on its own - and what defines each.">
               <SegmentCard segmentation={spec.segmentation} profiles={spec.profiles} table={table} />
             </Section>
           )}
 
           {spec.concentration && spec.concentration.length > 0 && (
-            <Section title="The 80–20" subtitle="How concentrated each measure is — whether a vital few categories carry the whole number (a risk worth knowing).">
+            <Section title="The 80–20" subtitle="How concentrated each measure is - whether a vital few categories carry the whole number (a risk worth knowing).">
               <ConcentrationCard concentration={spec.concentration} profiles={spec.profiles} table={table} />
             </Section>
           )}
 
           {spec.rfm && spec.rfm.segments.length > 0 && (
-            <Section title="Customer value (RFM)" subtitle="Customers grouped by how recently, how often, and how much they buy — your Champions through to those slipping away.">
+            <Section title="Customer value (RFM)" subtitle="Customers grouped by how recently, how often, and how much they buy - your Champions through to those slipping away.">
               <RfmCard rfm={spec.rfm} table={table} profiles={spec.profiles} />
             </Section>
           )}
 
           {spec.anomalies && spec.anomalies.length > 0 && (
-            <Section title="Anomalies &amp; outliers" subtitle="Unusual values that can skew averages — flagged so you can verify or exclude them.">
+            <Section title="Anomalies &amp; outliers" subtitle="Unusual values that can skew averages - flagged so you can verify or exclude them.">
               <AnomalyCard anomalies={spec.anomalies} profiles={spec.profiles} />
             </Section>
           )}
@@ -246,19 +246,19 @@ export function DashboardView({
           )}
 
           {spec.drivers?.model && spec.drivers.model.predictors.length > 0 && (
-            <Section title="Scenario simulator" subtitle="Drag the factors to project the outcome, or set a target and see which levers reach it — modelled, not guaranteed." exclude>
+            <Section title="Scenario simulator" subtitle="Drag the factors to project the outcome, or set a target and see which levers reach it - modelled, not guaranteed." exclude>
               <ScenarioCard drivers={spec.drivers} profiles={spec.profiles} />
             </Section>
           )}
 
           {spec.cohorts && spec.cohorts.cohorts.length > 1 && (
-            <Section title="Cohort retention" subtitle="How well each cohort sticks around over time — the heartbeat of recurring-revenue data.">
+            <Section title="Cohort retention" subtitle="How well each cohort sticks around over time - the heartbeat of recurring-revenue data.">
               <CohortCard cohorts={spec.cohorts} />
             </Section>
           )}
 
           {spec.relationships && spec.relationships.columns.length >= 2 && (
-            <Section title="How your numbers relate" subtitle="A correlation heatmap of every numeric pair — click any cell to drill into the scatter, strength, and significance.">
+            <Section title="How your numbers relate" subtitle="A correlation heatmap of every numeric pair - click any cell to drill into the scatter, strength, and significance.">
               <RelationshipCard relationships={spec.relationships} table={table} profiles={spec.profiles} />
             </Section>
           )}
@@ -278,7 +278,7 @@ export function DashboardView({
       {/* ── Data quality ───────────────────────────────────────────────────── */}
       <Panel id="quality" active={active}>
         {spec.quality && (
-          <Section title="Data quality" subtitle="An at-a-glance health check — what's solid and what to fix before you trust the numbers.">
+          <Section title="Data quality" subtitle="An at-a-glance health check - what's solid and what to fix before you trust the numbers.">
             <QualityCard quality={spec.quality} />
           </Section>
         )}
@@ -287,7 +287,7 @@ export function DashboardView({
           <CleaningReport report={spec.cleaning} />
         </Section>
 
-        <Section title="How this was computed" subtitle="Methods, assumptions, and limitations — plus a reproducible recipe.">
+        <Section title="How this was computed" subtitle="Methods, assumptions, and limitations - plus a reproducible recipe.">
           <MethodologyCard spec={spec} />
         </Section>
       </Panel>
@@ -295,7 +295,7 @@ export function DashboardView({
       {/* ── Explore (interactive; only with the raw table) ─────────────────── */}
       {has.explore && table && (
         <Panel id="explore" active={active}>
-          <Section title="Ask your data" subtitle={`${domainFocus(spec.domain.domain)} Ask in plain English — grounded in your real numbers.`} exclude>
+          <Section title="Ask your data" subtitle={`${domainFocus(spec.domain.domain)} Ask in plain English - grounded in your real numbers.`} exclude>
             <QueryBox
               table={table}
               profiles={spec.profiles}
@@ -321,7 +321,7 @@ export function DashboardView({
             />
           </Section>
 
-          <Section title="Build your own" subtitle="Ask for any chart you want — in plain English or by picking columns." exclude>
+          <Section title="Build your own" subtitle="Ask for any chart you want - in plain English or by picking columns." exclude>
             <ChartBuilder table={table} profiles={spec.profiles} />
           </Section>
 
@@ -336,7 +336,7 @@ export function DashboardView({
 
 /**
  * A tab panel. Always mounted and laid out (preserves interactive state, and lets ECharts initialise at
- * the correct width even while off-screen) — inactive panels are clipped to zero height and marked
+ * the correct width even while off-screen) - inactive panels are clipped to zero height and marked
  * `inert` rather than `display:none`, which would force charts to 0×0. The export step un-clips them so
  * the static report includes every section.
  */

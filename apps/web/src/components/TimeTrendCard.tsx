@@ -4,10 +4,10 @@ import { currencySymbol } from "@/lib/currency";
 
 // Period-over-period card: for each top metric, the latest period's value, its change vs the previous
 // period (and vs a year ago when available), a sparkline with a moving-average overlay, and the
-// best/worst periods. Renders from precomputed analysis — works on the read-only shared view too.
+// best/worst periods. Renders from precomputed analysis - works on the read-only shared view too.
 
 function fmt(n: number, p?: ColumnProfile): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   if (p?.type === "currency") return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   const abs = Math.abs(n);
   if (abs >= 1e6) return (n / 1e6).toFixed(1) + "M";
@@ -44,7 +44,7 @@ function Sparkline({ values, ma }: { values: number[]; ma: (number | null)[] }) 
 }
 
 // A one-line plain-English takeaway that ties the periods together: the overall move across the whole
-// series (start → latest) and whether the latest reading sits above or below the period average — the
+// series (start → latest) and whether the latest reading sits above or below the period average - the
 // "so what" the deltas and sparkline only imply.
 function trendRead(a: TimeSeriesAnalysis, p: ColumnProfile | undefined, noun: string): string {
   const vals = a.periods.map((q) => q.value).filter((v) => Number.isFinite(v));

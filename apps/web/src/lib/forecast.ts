@@ -1,9 +1,9 @@
 // Time-series forecasting. Two methods, fully local and dependency-free:
-//   • Holt's linear trend (double exponential smoothing) — level + trend.
-//   • Holt-Winters (triple exponential smoothing, additive) — level + trend + a repeating seasonal
+//   • Holt's linear trend (double exponential smoothing) - level + trend.
+//   • Holt-Winters (triple exponential smoothing, additive) - level + trend + a repeating seasonal
 //     term, used when the series has a detectable season so the projection keeps the cyclical shape
 //     instead of flattening it into a straight drift.
-// Smoothing params are fit by a small grid search minimizing in-sample squared error — good enough
+// Smoothing params are fit by a small grid search minimizing in-sample squared error - good enough
 // for the short horizons we project.
 
 export interface Forecast {
@@ -13,22 +13,22 @@ export interface Forecast {
   forecast: number[];
   alpha: number;
   beta: number;
-  /** seasonal smoothing parameter — only set for Holt-Winters forecasts. */
+  /** seasonal smoothing parameter - only set for Holt-Winters forecasts. */
   gamma?: number;
-  /** detected season length (in observations) — only set for Holt-Winters forecasts. */
+  /** detected season length (in observations) - only set for Holt-Winters forecasts. */
   period?: number;
   /** true when a seasonal model was used (the projection follows the cycle, not just a trend). */
   seasonal?: boolean;
   /** last observed value and the final projected value, for convenience. */
   lastValue: number;
   projected: number;
-  /** standard deviation of the in-sample one-step residuals — the basis for prediction intervals. */
+  /** standard deviation of the in-sample one-step residuals - the basis for prediction intervals. */
   residualStd: number;
 }
 
 /**
  * Prediction interval around the point forecast. Uncertainty grows with the horizon (√h), the standard
- * widening for a random-walk-with-drift error process — honest about how much less we know further out.
+ * widening for a random-walk-with-drift error process - honest about how much less we know further out.
  */
 export function forecastBand(fc: Forecast, z = 1.96): { lower: number[]; upper: number[] } {
   return {
@@ -99,7 +99,7 @@ export function holtForecast(series: number[], horizon: number): Forecast | null
 export function detectPeriod(series: number[], threshold = 0.3): number | null {
   const raw = series.filter(Number.isFinite);
   if (raw.length < 9) return null;
-  // First-difference to strip the trend — a sloped line autocorrelates at every lag, which would
+  // First-difference to strip the trend - a sloped line autocorrelates at every lag, which would
   // masquerade as seasonality. Differencing leaves a genuine seasonal cycle intact at the same period.
   const x: number[] = [];
   for (let t = 1; t < raw.length; t++) x.push(raw[t] - raw[t - 1]);
@@ -108,7 +108,7 @@ export function detectPeriod(series: number[], threshold = 0.3): number | null {
   const mean = x.reduce((s, v) => s + v, 0) / n;
   const dev = x.map((v) => v - mean);
   const denom = dev.reduce((s, v) => s + v * v, 0);
-  if (denom === 0) return null; // constant slope — pure trend, no season
+  if (denom === 0) return null; // constant slope - pure trend, no season
 
   const maxLag = Math.min(Math.floor(n / 2), 366);
   const acf: number[] = [0]; // acf[0] unused

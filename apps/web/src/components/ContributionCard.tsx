@@ -5,10 +5,10 @@ import { currencySymbol } from "@/lib/currency";
 // "What drove the change" card: the primary metric's move from the previous period to the latest,
 // broken down by a dimension into per-segment contributions that sum to the total. A waterfall-style
 // bar per segment (green = pushed the total up, rose = dragged it down) plus the mix-shift (share
-// gained/lost). Renders from precomputed analysis — works on the read-only shared view too.
+// gained/lost). Renders from precomputed analysis - works on the read-only shared view too.
 
 function fmt(n: number, p?: ColumnProfile): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   if (p?.type === "currency") return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   const abs = Math.abs(n);
   if (abs >= 1e6) return (n / 1e6).toFixed(1) + "M";
@@ -78,7 +78,7 @@ export function ContributionCard({ analysis, profiles }: { analysis: Contributio
               <p className="col-span-2 -mt-0.5 text-[10px] text-slate-500">
                 {/* Show the share-of-change only when it's a sensible figure. Offsetting segments make
                     delta/totalDelta exceed 100% legitimately (e.g. 120%), but a near-flat total can blow
-                    it up to absurd values — past ~300% fall back to the plain status word. */}
+                    it up to absurd values - past ~300% fall back to the plain status word. */}
                 {Math.abs(s.contributionPct) >= 0.01 && Math.abs(s.contributionPct) <= 3
                   ? `${(s.contributionPct * 100).toFixed(0)}% of the change`
                   : statusLabel[s.status]}

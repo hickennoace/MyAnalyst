@@ -2,10 +2,10 @@ import type { CleaningReport, ColumnProfile, DataQuality, QualityCheck, Table } 
 import { numericColumn } from "./profile";
 import { zOutliers } from "./stats";
 
-// Data-quality scorecard: a single 0–100 health score from five weighted, plain-language checks —
+// Data-quality scorecard: a single 0–100 health score from five weighted, plain-language checks -
 // completeness, uniqueness, informative columns, value consistency, and outlier levels. It reuses the
 // cleaning report (already computed) plus the column profiles, so it's cheap. Each failing check carries
-// a concrete fix. Pure function over metadata/aggregates — safe to run in the analysis Web Worker.
+// a concrete fix. Pure function over metadata/aggregates - safe to run in the analysis Web Worker.
 
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
 const statusOf = (score: number): QualityCheck["status"] => (score >= 0.85 ? "good" : score >= 0.6 ? "warn" : "bad");
@@ -14,7 +14,7 @@ export function computeDataQuality(table: Table, profiles: ColumnProfile[], clea
   const cols = profiles.length || 1;
   const rows = table.rowCount || 1;
 
-  // A. Completeness — average fill rate across columns.
+  // A. Completeness - average fill rate across columns.
   const avgFill = profiles.reduce((s, p) => s + (p.fillRate ?? 0), 0) / cols;
   const sparse = profiles.filter((p) => (p.fillRate ?? 1) < 0.9).sort((a, b) => a.fillRate - b.fillRate);
   const completeness: QualityCheck = {
@@ -24,12 +24,12 @@ export function computeDataQuality(table: Table, profiles: ColumnProfile[], clea
     weight: 0.3,
     status: statusOf(avgFill),
     detail: sparse.length
-      ? `${sparse.length} column${sparse.length > 1 ? "s" : ""} below 90% filled — lowest "${sparse[0].name}" at ${Math.round(sparse[0].fillRate * 100)}%.`
+      ? `${sparse.length} column${sparse.length > 1 ? "s" : ""} below 90% filled - lowest "${sparse[0].name}" at ${Math.round(sparse[0].fillRate * 100)}%.`
       : "Every column is almost fully populated.",
     fix: sparse.length ? `Fill or drop the gaps in ${sparse.slice(0, 3).map((s) => `"${s.name}"`).join(", ")}.` : undefined,
   };
 
-  // B. Uniqueness — how many duplicate rows the cleaner had to remove.
+  // B. Uniqueness - how many duplicate rows the cleaner had to remove.
   const before = cleaning.rowsBefore || rows;
   const dupRate = before ? cleaning.duplicatesRemoved / before : 0;
   const dupScore = clamp01(1 - dupRate);
@@ -46,7 +46,7 @@ export function computeDataQuality(table: Table, profiles: ColumnProfile[], clea
     fix: cleaning.duplicatesRemoved > 0 ? "Check the source for repeated exports or a missing unique key." : undefined,
   };
 
-  // C. Informative columns — constant/zero-variance columns carry no signal.
+  // C. Informative columns - constant/zero-variance columns carry no signal.
   const constant = profiles.filter((p) => p.distinctCount <= 1);
   const infoScore = clamp01(1 - constant.length / cols);
   const informative: QualityCheck = {
@@ -58,10 +58,10 @@ export function computeDataQuality(table: Table, profiles: ColumnProfile[], clea
     detail: constant.length
       ? `${constant.length} column${constant.length > 1 ? "s" : ""} hold a single value: ${constant.slice(0, 3).map((c) => `"${c.name}"`).join(", ")}.`
       : "Every column varies and carries information.",
-    fix: constant.length ? "Drop constant columns — they only add noise." : undefined,
+    fix: constant.length ? "Drop constant columns - they only add noise." : undefined,
   };
 
-  // D. Value consistency — how much reformatting the raw values needed (stray symbols, spacing, mixed formats).
+  // D. Value consistency - how much reformatting the raw values needed (stray symbols, spacing, mixed formats).
   const totalCells = rows * cols;
   const messy = cleaning.cellsNormalized + cleaning.cellsTrimmed;
   const messyRate = totalCells ? messy / totalCells : 0;
@@ -74,12 +74,12 @@ export function computeDataQuality(table: Table, profiles: ColumnProfile[], clea
     status: statusOf(consistencyScore),
     detail:
       messy > 0
-        ? `${messy.toLocaleString()} cell${messy > 1 ? "s" : ""} needed cleanup (stray symbols, spacing, mixed formats) — ${(messyRate * 100).toFixed(1)}% of the data.`
+        ? `${messy.toLocaleString()} cell${messy > 1 ? "s" : ""} needed cleanup (stray symbols, spacing, mixed formats) - ${(messyRate * 100).toFixed(1)}% of the data.`
         : "Values were already clean and consistently formatted.",
     fix: messyRate > 0.1 ? "Standardize formats at the source (one date format, no stray symbols or units in number cells)." : undefined,
   };
 
-  // E. Outlier levels — fraction of numeric values that are extreme (|z| > 3.5).
+  // E. Outlier levels - fraction of numeric values that are extreme (|z| > 3.5).
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   let outlierCount = 0;
   let numericCells = 0;
@@ -101,11 +101,11 @@ export function computeDataQuality(table: Table, profiles: ColumnProfile[], clea
     status: metrics.length ? statusOf(outlierScore) : "good",
     detail:
       outlierCount > 0
-        ? `${outlierCount.toLocaleString()} extreme value${outlierCount > 1 ? "s" : ""} (|z| > 3.5)${worst ? `, most in "${worst.col}"` : ""} — ${(outlierRate * 100).toFixed(2)}% of numbers.`
+        ? `${outlierCount.toLocaleString()} extreme value${outlierCount > 1 ? "s" : ""} (|z| > 3.5)${worst ? `, most in "${worst.col}"` : ""} - ${(outlierRate * 100).toFixed(2)}% of numbers.`
         : metrics.length
         ? "No extreme outliers in the numeric columns."
         : "No numeric columns to check.",
-    fix: outlierRate > 0.01 ? `Inspect the extremes${worst ? ` in "${worst.col}"` : ""} — data-entry errors, or genuine rare events?` : undefined,
+    fix: outlierRate > 0.01 ? `Inspect the extremes${worst ? ` in "${worst.col}"` : ""} - data-entry errors, or genuine rare events?` : undefined,
   };
 
   const checks = [completeness, uniqueness, informative, consistency, outliers];
@@ -115,8 +115,8 @@ export function computeDataQuality(table: Table, profiles: ColumnProfile[], clea
 
   const worstCheck = checks.filter((c) => c.status !== "good").sort((a, b) => a.score - b.score)[0];
   const summary = !worstCheck
-    ? `Excellent data quality — ${score}/100. Nothing to fix before trusting the analysis.`
-    : `${score >= 80 ? "Good" : score >= 60 ? "Fair" : "Weak"} data quality — ${score}/100. Biggest issue: ${worstCheck.label.toLowerCase()} — ${worstCheck.detail}`;
+    ? `Excellent data quality - ${score}/100. Nothing to fix before trusting the analysis.`
+    : `${score >= 80 ? "Good" : score >= 60 ? "Fair" : "Weak"} data quality - ${score}/100. Biggest issue: ${worstCheck.label.toLowerCase()} - ${worstCheck.detail}`;
 
   return { score, grade, checks, summary };
 }

@@ -13,7 +13,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { exportPdf, exportPng } from "@/lib/export";
 
 // Read-only shared dashboard. Reconstructs a DashboardSpec from the URL hash fragment (never sent to
-// any server) and renders it. No uploader, no chart builder — view + export only.
+// any server) and renders it. No uploader, no chart builder - view + export only.
 
 export default function ViewPage() {
   const [spec, setSpec] = useState<DashboardSpec | null>(null);
@@ -45,7 +45,7 @@ export default function ViewPage() {
       if (kind === "png") await exportPng(dashboardRef.current, spec.datasetName, meta);
       else await exportPdf(dashboardRef.current, spec.datasetName, meta);
     } catch {
-      /* ignore — export is best-effort */
+      /* ignore - export is best-effort */
     } finally {
       setExporting(null);
     }
@@ -119,7 +119,7 @@ export default function ViewPage() {
         {spec && (
           <>
             <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800/30 px-4 py-2.5 text-xs text-slate-400">
-              👁️ You're viewing a read-only shared dashboard. It was reconstructed entirely in your browser —
+              👁️ You're viewing a read-only shared dashboard. It was reconstructed entirely in your browser -
               no data was sent to any server.
             </div>
             <ErrorBoundary label="dashboard">
@@ -131,7 +131,7 @@ export default function ViewPage() {
         {presenting && spec && <PresenterMode spec={spec} conclusions={conclusions} onClose={() => setPresenting(false)} />}
 
         <footer className="mt-16 space-y-2 border-t border-slate-800 pt-6 text-center text-xs text-slate-600">
-          <p>MyAnalyst · Shared dashboards are encoded in the link itself — nothing is stored on a server.</p>
+          <p>MyAnalyst · Shared dashboards are encoded in the link itself - nothing is stored on a server.</p>
           <p className="text-slate-500">{DISCLAIMER_TEXT}</p>
         </footer>
       </div>

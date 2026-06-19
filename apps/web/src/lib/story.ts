@@ -1,6 +1,6 @@
 import type { ColumnProfile, DataStory, DomainGuess } from "./types";
 
-// "What is this data?" — a heuristic analyzer that actually reads the columns,
+// "What is this data?" - a heuristic analyzer that actually reads the columns,
 // their roles, types and stats, plus the detected domain and (optional) user
 // context, and writes a specific plain-language description: the likely
 // industry/subject, what each ROW represents, what the COLUMNS hold, and what
@@ -47,7 +47,7 @@ function count(n: number, singular: string): string {
 }
 
 function compactNum(n: number): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   const abs = Math.abs(n);
   if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (abs >= 1_000) return `${(n / 1_000).toFixed(abs >= 10_000 ? 0 : 1)}k`;
@@ -116,7 +116,7 @@ export function buildDataStory(
   else rowSentence += `.`;
   sentences.push(rowSentence);
 
-  // 3) What the columns hold — measures + the main breakdown dimension.
+  // 3) What the columns hold - measures + the main breakdown dimension.
   const structureBits: string[] = [];
   if (metrics.length) structureBits.push(count(metrics.length, "numeric measure"));
   if (dims.length) structureBits.push(count(dims.length, "category"));
@@ -126,7 +126,7 @@ export function buildDataStory(
     const leadDim = [...dims].sort((a, b) => b.distinctCount - a.distinctCount).find((d) => d.topValues && d.topValues.length);
     if (leadDim?.topValues?.length) {
       const examples = leadDim.topValues.slice(0, 3).map((v) => v.value).filter(Boolean);
-      colSentence += ` — records split across ${leadDim.distinctCount} ${leadDim.name}${examples.length ? ` (e.g. ${list(examples)})` : ""}.`;
+      colSentence += ` - records split across ${leadDim.distinctCount} ${leadDim.name}${examples.length ? ` (e.g. ${list(examples)})` : ""}.`;
     } else {
       colSentence += `.`;
     }
@@ -139,10 +139,10 @@ export function buildDataStory(
     sentences.push(`${lead.name} ranges from ${compactNum(lead.numeric.min)} to ${compactNum(lead.numeric.max)}, averaging about ${compactNum(lead.numeric.mean)}.`);
   }
 
-  // 5) Purpose — tailored to the user's stated goal when given.
+  // 5) Purpose - tailored to the user's stated goal when given.
   const ctx = userContext?.trim();
   if (ctx) {
-    sentences.push(`You're using this to ${lowerFirst(ctx).replace(/\.$/, "")} — this analysis is framed around that goal.`);
+    sentences.push(`You're using this to ${lowerFirst(ctx).replace(/\.$/, "")} - this analysis is framed around that goal.`);
   } else {
     sentences.push(`Data like this is typically used to ${purpose}.`);
   }

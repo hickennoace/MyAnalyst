@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Insight, InsightContext } from "@/lib/types";
 
-// Server-side insight narrator. The ONLY place the LLM API key lives — it is never shipped to the
+// Server-side insight narrator. The ONLY place the LLM API key lives - it is never shipped to the
 // browser. The request body is an InsightContext: aggregates/stats only, never raw rows (the privacy
 // boundary from docs/03-security-privacy.md). Provider-agnostic: Anthropic or any OpenAI-compatible API.
 // With no key configured it returns an empty list and the client falls back to the templated narrator.
@@ -23,7 +23,7 @@ const OPENAI_COMPAT_BASES: Record<string, string> = {
 const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: "claude-haiku-4-5",
   // gpt-oss-120b is the strongest writer in Groq's free PRODUCTION tier (120B, vs the 70B llama).
-  // It's a reasoning model — `applyReasoning()` keeps the thinking minimal + hidden so it stays fast
+  // It's a reasoning model - `applyReasoning()` keeps the thinking minimal + hidden so it stays fast
   // and never leaks into the JSON. Override with LLM_MODEL=llama-3.3-70b-versatile to revert.
   groq: "openai/gpt-oss-120b",
   openai: "gpt-4o-mini",
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   }
 
   // Bring-your-own-key: when the client supplies a `byok` block (its key, stored only on that device),
-  // we use it for this single request instead of the server env — and never log or persist it. Lets a
+  // we use it for this single request instead of the server env - and never log or persist it. Lets a
   // power user get higher-reliability narration at zero cost to us, with no change to the privacy
   // boundary (still metadata-only context). Falls back to the server-configured key when absent.
   const byok = (body && typeof body === "object" ? (body as { byok?: { provider?: string; apiKey?: string; model?: string } }).byok : undefined) ?? undefined;
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       ? callAnthropic(apiKey, model || "claude-haiku-4-5", system, user, opts)
       : callOpenAICompat(provider, apiKey, model || "openai/gpt-oss-120b", system, user, opts);
 
-  // Task: humanize — rewrite the deterministic conclusions in a warm, human tone (numbers preserved).
+  // Task: humanize - rewrite the deterministic conclusions in a warm, human tone (numbers preserved).
   if (body && typeof body === "object" && (body as { task?: string }).task === "humanize") {
     const { conclusions, userContext } = body as { conclusions?: { id: string; text: string; detail?: string }[]; userContext?: string };
     if (!Array.isArray(conclusions) || conclusions.length === 0) {
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // Task: story — sharpen the "what is this data" description from dataset metadata.
+  // Task: story - sharpen the "what is this data" description from dataset metadata.
   if (body && typeof body === "object" && (body as { task?: string }).task === "story") {
     const { draft, meta } = body as {
       draft?: { industry?: string; summary?: string };
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // Task: plan — map a hard question to a STRUCTURED query plan from the schema only (no raw rows). The
+  // Task: plan - map a hard question to a STRUCTURED query plan from the schema only (no raw rows). The
   // client validates it against the real columns and executes it LOCALLY, so the numbers stay exact and
   // grounded. This is the "understand any question" planner, used when the local heuristics can't parse it.
   if (body && typeof body === "object" && (body as { task?: string }).task === "plan") {
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // Task: answer — answer a plain-English "Ask your data" question as a thorough, professional analyst,
+  // Task: answer - answer a plain-English "Ask your data" question as a thorough, professional analyst,
   // grounded strictly in pre-computed numbers (aggregates only; never raw rows). Returns prose + follow-ups.
   if (body && typeof body === "object" && (body as { task?: string }).task === "answer") {
     const { question, dataset, grounded, facts } = body as {
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
         ? (parsed.followups as unknown[]).map((s) => String(s).trim()).filter(Boolean).slice(0, 3)
         : [];
       // Pass the model's chart choice through untouched; the client validates it against real columns
-      // (it only chooses a type + column names — never raw chart config).
+      // (it only chooses a type + column names - never raw chart config).
       const chart = parsed.chart && typeof parsed.chart === "object" ? parsed.chart : null;
       return NextResponse.json({ answer, followups, chart, provider });
     } catch (err) {
@@ -192,12 +192,12 @@ export async function POST(req: Request) {
 function buildHumanizePrompt(conclusions: { id: string; text: string; detail?: string }[], userContext?: string) {
   const system = [
     "You are a sharp, friendly analyst turning blunt statistical conclusions into clear takeaways for someone with NO statistics background.",
-    "Rewrite each conclusion so it leads with the takeaway in plain words and makes the reader feel why it matters — like a smart colleague talking it through, not a textbook restating a result.",
+    "Rewrite each conclusion so it leads with the takeaway in plain words and makes the reader feel why it matters - like a smart colleague talking it through, not a textbook restating a result.",
     "HARD RULES:",
     "1. Keep the exact meaning and EVERY specific number, percentage, and name. Never invent, drop, or change a figure.",
-    "2. Plain everyday language, no jargon. 1–2 tight sentences each. Confident, concrete, and clear — not flowery or padded.",
+    "2. Plain everyday language, no jargon. 1–2 tight sentences each. Confident, concrete, and clear - not flowery or padded.",
     userContext ? `3. The reader's context: "${userContext}". Tailor the wording, emphasis, and any example to that goal.` : "3. (No extra context.)",
-    'Respond with ONLY JSON: {"conclusions":[{"id":string,"text":string}]} — same ids you were given.',
+    'Respond with ONLY JSON: {"conclusions":[{"id":string,"text":string}]} - same ids you were given.',
   ].join("\n");
   const user = JSON.stringify({ conclusions: conclusions.map((c) => ({ id: c.id, text: c.text, detail: c.detail })) });
   return { system, user };
@@ -223,11 +223,11 @@ function buildStoryPrompt(
   meta: { datasetName?: string; domain?: string; rowCount?: number; columns?: { name: string; role: string; type: string }[]; userContext?: string }
 ) {
   const system = [
-    "You are a sharp data analyst writing the 'About this data' summary — the orientation a colleague would want before diving in. Work from METADATA ONLY (column names + roles, detected domain, row count, any time span implied by the columns) plus a rough draft.",
+    "You are a sharp data analyst writing the 'About this data' summary - the orientation a colleague would want before diving in. Work from METADATA ONLY (column names + roles, detected domain, row count, any time span implied by the columns) plus a rough draft.",
     "Write 3–4 natural, specific sentences that answer: what this dataset is and the likely industry/subject; what a single row represents (the unit of analysis); what it primarily measures and the main dimensions it's broken down by; and what decisions or questions data like this is used to answer.",
-    "Be concrete and confident in tone, but describe the SHAPE of the data, never invented specifics. NEVER state a value, total, name, or claim that isn't implied by the column names and roles — you have no raw rows, so do not pretend to know specific figures.",
+    "Be concrete and confident in tone, but describe the SHAPE of the data, never invented specifics. NEVER state a value, total, name, or claim that isn't implied by the column names and roles - you have no raw rows, so do not pretend to know specific figures.",
     "Plain language, no jargon or schema-speak. It should read like a knowledgeable colleague orienting you, not a column listing.",
-    meta.userContext ? `The user described their goal: "${meta.userContext}". Frame the description around that goal — what they'd look for in this data to achieve it.` : "(No user goal provided.)",
+    meta.userContext ? `The user described their goal: "${meta.userContext}". Frame the description around that goal - what they'd look for in this data to achieve it.` : "(No user goal provided.)",
     "Also return a short industry/subject label of at most 4 words.",
     'Respond with ONLY JSON: {"story":{"industry":string,"summary":string}}',
   ].join("\n");
@@ -239,7 +239,7 @@ function buildStoryPrompt(
 
 function buildPlanPrompt(question: string, schema: unknown, conversation: unknown, repair?: { rejected?: unknown; reason?: string }) {
   const system = [
-    "You convert a question about a dataset into a STRUCTURED query plan. You see only the SCHEMA (column names, roles, types, numeric ranges, a few sample category values) — never raw rows. Pick the single computation that best answers the question.",
+    "You convert a question about a dataset into a STRUCTURED query plan. You see only the SCHEMA (column names, roles, types, numeric ranges, a few sample category values) - never raw rows. Pick the single computation that best answers the question.",
     'Respond with ONLY JSON: {"intent":"metric"|"aggregate"|"groupRank"|"groupAggregate"|"distribution"|"correlation"|"trend"|"compare"|"count"|"describe","metric"?:column,"metric2"?:column,"dimension"?:column,"agg"?:"sum"|"mean"|"max"|"min"|"median","direction"?:"top"|"bottom","filter"?:{"column":column,"op":"eq"|"gt"|"lt"|"gte"|"lte"|"between"|"year"|"contains","value":string|number,"value2"?:number},"compareValues"?:[valueA,valueB]}.',
     "Use EXACT column names from the schema. Guidance: 'most/highest/best <thing>' → groupRank, direction top, dimension = the thing's category, metric = the quality asked about; 'lowest/worst/least' → bottom. Rate/score columns (intensity, price, rating, score, rate) → agg mean; additive ones (revenue, sales, units, amount, count) → agg sum; 'median/typical middle value' → agg median. 'in 2023' → filter op year; 'over/above 100' → gt, 'under' → lt; 'for North' → eq on that dimension. 'A vs B' → intent compare, dimension = their column, compareValues=[A,B]. 'how many' → count. One metric's overall stats → metric. If the schema can't answer it, use intent describe.",
     ...(repair?.reason
@@ -269,15 +269,15 @@ function buildAnswerPrompt(
   // Kept deliberately compact: a long system prompt burns the LLM provider's per-minute token budget
   // and makes the call slow/rate-limited. This says everything essential in a fraction of the tokens.
   const system = [
-    "You are a sharp principal data analyst answering a question about the user's dataset. You have NO raw rows — only pre-computed inputs:",
-    "• QUESTION; • dataset (column names/roles/types, row count, detected domain, optional `userContext` goal); • grounded (the engine's authoritative result for this exact question); • facts (question-specific numbers — group `breakdown`/`breakdowns` each with total+average per group, trends, distributions, a correlation, or an 'X vs Y' `comparison` with gap/%/ratio/winner); • overview (whole-dataset stats, for context and open-ended questions); • analysis (DEEP pre-computed findings: regression `drivers` of a target metric with standardized β, time `trends`, a ranked `actions` plan with grounded rationale, a `bottomLine` executive read, and key `findings` — use these to answer 'why / what's driving X / what should I do / summarize' fully); • scope (if present, facts are filtered to a subset — state that); • conversation (prior turns — resolve 'that'/'those'/'why?' from it).",
-    "You can answer ANY question about this dataset — computations, diagnosis, advice, strategy, summaries. For advisory questions ('what should I do', 'how do I improve X', 'is this good?') give a direct, opinionated recommendation: lead with the ranked `actions` (justify each with its numbers), tie in `drivers`/`trends`/`findings`, and be decisive — never refuse or deflect because the question isn't a calculation. If asked something the data truly cannot inform, say what's missing and what data would answer it.",
-    "RULES: state only numbers from the inputs or transparent arithmetic of them (differences, ratios, %, shares) — never invent values or unseen causes. Every figure you write is auto-checked against the inputs, so a number with no basis will be flagged: don't guess. Flag caveats (low fill rate, tiny group, weak correlation, sampled data, not significant). Use a group's TOTAL for 'biggest/most', its AVERAGE for 'highest average/per-unit/most efficient'.",
-    "WRITE like a sharp consultant briefing a decision-maker — 2–4 short paragraphs (~90–160 words), separated by a blank line: (1) a one-sentence BOTTOM LINE that directly answers the question with the key number; (2) the supporting comparison/gap/share/trend with the actual numbers, sized as an opportunity or risk where you can (e.g. 'a 15% gap worth ~X if closed'), and a confidence read (strong / suggestive / not significant); (3) what it means in context + the single most important, specific next action. Confident, concrete, plain language; explain any stat term in passing. If `userContext` is set, frame everything around that goal.",
+    "You are a sharp principal data analyst answering a question about the user's dataset. You have NO raw rows - only pre-computed inputs:",
+    "• QUESTION; • dataset (column names/roles/types, row count, detected domain, optional `userContext` goal); • grounded (the engine's authoritative result for this exact question); • facts (question-specific numbers - group `breakdown`/`breakdowns` each with total+average per group, trends, distributions, a correlation, or an 'X vs Y' `comparison` with gap/%/ratio/winner); • overview (whole-dataset stats, for context and open-ended questions); • analysis (DEEP pre-computed findings: regression `drivers` of a target metric with standardized β, time `trends`, a ranked `actions` plan with grounded rationale, a `bottomLine` executive read, and key `findings` - use these to answer 'why / what's driving X / what should I do / summarize' fully); • scope (if present, facts are filtered to a subset - state that); • conversation (prior turns - resolve 'that'/'those'/'why?' from it).",
+    "You can answer ANY question about this dataset - computations, diagnosis, advice, strategy, summaries. For advisory questions ('what should I do', 'how do I improve X', 'is this good?') give a direct, opinionated recommendation: lead with the ranked `actions` (justify each with its numbers), tie in `drivers`/`trends`/`findings`, and be decisive - never refuse or deflect because the question isn't a calculation. If asked something the data truly cannot inform, say what's missing and what data would answer it.",
+    "RULES: state only numbers from the inputs or transparent arithmetic of them (differences, ratios, %, shares) - never invent values or unseen causes. Every figure you write is auto-checked against the inputs, so a number with no basis will be flagged: don't guess. Flag caveats (low fill rate, tiny group, weak correlation, sampled data, not significant). Use a group's TOTAL for 'biggest/most', its AVERAGE for 'highest average/per-unit/most efficient'.",
+    "WRITE like a sharp consultant briefing a decision-maker - 2–4 short paragraphs (~90–160 words), separated by a blank line: (1) a one-sentence BOTTOM LINE that directly answers the question with the key number; (2) the supporting comparison/gap/share/trend with the actual numbers, sized as an opportunity or risk where you can (e.g. 'a 15% gap worth ~X if closed'), and a confidence read (strong / suggestive / not significant); (3) what it means in context + the single most important, specific next action. Confident, concrete, plain language; explain any stat term in passing. If `userContext` is set, frame everything around that goal.",
     ...(stream
-      ? ["Output plain prose only — no JSON, no preamble, no headings."]
+      ? ["Output plain prose only - no JSON, no preamble, no headings."]
       : [
-          "Also propose up to 3 realistic follow-up questions using this dataset's real columns, and pick the single most useful chart using ONLY exact `dataset.columns` names (bar with aggregate:true = a metric by a dimension; bar with count:true & y:[] = category frequency; line = a metric over time; scatter = two metrics; histogram = one metric's distribution; pie = category share) — or null if none helps.",
+          "Also propose up to 3 realistic follow-up questions using this dataset's real columns, and pick the single most useful chart using ONLY exact `dataset.columns` names (bar with aggregate:true = a metric by a dimension; bar with count:true & y:[] = category frequency; line = a metric over time; scatter = two metrics; histogram = one metric's distribution; pie = category share) - or null if none helps.",
           'Respond with ONLY JSON: {"answer":string,"followups":string[],"chart":{"type":"line"|"bar"|"scatter"|"area"|"pie"|"histogram","x":string,"y":string[],"aggregate"?:boolean,"count"?:boolean}|null}',
         ]),
   ].join("\n");
@@ -305,15 +305,15 @@ function collectValidCites(ctx: InsightContext): Set<string> {
 
 function buildPrompt(ctx: InsightContext, validCites: Set<string>) {
   const system = [
-    "You are a principal data analyst writing the headline findings for a busy decision-maker. Plain, jargon-free language — but sharp and specific, like a trusted advisor who respects the reader's time and tells them what actually matters and why.",
-    "You are given ONLY pre-computed statistics (KPIs, correlations, a regression of drivers, trends, outliers, group comparisons, and concentration/Pareto facts) — never raw rows.",
-    "Each insight must EARN its place. A strong insight does three things in 1–2 tight sentences: leads with the concrete number, says what it MEANS for the reader, and points to one thing to do or check. Be specific — name the segment, the driver, the direction, the size of the gap.",
+    "You are a principal data analyst writing the headline findings for a busy decision-maker. Plain, jargon-free language - but sharp and specific, like a trusted advisor who respects the reader's time and tells them what actually matters and why.",
+    "You are given ONLY pre-computed statistics (KPIs, correlations, a regression of drivers, trends, outliers, group comparisons, and concentration/Pareto facts) - never raw rows.",
+    "Each insight must EARN its place. A strong insight does three things in 1–2 tight sentences: leads with the concrete number, says what it MEANS for the reader, and points to one thing to do or check. Be specific - name the segment, the driver, the direction, the size of the gap.",
     "Hard rules:",
     "1. GROUNDING: state only numbers that appear in the context. Never invent, re-round, or estimate a figure. Plain arithmetic of given numbers (a difference, a %, a share) is fine; a brand-new number is not.",
     "2. CITES: every insight references at least one id from the provided `validCites` list in its `cites` array.",
-    "3. PLAIN LANGUAGE: no statistics terms — say 'these tend to rise together', not 'r = 0.7'; say 'the strongest lever', not 'highest standardized β'. Explain any idea in passing.",
-    "4. CALIBRATE confidence honestly: use 'high' only when the finding is strong and clear; use 'low' when it's weak, a small sample, or could be coincidence — and say so in the text. Things moving together never proves one causes the other; note that where it matters.",
-    "5. VARIETY & PRIORITY: lead with the single most decision-relevant finding, then cover DIFFERENT angles (a driver, a gap between groups, a trend over time, a risk/outlier, a concentration) — don't return five versions of the same correlation. Quantify impact where you can ('a 15% gap', 'about a third of the total').",
+    "3. PLAIN LANGUAGE: no statistics terms - say 'these tend to rise together', not 'r = 0.7'; say 'the strongest lever', not 'highest standardized β'. Explain any idea in passing.",
+    "4. CALIBRATE confidence honestly: use 'high' only when the finding is strong and clear; use 'low' when it's weak, a small sample, or could be coincidence - and say so in the text. Things moving together never proves one causes the other; note that where it matters.",
+    "5. VARIETY & PRIORITY: lead with the single most decision-relevant finding, then cover DIFFERENT angles (a driver, a gap between groups, a trend over time, a risk/outlier, a concentration) - don't return five versions of the same correlation. Quantify impact where you can ('a 15% gap', 'about a third of the total').",
     "6. NO OBVIOUS / TAUTOLOGICAL INSIGHTS: skip anything true by construction (a metric vs a column derived from it, tax↔sales, total↔price×quantity, a unit conversion, a near-perfect r≈1.0 link) or a bare restatement of a KPI's value. If it's true by definition, drop it and surface something non-obvious instead.",
     "7. Return 4 to 6 insights, most important first. Fewer genuinely useful insights beat padding.",
     "8. If the context includes `userContext` (the reader's job/goal), frame the emphasis, wording, and suggested actions around that goal.",
@@ -353,7 +353,7 @@ async function fetchWithRetry(url: string, init: RequestInit, retries = 1): Prom
     const res = await fetch(url, init);
     if (res.ok || attempt >= retries || !RETRYABLE.has(res.status)) return res;
     const retryAfter = Number(res.headers.get("retry-after"));
-    // A long retry-after means an hourly/daily quota that won't clear within this request — fail fast
+    // A long retry-after means an hourly/daily quota that won't clear within this request - fail fast
     // to the templated/heuristic fallback instead of stalling. Only short (per-minute) limits retry.
     if (Number.isFinite(retryAfter) && retryAfter > 8) return res;
     const waitMs =

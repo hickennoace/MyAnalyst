@@ -5,14 +5,14 @@ import { currencySymbol } from "@/lib/currency";
 // Shows the ranked "what changed" between the current dataset and a second uploaded file.
 
 function fmt(n: number, type: SemanticType): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   const abs = Math.abs(n);
   const compact = abs >= 1e6 ? (n / 1e6).toFixed(1) + "M" : abs >= 1e4 ? (n / 1e3).toFixed(1) + "K" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(n);
   return type === "currency" ? currencySymbol() + compact : compact;
 }
 
 function Delta({ pct }: { pct: number | null }) {
-  if (pct === null) return <span className="text-slate-500">—</span>;
+  if (pct === null) return <span className="text-slate-500">-</span>;
   const up = pct >= 0;
   return (
     <span className={`inline-flex items-center gap-0.5 font-semibold ${up ? "text-emerald-300" : "text-rose-300"}`}>

@@ -6,7 +6,7 @@ import type { PyConclusions } from "@/lib/py-engine";
 import { buildExecutiveSummary } from "@/lib/report";
 import { Portal } from "./Portal";
 
-// Full-screen presenter mode: the dashboard's key story as large, keyboard-navigable slides — for
+// Full-screen presenter mode: the dashboard's key story as large, keyboard-navigable slides - for
 // walking a room through the findings. ← / → / space to move, Esc to exit. Renders from the spec.
 
 interface Slide {

@@ -1,8 +1,8 @@
-// Shared chart theme — gives every ECharts chart a polished, consistent "BI tool" look
+// Shared chart theme - gives every ECharts chart a polished, consistent "BI tool" look
 // (gradient fills, rounded bars, soft gridlines, refined tooltips, smooth animation).
 // All chart builders compose their options from these helpers so styling stays uniform.
 
-/** Curated categorical palette — leads with the brand azure/cyan, then a
+/** Curated categorical palette - leads with the brand azure/cyan, then a
  *  harmonious spread that stays legible on the midnight-navy canvas. */
 export const PALETTE = [
   "#3d8bff", "#5fd2e0", "#5AD8A6", "#F6BD16", "#E8684A",
@@ -26,7 +26,7 @@ export const INK: { text: string; sub: string; faint: string; grid: string; axis
   get axis() { return (isLight() ? LIGHT_INK : DARK_INK).axis; },
 };
 
-/** Background used when exporting charts/dashboards — matches the active theme. */
+/** Background used when exporting charts/dashboards - matches the active theme. */
 export function chartBg(): string {
   return isLight() ? "#ffffff" : "#0a0e16";
 }

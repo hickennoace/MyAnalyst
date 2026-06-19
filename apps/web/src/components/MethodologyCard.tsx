@@ -3,7 +3,7 @@
 import type { DashboardSpec } from "@/lib/types";
 import { buildMethodology, buildRecipe, fingerprint } from "@/lib/methodology";
 
-// "How this was computed" appendix: assumptions, the statistical methods used, and the limitations —
+// "How this was computed" appendix: assumptions, the statistical methods used, and the limitations -
 // the transparency a consultant deliverable carries. Stays in the PNG/PDF export. Also offers a
 // downloadable recipe (settings + a deterministic fingerprint) so the analysis is reproducible.
 
@@ -43,7 +43,7 @@ export function MethodologyCard({ spec }: { spec: DashboardSpec }) {
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-4">
         <p className="text-[11px] text-slate-500">
-          Reproducible — same file + settings ⇒ same result. Fingerprint <code className="rounded bg-slate-800 px-1 py-0.5 text-slate-300">{fp}</code>
+          Reproducible - same file + settings ⇒ same result. Fingerprint <code className="rounded bg-slate-800 px-1 py-0.5 text-slate-300">{fp}</code>
         </p>
         <button
           type="button"

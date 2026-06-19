@@ -1,5 +1,5 @@
 // White-label branding for exported deliverables (report PDF, slide deck, image header). Stored
-// locally only (localStorage) — branding never leaves the browser. A user can drop in their own
+// locally only (localStorage) - branding never leaves the browser. A user can drop in their own
 // company name, accent colour, and logo so the report reads as theirs.
 
 export interface BrandSettings {
@@ -7,7 +7,7 @@ export interface BrandSettings {
   name: string;
   /** accent colour as #rrggbb, used for rules, headings, and the cover band. */
   accent: string;
-  /** optional logo as a PNG/JPEG data URL (raster only — embeds cleanly in PDF). */
+  /** optional logo as a PNG/JPEG data URL (raster only - embeds cleanly in PDF). */
   logoDataUrl?: string;
 }
 
@@ -36,7 +36,7 @@ export function saveBrand(b: BrandSettings): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(b));
   } catch {
-    /* quota / private mode — non-fatal */
+    /* quota / private mode - non-fatal */
   }
 }
 

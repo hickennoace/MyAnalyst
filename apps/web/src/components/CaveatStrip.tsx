@@ -1,6 +1,6 @@
 import type { Caveat } from "@/lib/types";
 
-// "Read with care" strip — propagates the data-quality scorecard's findings to the top of the analysis
+// "Read with care" strip - propagates the data-quality scorecard's findings to the top of the analysis
 // so a polished dashboard never silently rests on incomplete columns or too few rows. Renders from
 // precomputed metadata; appears on the shared view and in exports too.
 
@@ -15,13 +15,13 @@ export function CaveatStrip({ caveats, smallSample }: { caveats?: Caveat[]; smal
         <p className="text-xs font-semibold text-amber-300">Read these results with care</p>
         <ul className="mt-1 space-y-0.5 text-[11px] text-amber-200">
           {smallSample && (
-            <li>Only a handful of rows — estimates are unstable and may swing with one more data point.</li>
+            <li>Only a handful of rows - estimates are unstable and may swing with one more data point.</li>
           )}
           {caveats?.map((c) => (
             <li key={c.column}>
               <span className="font-medium">{c.column}</span>: {c.reason}
               {c.severity === "bad" && <span className="ml-1 rounded bg-amber-500/20 px-1 text-[10px] font-medium">major</span>}
-              {" "}— figures using it may be off.
+              {" "}- figures using it may be off.
             </li>
           ))}
         </ul>

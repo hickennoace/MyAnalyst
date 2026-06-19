@@ -1,6 +1,6 @@
 import type { Table } from "./types";
 
-// Reconstruct a tabular grid from positioned text tokens — the shared core behind PDF-table extraction
+// Reconstruct a tabular grid from positioned text tokens - the shared core behind PDF-table extraction
 // and image OCR. Both produce {x, y, str, width} tokens; we cluster them into lines (by y), split each
 // line into cells (by horizontal gaps), pick the dominant column count, and emit a Table. Heuristic by
 // nature (real-world PDFs/screenshots vary wildly), so it fails loudly with a helpful message when the
@@ -85,7 +85,7 @@ export function itemsToTable(tokens: PositionedToken[], name: string): Table {
   const lines = toLines(clean, yTol);
   const rows = lines.map((l) => lineToCells(l, gap)).filter((r) => r.length > 0);
   const target = mode(rows.map((r) => r.length));
-  if (target < 2) throw new Error("Couldn't detect columns — this doesn't look like a table. Try a CSV/Excel export.");
+  if (target < 2) throw new Error("Couldn't detect columns - this doesn't look like a table. Try a CSV/Excel export.");
 
   // Keep rows that have at least 2 cells; normalize each to `target` columns (pad short, merge overflow).
   const grid = rows
@@ -95,7 +95,7 @@ export function itemsToTable(tokens: PositionedToken[], name: string): Table {
       if (r.length < target) return [...r, ...Array(target - r.length).fill("")];
       return [...r.slice(0, target - 1), r.slice(target - 1).join(" ")];
     });
-  if (grid.length < 2) throw new Error("Found only a header or a single row — not enough to analyze.");
+  if (grid.length < 2) throw new Error("Found only a header or a single row - not enough to analyze.");
 
   const headers = uniqueHeaders(grid[0]);
   const dataRows = grid.slice(1).map((cells) => {

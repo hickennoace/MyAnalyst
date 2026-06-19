@@ -1,4 +1,4 @@
-// Animated, accessible pipeline progress — shows each analysis stage with done / active / pending
+// Animated, accessible pipeline progress - shows each analysis stage with done / active / pending
 // states (a checkmark, a pulsing dot, or a dim dot) and a gradient progress bar.
 
 export function PipelineProgress({ stages, current, detail }: { stages: string[]; current: string | null; detail?: string }) {

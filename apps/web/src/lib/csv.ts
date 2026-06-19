@@ -1,6 +1,6 @@
 import type { Table } from "./types";
 
-// Serialize a (cleaned) Table back to CSV and trigger a download — all client-side.
+// Serialize a (cleaned) Table back to CSV and trigger a download - all client-side.
 
 // RTL scripts (Hebrew, Arabic, …). When a cell starts with one of these, spreadsheet
 // apps flip the whole field/column to right-to-left. We strip stray directional
@@ -56,7 +56,7 @@ export function downloadCsv(table: Table, filename: string): void {
   triggerCsvDownload(tableToCsv(table), filename.replace(/\.[^.]+$/, "") + "-cleaned");
 }
 
-/** Download a subset of rows (a segment worklist) as CSV — used by the insight→action exports. */
+/** Download a subset of rows (a segment worklist) as CSV - used by the insight→action exports. */
 export function downloadRows(columns: string[], rows: Array<Record<string, unknown>>, filename: string): void {
   triggerCsvDownload(rowsToCsv(columns, rows), filename);
 }

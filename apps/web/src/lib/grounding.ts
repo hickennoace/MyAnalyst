@@ -1,5 +1,5 @@
 // Numeric grounding verifier (Wave 3 W3.6). The optional LLM answers in prose; this checks that the
-// NUMBERS it states are actually anchored to the pre-computed evidence — verbatim, a rounded form, or a
+// NUMBERS it states are actually anchored to the pre-computed evidence - verbatim, a rounded form, or a
 // transparent arithmetic derivation (difference, ratio, %, share) of evidence numbers. It powers a
 // subtle "grounded in your data" / "unverified figure" trust signal on AI answers.
 //
@@ -14,7 +14,7 @@ export interface NumberToken {
 
 const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
 
-// $1,234.50 | 57.1% | 1.2M | 3k | 600 — a number with optional leading $, thousands separators, a
+// $1,234.50 | 57.1% | 1.2M | 3k | 600 - a number with optional leading $, thousands separators, a
 // decimal, and an optional trailing % or K/M/B scale suffix (not immediately followed by a letter).
 const NUM_RE = /(\$)?(-?\d[\d,]*(?:\.\d+)?)(\s*%|\s*[kmb](?![a-z]))?/gi;
 
@@ -33,7 +33,7 @@ export function extractNumbers(text: string): NumberToken[] {
   return out;
 }
 
-/** Every finite number reachable in the evidence payload — object/array values plus numbers parsed out
+/** Every finite number reachable in the evidence payload - object/array values plus numbers parsed out
  *  of any string fields (labels, the grounded one-liner). Deduped. */
 export function collectEvidenceNumbers(evidence: unknown): number[] {
   const set = new Set<number>();

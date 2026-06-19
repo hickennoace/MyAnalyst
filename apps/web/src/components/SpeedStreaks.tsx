@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-// Cinematic "warp-speed" light streaks for the hero — thin glowing trails that
+// Cinematic "warp-speed" light streaks for the hero - thin glowing trails that
 // race outward from a vanishing point. Tuned for the BRIGHT luminous band: warm
 // coral→ember comets drawn with normal (source-over) blending over a transparent
 // canvas, so they read as saturated streaks on the light backdrop instead of the
@@ -24,7 +24,7 @@ interface Streak {
   w: number; // line width
 }
 
-// Deep coral → ember palette — kept saturated/dark enough to read on the bright
+// Deep coral → ember palette - kept saturated/dark enough to read on the bright
 // peach band. (Lower hues = deeper red, higher = orange ember.)
 function color(hue: number, a: number) {
   const r = Math.round(214 + hue * 41); // 214 → 255
@@ -82,7 +82,7 @@ export function SpeedStreaks({ className = "" }: { className?: string }) {
     const maxR = () => Math.hypot(Math.max(vx, w - vx), Math.max(vy, h - vy)) + 60;
 
     function draw() {
-      // Transparent canvas over the bright band — clear each frame and redraw the
+      // Transparent canvas over the bright band - clear each frame and redraw the
       // comets fresh (their own gradient tail provides the motion trail), so the
       // band's glow stays visible through the gaps.
       c!.clearRect(0, 0, w, h);

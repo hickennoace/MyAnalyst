@@ -1,6 +1,6 @@
 import type { Insight } from "@/lib/types";
 
-// Crafted stroke icons (24-grid, 1.5px) keyed by insight kind — matches the
+// Crafted stroke icons (24-grid, 1.5px) keyed by insight kind - matches the
 // landing's icon language; no emoji.
 const P: Record<Insight["kind"], React.ReactNode> = {
   summary: <><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1Z" /><rect x="5" y="5" width="14" height="16" rx="2" /><path d="M9 11h6M9 15h4" /></>,

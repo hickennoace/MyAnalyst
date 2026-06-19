@@ -3,7 +3,7 @@ import { maxOf, mean, median, minOf, std, sum } from "./stats";
 
 // Type inference + column profiling. This is where messy real-world cells become typed, usable columns.
 
-// Currency glyphs we recognize — covers ~all world currencies (see lib/currency.ts). The symbol may sit
+// Currency glyphs we recognize - covers ~all world currencies (see lib/currency.ts). The symbol may sit
 // BEFORE the number ("₪12,500", "$1,200") or AFTER it ("12,500 ₪", "100 €", "¥1200"), with an optional space.
 const CUR = "$€£¥₪₹₩₽₺฿₱₫₦₴₵₲₸₾₡";
 const CURRENCY_RE = new RegExp(
@@ -19,7 +19,7 @@ export function parseNumeric(raw: unknown): number {
   if (typeof raw === "number") return raw;
   const str = String(raw).trim();
   const negative = /^\(.*\)$/.test(str); // accounting negatives: (1,200)
-  // Pull out the numeric core (digits + optional decimal) after dropping thousands commas — robust to a
+  // Pull out the numeric core (digits + optional decimal) after dropping thousands commas - robust to a
   // currency symbol/code on either side, stray spaces, "%", etc.
   const m = str.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
   if (!m) return NaN;
@@ -34,7 +34,7 @@ function looksLikeDate(raw: unknown): boolean {
   if (typeof raw !== "string") return false;
   const s = raw.trim();
   if (s.length < 6) return false;
-  // ISO, slash, or month-name formats — but reject pure integers (years handled separately by header hints).
+  // ISO, slash, or month-name formats - but reject pure integers (years handled separately by header hints).
   if (/^\d{4}-\d{1,2}-\d{1,2}/.test(s)) return true;
   if (/^\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}/.test(s)) return true;
   if (/^\d{1,2}\s+[A-Za-z]{3,}\s+\d{2,4}/.test(s)) return true;

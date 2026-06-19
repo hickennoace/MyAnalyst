@@ -70,7 +70,7 @@ export function parseChartRequest(prompt: string, profiles: ColumnProfile[]): Nl
     xProfile = mentioned.find((m) => m.role === "time" || m.role === "dimension");
   }
 
-  // 2b. Count mode — for categorical/string columns where there's no metric to plot
+  // 2b. Count mode - for categorical/string columns where there's no metric to plot
   // (e.g. "most common reason for not buying"). Tally rows per value.
   const countIntent = /\b(count|most common|number of|distribution|frequency|how often|breakdown|how many|tally)\b/i.test(p);
   const mentionsMetric = mentioned.some((m) => m.role === "metric") || yProfiles.some((y) => y.role === "metric");
@@ -119,7 +119,7 @@ export function parseChartRequest(prompt: string, profiles: ColumnProfile[]): Nl
     return { request: { type, x: xs.name, y: [ysC.name] }, message: `Plotting ${xs.name} vs ${ysC.name}.` };
   }
 
-  // Never chart a column against itself — drop any y equal to x.
+  // Never chart a column against itself - drop any y equal to x.
   if (xProfile) yProfiles = yProfiles.filter((y) => y.name !== xProfile!.name);
 
   if (!xProfile || !yProfiles.length) {

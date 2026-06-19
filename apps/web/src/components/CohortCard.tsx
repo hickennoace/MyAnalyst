@@ -2,7 +2,7 @@ import type { CohortAnalysis } from "@/lib/types";
 import { cadenceNoun } from "@/lib/timeseries";
 
 // Cohort retention heatmap: rows are cohorts (by first-seen period), columns are periods-since, cells
-// shaded by retention %. Renders from precomputed analysis — works on the read-only shared view too.
+// shaded by retention %. Renders from precomputed analysis - works on the read-only shared view too.
 
 /** Blue shade scaled by retention %, for the heatmap cells. */
 function cellStyle(pct: number | null): React.CSSProperties {

@@ -29,7 +29,7 @@ export function Uploader({
   const analyzePaste = useCallback(() => {
     const text = pasteText.trim();
     if (!text || busy) return;
-    // Spreadsheet copy-paste is tab-separated; raw CSV is comma-separated — name it so the parser knows.
+    // Spreadsheet copy-paste is tab-separated; raw CSV is comma-separated - name it so the parser knows.
     const name = pasteText.includes("\t") ? "pasted.tsv" : "pasted.csv";
     onFile(new File([pasteText], name, { type: "text/plain" }));
   }, [pasteText, busy, onFile]);
@@ -85,7 +85,7 @@ export function Uploader({
       <p className="mt-1 max-w-md text-sm text-slate-400">
         CSV &amp; TSV (up to ~1&nbsp;GB), Parquet (500&nbsp;MB), JSON &amp; SQLite (250&nbsp;MB), Excel
         (100&nbsp;MB), PDF tables (60&nbsp;MB), or a screenshot of a table (40&nbsp;MB). Big files are
-        analyzed on a representative sample — processed securely and never stored.
+        analyzed on a representative sample - processed securely and never stored.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -105,18 +105,18 @@ export function Uploader({
         </button>
       </div>
 
-      {/* Industry TAG for the file you're about to upload — sharpens domain detection + the AI's
+      {/* Industry TAG for the file you're about to upload - sharpens domain detection + the AI's
           understanding. This does NOT load a sample; it just labels your data. */}
       <div className="mt-4">
         <IndustryTagPicker value={industry} onChange={(k) => onIndustry?.(k)} />
       </div>
       <p className="mt-1.5 text-[11px] text-slate-500">
         {industry
-          ? "Tagged — your uploaded file will be analyzed as this kind of data."
-          : "Optional. Tags the file you upload so the analysis & AI know what it is — it doesn’t load a sample."}
+          ? "Tagged - your uploaded file will be analyzed as this kind of data."
+          : "Optional. Tags the file you upload so the analysis & AI know what it is - it doesn’t load a sample."}
       </p>
 
-      {/* Or load from a public URL — reuses the same parser; data is fetched straight to your browser. */}
+      {/* Or load from a public URL - reuses the same parser; data is fetched straight to your browser. */}
       <div className="mt-5 w-full max-w-md">
         <div className="flex items-center gap-2">
           <input
@@ -150,7 +150,7 @@ export function Uploader({
             <textarea
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
-              placeholder={"Paste rows here — copy from Excel/Sheets, or CSV text.\nName, Region, Revenue\nAcme, North, 1200"}
+              placeholder={"Paste rows here - copy from Excel/Sheets, or CSV text.\nName, Region, Revenue\nAcme, North, 1200"}
               aria-label="Paste table data"
               rows={5}
               disabled={busy}

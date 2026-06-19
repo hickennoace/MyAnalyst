@@ -7,7 +7,7 @@ import type {
 } from "./types";
 import { inferType, parseNumeric } from "./profile";
 
-// Cleaning & normalization — "the moat". Turns a raw, messy Table into a typed, deduped, normalized
+// Cleaning & normalization - "the moat". Turns a raw, messy Table into a typed, deduped, normalized
 // Table and a transparent report of every change. Runs before profiling/KPIs/stats so the rest of the
 // pipeline can trust its input. Type detection happens once here and is handed downstream via typeHints.
 
@@ -89,7 +89,7 @@ function normalizeCell(raw: unknown, type: SemanticType): { value: unknown; chan
 }
 
 function displayCell(v: unknown): string {
-  if (v === null || v === undefined) return "—";
+  if (v === null || v === undefined) return "-";
   if (typeof v === "boolean") return v ? "true" : "false";
   return String(v);
 }
@@ -97,7 +97,7 @@ function displayCell(v: unknown): string {
 export function cleanTable(raw: Table, typeOverrides?: Record<string, SemanticType>): CleanResult {
   const columns = raw.columns;
 
-  // 1. Detect each column's type once, from the raw values — unless the user pinned a type
+  // 1. Detect each column's type once, from the raw values - unless the user pinned a type
   //    via the column controls, in which case we honor their choice and normalize to it.
   const typeHints: Record<string, SemanticType> = {};
   for (const col of columns) {

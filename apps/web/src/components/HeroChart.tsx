@@ -1,4 +1,4 @@
-// Decorative, self-drawing line/area chart for the hero — signals "data analysis" at a glance.
+// Decorative, self-drawing line/area chart for the hero - signals "data analysis" at a glance.
 // Pure SVG + CSS animation (no JS), respects prefers-reduced-motion via globals.css.
 
 const PTS = [

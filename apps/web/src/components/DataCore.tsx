@@ -1,4 +1,4 @@
-// Animated line-chart centerpiece for the cinematic hero — a self-drawing coral
+// Animated line-chart centerpiece for the cinematic hero - a self-drawing coral
 // trend line over a glowing area fill, with data points that pop in along the
 // curve, a pulsing leading point, a sweeping highlight, and a tracer dot that
 // races along the line. Pure SVG + CSS (animations live in globals.css under the
@@ -12,7 +12,7 @@ const TOP = 72;
 const BOTTOM = 300;
 const SPAN = BOTTOM - TOP;
 
-// Normalised series (0 = baseline, 1 = top) — an upward trend with a realistic dip.
+// Normalised series (0 = baseline, 1 = top) - an upward trend with a realistic dip.
 const SERIES = [0.16, 0.44, 0.30, 0.68, 0.52, 0.9, 0.74];
 
 const PTS: [number, number][] = SERIES.map((v, i) => [

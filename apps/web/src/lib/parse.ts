@@ -42,7 +42,7 @@ const MAX_IMAGE_BYTES = 40 * 1024 * 1024; // 40 MB (OCR)
 
 /** Parse an uploaded File (CSV / TSV / TXT / JSON / XLSX / XLS / SQLite) into a normalized Table plus
  *  the list of its analyzable sources. `sourceId` targets a specific sheet/table (else a sensible
- *  default — first sheet / largest table). Runs entirely client-side. */
+ *  default - first sheet / largest table). Runs entirely client-side. */
 export async function parseFile(
   file: File,
   onProgress?: (p: ParseProgress) => void,
@@ -52,7 +52,7 @@ export async function parseFile(
   if (ext === "xlsx" || ext === "xls") {
     if (file.size > MAX_EXCEL_BYTES) {
       throw new Error(
-        `This Excel file is ${(file.size / 1048576).toFixed(0)} MB. Excel can't be streamed in the browser, so it's capped at ${MAX_EXCEL_BYTES / 1048576} MB. Export it to CSV and upload that — CSV streams up to ~1 GB.`
+        `This Excel file is ${(file.size / 1048576).toFixed(0)} MB. Excel can't be streamed in the browser, so it's capped at ${MAX_EXCEL_BYTES / 1048576} MB. Export it to CSV and upload that - CSV streams up to ~1 GB.`
       );
     }
     return parseExcel(file, sourceId);
@@ -60,7 +60,7 @@ export async function parseFile(
   if (ext === "json") {
     if (file.size > MAX_JSON_BYTES) {
       throw new Error(
-        `This JSON file is ${(file.size / 1048576).toFixed(0)} MB. JSON must be loaded whole, so it's capped at ${MAX_JSON_BYTES / 1048576} MB. Convert it to CSV for larger datasets — CSV streams up to ~1 GB.`
+        `This JSON file is ${(file.size / 1048576).toFixed(0)} MB. JSON must be loaded whole, so it's capped at ${MAX_JSON_BYTES / 1048576} MB. Convert it to CSV for larger datasets - CSV streams up to ~1 GB.`
       );
     }
     return single(await parseJson(file));
@@ -75,13 +75,13 @@ export async function parseFile(
   }
   if (ext === "pdf") {
     if (file.size > MAX_PDF_BYTES) {
-      throw new Error(`This PDF is ${(file.size / 1048576).toFixed(0)} MB — capped at ${MAX_PDF_BYTES / 1048576} MB for table extraction. Try a smaller file or export the table to CSV.`);
+      throw new Error(`This PDF is ${(file.size / 1048576).toFixed(0)} MB - capped at ${MAX_PDF_BYTES / 1048576} MB for table extraction. Try a smaller file or export the table to CSV.`);
     }
     return single(await parsePdf(file));
   }
   if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "webp") {
     if (file.size > MAX_IMAGE_BYTES) {
-      throw new Error(`This image is ${(file.size / 1048576).toFixed(0)} MB — capped at ${MAX_IMAGE_BYTES / 1048576} MB for OCR.`);
+      throw new Error(`This image is ${(file.size / 1048576).toFixed(0)} MB - capped at ${MAX_IMAGE_BYTES / 1048576} MB for OCR.`);
     }
     return single(await parseImage(file, onProgress));
   }
@@ -145,7 +145,7 @@ async function parseSqlite(file: File, tableId?: string): Promise<ParseResult> {
   }
 }
 
-// Parquet (.parquet): read with hyparquet — a pure-JS reader (no WASM), dynamically imported so it only
+// Parquet (.parquet): read with hyparquet - a pure-JS reader (no WASM), dynamically imported so it only
 // loads when someone opens a Parquet file. We read up to SAMPLE_CAP rows and flag the rest as sampled.
 async function parseParquet(file: File): Promise<Table> {
   const { parquetReadObjects, parquetMetadataAsync, toJson } = await import("hyparquet");
@@ -156,7 +156,7 @@ async function parseParquet(file: File): Promise<Table> {
     const meta = await parquetMetadataAsync(buffer);
     total = Number(meta.num_rows ?? 0);
   } catch {
-    // metadata read failed — fall through; reading objects will surface a clearer error if truly broken
+    // metadata read failed - fall through; reading objects will surface a clearer error if truly broken
   }
   const rowEnd = total > 0 ? Math.min(total, SAMPLE_CAP) : SAMPLE_CAP;
   let raw: Record<string, unknown>[];
@@ -188,7 +188,7 @@ async function parseParquet(file: File): Promise<Table> {
 }
 
 // PDF (.pdf): extract positioned text with pdf.js (dynamically imported), then reconstruct a table from
-// token coordinates. Best-effort — works well on real tabular PDFs, less so on heavily-formatted ones.
+// token coordinates. Best-effort - works well on real tabular PDFs, less so on heavily-formatted ones.
 async function parsePdf(file: File): Promise<Table> {
   const pdfjs = await import("pdfjs-dist");
   // Bundler-resolved worker URL (Turbopack/webpack understand new URL(..., import.meta.url)).
@@ -296,7 +296,7 @@ async function parseJson(file: File): Promise<Table> {
 }
 
 // Above this size we stream the file in chunks and keep a representative random
-// sample instead of loading the whole thing into memory — so even a 750MB CSV is
+// sample instead of loading the whole thing into memory - so even a 750MB CSV is
 // analyzable without freezing or crashing the tab.
 const STREAM_THRESHOLD = 24 * 1024 * 1024; // 24 MB
 const SAMPLE_CAP = 200_000; // max rows kept for analysis when sampling
@@ -388,7 +388,7 @@ async function parseDelimited(file: File, onProgress?: (p: ParseProgress) => voi
   });
 }
 
-// A safe arithmetic evaluator (recursive descent over + - * / and parentheses) — NO eval/Function, so it
+// A safe arithmetic evaluator (recursive descent over + - * / and parentheses) - NO eval/Function, so it
 // works under the strict production CSP. Used to compute formula cells that were saved without a result.
 export function evalArithmetic(expr: string): number | null {
   const tokens = expr.match(/\d+\.?\d*|[+\-*/()]/g);
@@ -417,7 +417,7 @@ export function evalArithmetic(expr: string): number | null {
 }
 
 // Excel files often store DERIVED columns as formulas (e.g. Total = Salary*12 + Bonus). Many are saved
-// without cached results — those cells then read as blank ("100% missing"). Resolve such cells by
+// without cached results - those cells then read as blank ("100% missing"). Resolve such cells by
 // evaluating their formula: substitute referenced cells with their (recursively resolved) numeric values,
 // then compute the resulting arithmetic. Only pure arithmetic formulas are supported (the common case);
 // anything else (functions, ranges, cross-sheet refs) is left blank.
@@ -428,7 +428,7 @@ export function fillFormulaCells(ws: XLSX.WorkSheet): void {
     const cell = ws[addr] as XLSX.CellObject | undefined;
     if (!cell) return null;
     // A real cached numeric value (type "n"). Formula stubs come back as type "z" with a placeholder v:0,
-    // so don't trust their value — evaluate the formula instead.
+    // so don't trust their value - evaluate the formula instead.
     if (cell.t === "n" && typeof cell.v === "number") return cell.v;
     if (typeof cell.f === "string") {
       if (stack.has(addr)) return null; // circular reference guard
@@ -473,7 +473,7 @@ async function parseExcel(file: File, sheetId?: string): Promise<ParseResult> {
   const sheetNames = wb.SheetNames.filter((n) => wb.Sheets[n]);
   if (sheetNames.length === 0) throw new Error("No sheets found in this Excel file.");
 
-  // Approximate row count per sheet from its dimension range (cheap — avoids converting every sheet).
+  // Approximate row count per sheet from its dimension range (cheap - avoids converting every sheet).
   const sources: SourceInfo[] = sheetNames.map((name) => {
     const ref = wb.Sheets[name]["!ref"];
     let rowCount = 0;

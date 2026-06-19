@@ -3,13 +3,13 @@ import { chartBg } from "./chart-theme";
 import { DEFAULT_BRAND, type BrandSettings } from "./brand";
 
 // Client-side dashboard export. Snapshots the rendered dashboard DOM (ECharts canvases included)
-// to a PNG, and composes a paginated PDF from that image. No server, no upload — same privacy
+// to a PNG, and composes a paginated PDF from that image. No server, no upload - same privacy
 // posture as the rest of the app. The heavy libraries (html-to-image, jspdf) are dynamically
 // imported on first use so they stay out of the analyzer's initial bundle.
 //
 // Two things keep the output clean: (1) interactive sections marked [data-export-exclude]
 // (the query box, chart builder, raw data table) are hidden during capture, and a branded
-// report header is added; (2) the PDF paginates on real block boundaries — page breaks land in
+// report header is added; (2) the PDF paginates on real block boundaries - page breaks land in
 // the gaps between cards/sections, so nothing is ever sliced in half.
 
 const PIXEL_RATIO = 2; // crisp output on retina / when zoomed into the PDF
@@ -47,7 +47,7 @@ function prepareCapture(node: HTMLElement, title: string, meta: string, brand: B
 
   // Un-clip every inactive tab panel so the report includes all sections (on screen only the active tab
   // is shown). Panels are clipped (height:0) rather than display:none, so their charts are already sized
-  // correctly — revealing is just removing the clip.
+  // correctly - revealing is just removing the clip.
   const revealed: { el: HTMLElement; height: string; overflow: string; opacity: string; inert: boolean }[] = [];
   node.querySelectorAll<HTMLElement>('[data-tab-panel][data-active="false"]').forEach((el) => {
     revealed.push({ el, height: el.style.height, overflow: el.style.overflow, opacity: el.style.opacity, inert: el.inert });
@@ -103,10 +103,10 @@ function prepareCapture(node: HTMLElement, title: string, meta: string, brand: B
 /** Vertical positions (in captured-image pixels) where a page break can safely land. Measured while
  *  the node is in capture state.
  *
- *  A safe cut is the bottom edge of a *full-width* block — a section, card, or grid row that spans the
+ *  A safe cut is the bottom edge of a *full-width* block - a section, card, or grid row that spans the
  *  whole content column, so nothing sits beside it to be sliced. The full-width test is what makes this
  *  robust for grids: side-by-side cells (KPI tiles, paired charts) are narrower than the column and are
- *  excluded, while the grid's full-width wrapper is kept — so breaks land in the gaps between rows, never
+ *  excluded, while the grid's full-width wrapper is kept - so breaks land in the gaps between rows, never
  *  through a column. Collecting every such block (not just the node's direct children) gives the dozens of
  *  candidates needed to fill each page; without them, pagination hard-cuts mid-chart. */
 function blockBoundaries(node: HTMLElement): number[] {
@@ -117,7 +117,7 @@ function blockBoundaries(node: HTMLElement): number[] {
   node.querySelectorAll<HTMLElement>("*").forEach((el) => {
     const r = el.getBoundingClientRect();
     if (r.height < 40) return; // skip thin elements (headings, dividers) so a break never orphans them
-    if (r.width < minWidth) return; // skip non-full-width blocks (grid cells) — cutting there slices a neighbor
+    if (r.width < minWidth) return; // skip non-full-width blocks (grid cells) - cutting there slices a neighbor
     bounds.add(Math.round((r.bottom - top) * PIXEL_RATIO));
   });
   return Array.from(bounds).sort((a, b) => a - b);
@@ -191,7 +191,7 @@ export async function exportPdf(node: HTMLElement, datasetName: string, meta = "
     for (const b of boundaries) {
       if (b > start + 4 && b <= limit && b > end) end = b;
     }
-    if (end < 0) end = limit; // a single block taller than a page — hard cut as a fallback
+    if (end < 0) end = limit; // a single block taller than a page - hard cut as a fallback
     cuts.push(end);
     start = end;
   }

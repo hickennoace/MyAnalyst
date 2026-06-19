@@ -2,12 +2,12 @@ import type { ActionItem, ColumnProfile, DataQuality, InsightContext } from "./t
 import { currencySymbol } from "./currency";
 
 // The "action report": a ranked, quantified list of concrete next steps derived from the computed
-// analysis — the thing a consultant charges to write, generated instantly and grounded in real numbers.
+// analysis - the thing a consultant charges to write, generated instantly and grounded in real numbers.
 // Each action sizes the opportunity where it can (e.g. "worth ~$203K"), so it reads like advice, not a
 // chart. Pure, deterministic, worker-safe.
 
 function fmtVal(n: number, p?: ColumnProfile): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   if (p?.type === "currency") {
     const sym = currencySymbol();
     const abs = Math.abs(n);
@@ -26,7 +26,7 @@ export function buildActionReport(ctx: InsightContext, quality: DataQuality | un
   const prof = (name: string) => profiles.find((p) => p.name === name);
   const fmt = (n: number, name?: string) => fmtVal(n, name ? prof(name) : undefined);
 
-  // 0. Double down on what sells — concrete, revenue-first, and the first move any operator wants.
+  // 0. Double down on what sells - concrete, revenue-first, and the first move any operator wants.
   if (ctx.bestSellers) {
     const b = ctx.bestSellers;
     const same = b.topRevenue.name === b.topUnits.name;
@@ -39,15 +39,15 @@ export function buildActionReport(ctx: InsightContext, quality: DataQuality | un
           ? `Protect and grow your top ${b.dimension}, "${b.topRevenue.name}"`
           : `Push volume on "${b.topUnits.name}" and margin on "${b.topRevenue.name}"`,
         detail: same
-          ? `"${b.topRevenue.name}" drives ${Math.round(b.topRevenue.revenueShare * 100)}% of revenue (${fmt(b.topRevenue.revenue, b.metric)}) and leads on volume — keep it in stock, defend its pricing, and study why it wins.${laggards ? ` Meanwhile ${laggards} ${b.dimension}${laggards === 1 ? "" : "s"} barely move — cut or relaunch them.` : ""}`
-          : `"${b.topRevenue.name}" earns the most (${fmt(b.topRevenue.revenue, b.metric)}, ${Math.round(b.topRevenue.revenueShare * 100)}% of revenue) while "${b.topUnits.name}" sells the most volume. Use "${b.topUnits.name}" to win traffic and upsell toward "${b.topRevenue.name}" for margin.${laggards ? ` ${laggards} ${b.dimension}${laggards === 1 ? "" : "s"} contribute almost nothing — cut or fix them.` : ""}`,
+          ? `"${b.topRevenue.name}" drives ${Math.round(b.topRevenue.revenueShare * 100)}% of revenue (${fmt(b.topRevenue.revenue, b.metric)}) and leads on volume - keep it in stock, defend its pricing, and study why it wins.${laggards ? ` Meanwhile ${laggards} ${b.dimension}${laggards === 1 ? "" : "s"} barely move - cut or relaunch them.` : ""}`
+          : `"${b.topRevenue.name}" earns the most (${fmt(b.topRevenue.revenue, b.metric)}, ${Math.round(b.topRevenue.revenueShare * 100)}% of revenue) while "${b.topUnits.name}" sells the most volume. Use "${b.topUnits.name}" to win traffic and upsell toward "${b.topRevenue.name}" for margin.${laggards ? ` ${laggards} ${b.dimension}${laggards === 1 ? "" : "s"} contribute almost nothing - cut or fix them.` : ""}`,
         impact: "high",
         basis: `Best-seller analysis of ${b.metric} by ${b.dimension}`,
       },
     });
   }
 
-  // 1. Biggest group gap — sized as an opportunity ("bring the laggard up to the leader is worth ~$X").
+  // 1. Biggest group gap - sized as an opportunity ("bring the laggard up to the leader is worth ~$X").
   //    Suppressed for unit-price / product-dimension comparisons (raising a cheap model's price to match a
   //    premium one is nonsense); kept for outcome×operational gaps (a region/rep that genuinely lags).
   const suppressed = new Set(ctx.suppressGroupComparisons ?? []);
@@ -67,7 +67,7 @@ export function buildActionReport(ctx: InsightContext, quality: DataQuality | un
     }
   }
 
-  // 2. The biggest lever — the strongest independent driver of the primary metric.
+  // 2. The biggest lever - the strongest independent driver of the primary metric.
   if (ctx.drivers?.drivers?.length && ctx.drivers.r2 >= 0.1) {
     const ranked = [...ctx.drivers.drivers].filter((d) => d.significant).sort((a, b) => Math.abs(b.beta) - Math.abs(a.beta));
     const top = ranked[0];
@@ -114,7 +114,7 @@ export function buildActionReport(ctx: InsightContext, quality: DataQuality | un
     });
   }
 
-  // 5. Concentration risk on a MEASURE — a few categories carry most of the value (revenue, volume…).
+  // 5. Concentration risk on a MEASURE - a few categories carry most of the value (revenue, volume…).
   //    Stronger and more actionable than the row-count version below, so it takes precedence.
   const conc = ctx.concentration?.find((c) => c.level === "high") ?? ctx.concentration?.find((c) => c.level === "moderate" && !c.metricIsCount);
   let addedMeasureConc = false;
@@ -132,7 +132,7 @@ export function buildActionReport(ctx: InsightContext, quality: DataQuality | un
     });
   }
 
-  // 5b. Concentration risk — one categorical value dominates the row count (e.g. most tickets are Support).
+  // 5b. Concentration risk - one categorical value dominates the row count (e.g. most tickets are Support).
   const cat = ctx.categories[0];
   if (!addedMeasureConc && cat && cat.top[0] && cat.top[0].pct >= 0.5) {
     out.push({
@@ -140,7 +140,7 @@ export function buildActionReport(ctx: InsightContext, quality: DataQuality | un
       a: {
         id: `act-conc-${cat.column}`,
         title: `Reduce reliance on "${cat.top[0].value}"`,
-        detail: `"${cat.top[0].value}" accounts for ${Math.round(cat.top[0].pct * 100)}% of ${cat.column} — a concentration risk. Diversify, or make sure that dependency is deliberate and protected.`,
+        detail: `"${cat.top[0].value}" accounts for ${Math.round(cat.top[0].pct * 100)}% of ${cat.column} - a concentration risk. Diversify, or make sure that dependency is deliberate and protected.`,
         impact: cat.top[0].pct > 0.7 ? "high" : "medium",
         basis: `${cat.column} distribution`,
       },
@@ -158,7 +158,7 @@ export function buildActionReport(ctx: InsightContext, quality: DataQuality | un
           title: worst.fix!.replace(/\.$/, ""),
           detail: `${worst.detail} Fixing this makes every figure in this report more reliable.`,
           impact: quality.score < 60 ? "high" : "medium",
-          basis: `Data quality — ${worst.label}`,
+          basis: `Data quality - ${worst.label}`,
         },
       });
     }

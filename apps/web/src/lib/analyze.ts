@@ -95,7 +95,7 @@ export async function analyze(
         .map((m) => analyzeTimeSeries(table, timeCol.name, m.name))
         .filter((a): a is NonNullable<typeof a> => a !== undefined)
     : [];
-  // "What drove the change" — attribute the primary metric's period-over-period move to a dimension.
+  // "What drove the change" - attribute the primary metric's period-over-period move to a dimension.
   const pmForContrib = primaryMetric(profiles);
   const contributions = timeCol && pmForContrib ? buildContributions(table, profiles, pmForContrib.name) : [];
   // Themes + sentiment for any free-text columns (open-ended feedback, reviews, notes).
@@ -115,7 +115,7 @@ export async function analyze(
   const insights = filtered.length ? filtered : rawInsights;
 
   // Read the data's own subject/story so findings stay connected to what it's about.
-  // Heuristic first; if the LLM is enabled, sharpen it (metadata-only — never raw rows).
+  // Heuristic first; if the LLM is enabled, sharpen it (metadata-only - never raw rows).
   let story = buildDataStory(rawTable.name, table.rowCount, profiles, domain, ctx.userContext);
   if (llmEnabled(opts.llm)) {
     story = await sharpenStory(story, {
@@ -159,14 +159,14 @@ export async function analyze(
   };
 }
 
-/** Per-metric unusual values (|z| > 3), strongest first — the metadata behind the Anomalies card. */
+/** Per-metric unusual values (|z| > 3), strongest first - the metadata behind the Anomalies card. */
 export function detectAnomalies(table: Table, profiles: ReturnType<typeof profileTable>): OutlierFact[] {
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   const dims = profiles.filter((p) => p.role === "dimension" && p.distinctCount >= 2 && p.distinctCount <= 50);
   const out: OutlierFact[] = [];
   for (const m of metrics) {
     const a = analyzeColumnOutliers(m.name, numericColumn(table, m.name), 3);
-    // The anomalies card is for genuine ANOMALIES (isolated, possibly-wrong points) — a skewed segment
+    // The anomalies card is for genuine ANOMALIES (isolated, possibly-wrong points) - a skewed segment
     // (a premium price tier) isn't an anomaly, so it's excluded here and explained as skew in the insights.
     if (a && a.kind === "anomaly") {
       out.push({
@@ -201,7 +201,7 @@ function anomalyBreakdown(table: Table, dims: ColumnProfile[], indices: number[]
     const baseCount = new Map<string, number>();
     const outCount = new Map<string, number>();
     table.rows.forEach((r, i) => {
-      const key = String(r[dim.name] ?? "—");
+      const key = String(r[dim.name] ?? "-");
       baseCount.set(key, (baseCount.get(key) ?? 0) + 1);
       if (idxSet.has(i)) outCount.set(key, (outCount.get(key) ?? 0) + 1);
     });
@@ -235,7 +235,7 @@ function buildInsightContext(
   const dims = profiles.filter((p) => p.role === "dimension");
   const time = profiles.find((p) => p.role === "time");
 
-  // Correlations between metric pairs — with significance test + 95% CI (statsmodels-grade).
+  // Correlations between metric pairs - with significance test + 95% CI (statsmodels-grade).
   const correlations: CorrelationPair[] = [];
   for (let i = 0; i < metrics.length; i++) {
     for (let j = i + 1; j < metrics.length; j++) {
@@ -257,14 +257,14 @@ function buildInsightContext(
   }
   // Drop trivially-redundant pairs before they become "insights": a near-perfect correlation almost
   // always means one column is derived from the other (tax from sales, total from price×qty, a unit
-  // conversion, a duplicate column) — that's a tautology, not a finding. Same for name-subset pairs
+  // conversion, a duplicate column) - that's a tautology, not a finding. Same for name-subset pairs
   // like "Revenue" vs "Total Revenue". (The correlation heatmap still shows the full matrix.)
   {
     const kept = correlations.filter((c) => !isRedundantCorrelation(c.a, c.b, c.r));
     correlations.length = 0;
     correlations.push(...kept);
   }
-  // Benjamini-Hochberg FDR correction across all pairwise correlation tests — guards against
+  // Benjamini-Hochberg FDR correction across all pairwise correlation tests - guards against
   // false positives when many pairs are tested (a key accuracy fix vs. naive per-test p < 0.05).
   if (correlations.length > 1) {
     const keep = benjaminiHochberg(correlations.map((c) => c.p));
@@ -297,7 +297,7 @@ function buildInsightContext(
     }
   }
 
-  // Trends along the time axis — with a significance test on the time slope (real trend vs noise).
+  // Trends along the time axis - with a significance test on the time slope (real trend vs noise).
   const trends: TrendFact[] = [];
   if (time) {
     const order = sortByTime(table, time.name);
@@ -307,7 +307,7 @@ function buildInsightContext(
       if (series.length < 2) continue;
       const idx = series.map((_, i) => i);
       const reg = olsSimple(idx, series);
-      // Use the FITTED trend line's endpoints, not the raw first/last rows — a single
+      // Use the FITTED trend line's endpoints, not the raw first/last rows - a single
       // noisy data point shouldn't define the trend. Magnitude/direction come from the
       // model, and a direction is only claimed when the slope is statistically real.
       const from = reg ? reg.intercept : series[0];
@@ -335,7 +335,7 @@ function buildInsightContext(
       const vals = numericColumn(table, m.name);
       table.rows.forEach((r, i) => {
         if (!Number.isFinite(vals[i])) return;
-        const key = String(r[dim.name] ?? "—");
+        const key = String(r[dim.name] ?? "-");
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key)!.push(vals[i]);
       });
@@ -379,7 +379,7 @@ function buildInsightContext(
           drivers: mr.coefficients.map((c) => ({ name: c.name, coef: c.coef, beta: c.beta, p: c.p, significant: c.significant })),
           // Baselines for the what-if simulator: an OLS fit passes through the means, so the modeled
           // outcome at every-predictor-at-its-mean equals the target's mean. From there the UI projects
-          // outcome = targetMean + Σ coefᵢ·(xᵢ − meanᵢ) — no raw rows needed.
+          // outcome = targetMean + Σ coefᵢ·(xᵢ − meanᵢ) - no raw rows needed.
           model: tNum
             ? {
                 intercept: mr.intercept,
@@ -417,7 +417,7 @@ function buildInsightContext(
   }
   associations.sort((a, b) => Number(b.significant) - Number(a.significant) || b.cramersV - a.cramersV);
 
-  // Outliers per metric — classified as a skewed segment (use the median) vs isolated anomalies.
+  // Outliers per metric - classified as a skewed segment (use the median) vs isolated anomalies.
   const outliers: OutlierFact[] = [];
   for (const m of metrics) {
     const a = analyzeColumnOutliers(m.name, numericColumn(table, m.name), 3);

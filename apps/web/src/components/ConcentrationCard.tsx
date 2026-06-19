@@ -8,7 +8,7 @@ import { currencySymbol } from "@/lib/currency";
 // indices (Gini / HHI) and a plain-language risk read. Renders from precomputed data (shared view too).
 
 function fmt(n: number, p?: ColumnProfile): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   if (p?.type === "currency") {
     const sym = currencySymbol();
     const abs = Math.abs(n);
@@ -49,7 +49,7 @@ function One({ c, profiles, table }: { c: Concentration; profiles: ColumnProfile
         The top <strong className="text-slate-100">{c.paretoCount}</strong> of {c.distinct} {c.dimension}
         {c.paretoCount === 1 ? "" : "s"} ({pct(c.paretoPctOfCategories)} of them) account for{" "}
         <strong className="text-slate-100">{pct(c.paretoShare)}</strong> of {measure}.
-        {c.level === "high" && " That's real concentration — a few movers carry the whole number."}
+        {c.level === "high" && " That's real concentration - a few movers carry the whole number."}
       </p>
 
       <div className="mt-4 space-y-1.5">
@@ -79,10 +79,10 @@ function One({ c, profiles, table }: { c: Concentration; profiles: ColumnProfile
         <span>
           Top category: <strong className="text-slate-300">{pct(c.topShare)}</strong>
         </span>
-        <span title="Gini coefficient — 0 is perfectly even, 1 is everything in one category">
+        <span title="Gini coefficient - 0 is perfectly even, 1 is everything in one category">
           Gini <strong className="text-slate-300">{c.gini.toFixed(2)}</strong>
         </span>
-        <span title="Herfindahl–Hirschman index — higher means more concentrated">
+        <span title="Herfindahl–Hirschman index - higher means more concentrated">
           HHI <strong className="text-slate-300">{c.hhi.toFixed(2)}</strong>
         </span>
         <span>

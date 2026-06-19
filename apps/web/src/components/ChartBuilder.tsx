@@ -55,7 +55,7 @@ export function ChartBuilder({ table, profiles }: { table: Table; profiles: Colu
 
   function handleManual() {
     if (y !== COUNT && type !== "histogram" && x === y) {
-      setNote("Pick two different columns — X and Y can't be the same. (Tip: use “Count of rows” to chart a single column.)");
+      setNote("Pick two different columns - X and Y can't be the same. (Tip: use “Count of rows” to chart a single column.)");
       return;
     }
     const req: ChartRequest =

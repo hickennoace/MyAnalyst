@@ -28,7 +28,7 @@ export function Disclaimer({ variant = "banner" }: { variant?: "banner" | "line"
       <p className="text-xs leading-relaxed text-amber-200/90">
         <span className="font-semibold text-amber-200">Not financial or investment advice.</span>{" "}
         These figures, forecasts, and insights are generated automatically from your data and may be
-        incomplete or wrong — verify everything with a qualified professional before acting on it.
+        incomplete or wrong - verify everything with a qualified professional before acting on it.
       </p>
     </div>
   );

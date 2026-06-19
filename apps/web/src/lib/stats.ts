@@ -1,4 +1,4 @@
-// Small, dependency-free statistics. The "calculator" half of the product — everything here is exact and local.
+// Small, dependency-free statistics. The "calculator" half of the product - everything here is exact and local.
 
 export function mean(xs: number[]): number {
   if (xs.length === 0) return NaN;
@@ -24,8 +24,8 @@ export function sum(xs: number[]): number {
 }
 
 /** Loop-based min/max. `Math.min(...xs)` / `Math.max(...xs)` overflow the call stack
- *  once `xs` exceeds the engine's argument limit (~64–125k) — and our tables hold up to
- *  200k rows — so never spread a row-scale array into Math.min/max. Returns NaN if empty. */
+ *  once `xs` exceeds the engine's argument limit (~64–125k) - and our tables hold up to
+ *  200k rows - so never spread a row-scale array into Math.min/max. Returns NaN if empty. */
 export function minOf(xs: number[]): number {
   let m = Infinity;
   for (const x of xs) if (x < m) m = x;
@@ -108,7 +108,7 @@ export function zOutliers(xs: number[], threshold = 3): { index: number; value: 
 }
 
 /** A correlation so strong (or between name-subset columns) that it's almost certainly a derived /
- *  duplicate relationship rather than an insight — e.g. tax↔sales (r≈1), "Revenue"↔"Total Revenue".
+ *  duplicate relationship rather than an insight - e.g. tax↔sales (r≈1), "Revenue"↔"Total Revenue".
  *  Used to hide tautological "findings" from the narrated insights so the AI doesn't state the obvious. */
 export function isRedundantCorrelation(a: string, b: string, r: number): boolean {
   if (Math.abs(r) >= 0.98) return true; // near-perfect → one column is computed from the other

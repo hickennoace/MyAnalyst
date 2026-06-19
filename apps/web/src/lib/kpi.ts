@@ -6,8 +6,8 @@ import { isAdditive, isTransactionGrain, metricKind, quantityMetric, revenueMetr
 import { currencySymbol } from "./currency";
 
 // KPI engine: given the typed table + profiles + domain, compute the headline numbers that matter.
-// It leads with the business questions a manager actually has — total revenue, volume, average sale,
-// and how revenue is trending — using metric SEMANTICS so it sums values (revenue, units) and only
+// It leads with the business questions a manager actually has - total revenue, volume, average sale,
+// and how revenue is trending - using metric SEMANTICS so it sums values (revenue, units) and only
 // averages attributes (unit price, age, rating). Rules are keyed by role + meaning, not column names.
 
 function fmtCurrency(n: number): string {
@@ -73,7 +73,7 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
       relevance: 1.0,
     });
 
-    // Volume — units sold if there's a quantity column, otherwise the transaction count.
+    // Volume - units sold if there's a quantity column, otherwise the transaction count.
     if (qty) {
       kpis.push({
         id: `kpi-total-${qty.name}`,
@@ -101,7 +101,7 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
       relevance: 0.8,
     });
 
-    // Revenue trend — on revenue SUMMED PER MONTH (the honest version), not per-row noise. Monthly so a
+    // Revenue trend - on revenue SUMMED PER MONTH (the honest version), not per-row noise. Monthly so a
     // dense stream of daily transactions reads as a real trend, and the incomplete final period is trimmed.
     const monthlyTs = timeCol ? analyzeTimeSeries(table, timeCol.name, revenue.name, "monthly") : undefined;
     if (monthlyTs) {
@@ -127,7 +127,7 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
 
     // ── Derived KPIs that lead to a CONCLUSION, not just describe the data. ──
 
-    // Gross margin — the single most decision-relevant number when costs are present.
+    // Gross margin - the single most decision-relevant number when costs are present.
     const cost = costMetric(profiles, revenue);
     if (cost && n.sum > 0) {
       const margin = (n.sum - cost.numeric!.sum) / n.sum;
@@ -143,19 +143,19 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
       }
     }
 
-    // Top performer — where the revenue actually concentrates (answers "what carries the business").
+    // Top performer - where the revenue actually concentrates (answers "what carries the business").
     if (bestSellers && bestSellers.topRevenue.revenueShare >= 0.15) {
       const t = bestSellers.topRevenue;
       kpis.push({
         id: "kpi-topseller",
         name: `Top ${bestSellers.dimension}`,
         value: `${t.name} · ${Math.round(t.revenueShare * 100)}%`,
-        howComputed: `"${t.name}" is the largest ${bestSellers.dimension} by ${bestSellers.metric} — ${Math.round(t.revenueShare * 100)}% of the total.`,
+        howComputed: `"${t.name}" is the largest ${bestSellers.dimension} by ${bestSellers.metric} - ${Math.round(t.revenueShare * 100)}% of the total.`,
         relevance: 0.86,
       });
     }
 
-    // Peak period — when the business does its best, a hook for seasonality/planning.
+    // Peak period - when the business does its best, a hook for seasonality/planning.
     if (monthlyTs && monthlyTs.periods.length >= 4 && monthlyTs.best) {
       kpis.push({
         id: "kpi-bestmonth",
@@ -175,8 +175,8 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
     });
   }
 
-  // ── Per-metric KPIs — but only the ones that lead somewhere. Sum flows (values, quantities). For
-  //    attributes, surface the average ONLY when it's a real KPI (a rate/score like satisfaction) — a
+  // ── Per-metric KPIs - but only the ones that lead somewhere. Sum flows (values, quantities). For
+  //    attributes, surface the average ONLY when it's a real KPI (a rate/score like satisfaction) - a
   //    bare "Average customer age" is noise next to revenue, so it's dropped when a revenue headline
   //    exists. With no revenue, descriptive averages ARE the analysis, so they stay.
   for (const m of metrics) {
@@ -208,7 +208,7 @@ export function computeKpis(table: Table, profiles: ColumnProfile[], domain: Dom
     }
   }
 
-  // ── Financial price-series KPIs (growth / CAGR / volatility / Sharpe) — only where summing is wrong
+  // ── Financial price-series KPIs (growth / CAGR / volatility / Sharpe) - only where summing is wrong
   //    and a price LEVEL over time is the story. Never applied to transaction data. ──
   if (domain === "financial-timeseries" && timeCol) {
     const pm = primaryMetric(profiles);

@@ -60,7 +60,7 @@ export function ThemesCard({ analyses }: { analyses: TextAnalysis[] }) {
           </ul>
 
           <p className="mt-3 text-[11px] text-slate-500">
-            Themes are the most frequent phrases; sentiment is a lexicon estimate — skim the quotes for nuance.
+            Themes are the most frequent phrases; sentiment is a lexicon estimate - skim the quotes for nuance.
           </p>
         </div>
       ))}

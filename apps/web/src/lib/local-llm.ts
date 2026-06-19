@@ -1,6 +1,6 @@
 // On-device LLM narration via transformers.js + WebGPU. The strongest privacy posture available: the
 // model runs entirely in the browser, so narration happens with ZERO network calls at inference time
-// (the model weights download once on first use, then the browser caches them). Opt-in and lazy — the
+// (the model weights download once on first use, then the browser caches them). Opt-in and lazy - the
 // heavy library + weights only load when the user turns it on. Everything degrades gracefully: any
 // failure (no WebGPU, download blocked, OOM) returns null and the caller keeps the local templated text.
 
@@ -62,7 +62,7 @@ export async function localNarrateStory(meta: StoryMeta, draft: string, onProgre
     if (!gen) return null;
     const cols = meta.columns.slice(0, 25).map((c) => `${c.name} (${c.type}/${c.role})`).join(", ");
     const messages = [
-      { role: "system", content: "You are a precise data analyst. In 2–3 sentences, explain what a dataset is about and what it's used for. Use only the metadata given — never invent specific numbers. Plain, professional language." },
+      { role: "system", content: "You are a precise data analyst. In 2–3 sentences, explain what a dataset is about and what it's used for. Use only the metadata given - never invent specific numbers. Plain, professional language." },
       { role: "user", content: `Dataset: ${meta.datasetName}\nDomain: ${meta.domain}\nRows: ${meta.rowCount}\nColumns: ${cols}${meta.userContext ? `\nUser context: ${meta.userContext}` : ""}\n\nDraft to improve: ${draft}\n\nWrite the 2–3 sentence summary.` },
     ];
     const out = (await gen(messages, { max_new_tokens: 160, temperature: 0.4, do_sample: true, return_full_text: false })) as unknown;

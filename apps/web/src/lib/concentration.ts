@@ -2,7 +2,7 @@ import type { ColumnProfile, Concentration, ConcentrationMember, ConcentrationSe
 import { numericColumn } from "./profile";
 import { isAdditive, revenueMetric } from "./semantics";
 
-// Concentration / Pareto analysis — the "80–20" lens. For a categorical (or id) column and a measure,
+// Concentration / Pareto analysis - the "80–20" lens. For a categorical (or id) column and a measure,
 // how much of the total do the biggest few categories hold? Answers questions every analyst asks but
 // the engine didn't surface before: "what share of revenue comes from our top 5 customers?", "are sales
 // concentrated in a handful of products (a risk) or spread evenly?". Pure + worker-safe; one pass per pair.
@@ -105,13 +105,13 @@ function groupTotals(table: Table, dimName: string, metricValues: number[] | nul
   return totals;
 }
 
-/** Concentration of one measure (or row count) across one named column — for targeted NL questions. */
+/** Concentration of one measure (or row count) across one named column - for targeted NL questions. */
 export function concentrationFor(table: Table, dimName: string, metric: { name: string; values: number[] } | null): Concentration | null {
   return profileTotals(dimName, metric ? metric.name : "row count", !metric, groupTotals(table, dimName, metric ? metric.values : null));
 }
 
 /**
- * The "vital few" categories that carry a concentration result — re-derived from the raw table so it
+ * The "vital few" categories that carry a concentration result - re-derived from the raw table so it
  * recovers every category up to the Pareto point (not just the top few shown before the "Other" roll-up).
  * Used to export the concentration as an actionable account list. Pure.
  */
@@ -130,11 +130,11 @@ export function concentrationMembers(table: Table, c: Concentration): Concentrat
 
 /**
  * Find the most concentrated (measure × category) views in the dataset. Picks the best measure for each
- * candidate category column, scores by Gini (most uneven = most interesting), and returns the top few —
+ * candidate category column, scores by Gini (most uneven = most interesting), and returns the top few -
  * one per dimension for variety. Falls back to a row-count concentration when no usable measure exists.
  */
 export function analyzeConcentration(table: Table, profiles: ColumnProfile[]): Concentration[] {
-  // Only concentrate ADDITIVE measures (revenue, units) — "the top 3 brands hold 80% of revenue" is a
+  // Only concentrate ADDITIVE measures (revenue, units) - "the top 3 brands hold 80% of revenue" is a
   // real risk; "…of customer age" is gibberish. Summing an attribute (age, rating, unit price) is never
   // the 80–20 story, so those columns are excluded here.
   const revenue = revenueMetric(profiles, true);
@@ -144,7 +144,7 @@ export function analyzeConcentration(table: Table, profiles: ColumnProfile[]): C
     .slice(0, MAX_METRICS);
   const dims = profiles
     .filter((p) => (p.role === "dimension" || p.role === "identifier") && p.distinctCount >= MIN_CATEGORIES && p.type !== "date")
-    // The dimension must genuinely GROUP rows — if every value is its own row (distinct === rowCount),
+    // The dimension must genuinely GROUP rows - if every value is its own row (distinct === rowCount),
     // "concentration" degenerates into the raw metric's dispersion, which isn't the 80–20 story.
     .filter((p) => p.distinctCount < table.rowCount)
     // Skip near-unique categorical columns (free-text-ish) where every value is its own group.

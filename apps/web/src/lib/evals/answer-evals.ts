@@ -2,7 +2,7 @@ import type { Table } from "../types";
 
 // Grounding eval suite: canonical (dataset, question, expected-number) cases that pin the EXACT figures
 // the deterministic engine produces. The optional LLM narrator is grounded in these same numbers, so if
-// a refactor ever changes a computed value, this suite fails loudly — the AI can never silently drift off
+// a refactor ever changes a computed value, this suite fails loudly - the AI can never silently drift off
 // the real data. Cases are plain data so they can also feed a future LLM-judge / regression dashboard.
 
 export interface AnswerEval {
@@ -11,7 +11,7 @@ export interface AnswerEval {
   question: string;
   /** substrings (the exact numbers/labels) that MUST appear in the grounded answer. */
   expect: string[];
-  /** substrings that must NOT appear — guards against a question being mis-grounded. */
+  /** substrings that must NOT appear - guards against a question being mis-grounded. */
   forbid?: string[];
 }
 
@@ -33,7 +33,7 @@ const SALES: Table = {
 };
 
 // A fitness table (Activity dimension + Intensity/Duration metrics) to guard the "most <quality> <thing>"
-// intent — the bug where "most intense workout" wrongly returned "max of Duration".
+// intent - the bug where "most intense workout" wrongly returned "max of Duration".
 const FITNESS: Table = {
   name: "fitness.csv",
   columns: ["Activity", "Duration (min)", "Intensity"],
@@ -51,7 +51,7 @@ const FITNESS: Table = {
 };
 
 export const ANSWER_EVALS: AnswerEval[] = [
-  // "Most <quality> <thing>" must rank the group by the right metric — not give an unrelated extreme.
+  // "Most <quality> <thing>" must rank the group by the right metric - not give an unrelated extreme.
   { name: "most intense workout → rank by Intensity", table: FITNESS, question: "what is the most intense workout", expect: ["Intensity", "HIIT"], forbid: ["Duration"] },
   { name: "overall maximum duration (not grouped)", table: FITNESS, question: "what is the maximum duration", expect: ["90"], forbid: ["Activity"] },
   { name: "total aggregate", table: SALES, question: "total revenue", expect: ["1,050"] },

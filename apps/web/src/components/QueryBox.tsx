@@ -7,7 +7,7 @@ import { llmEnabled } from "@/lib/insights/humanize";
 import { domainSuggestions } from "@/lib/domain-pack";
 import { Chart } from "./Chart";
 
-// "Ask your data" box. Computes the exact numbers locally, then — when the optional LLM is enabled —
+// "Ask your data" box. Computes the exact numbers locally, then - when the optional LLM is enabled -
 // has it narrate a thorough, professional analyst answer grounded in those numbers (raw rows never
 // leave the page). Without a key it answers from the local heuristic engine. Either way the numbers
 // are real and the dashboard never breaks. Answers stack into a conversation, so follow-ups read as
@@ -40,7 +40,7 @@ export function QueryBox({
 
   // Domain-tuned example questions (grounded in real columns), falling back to generic ones. When the
   // analysis carries an action plan / findings, lead with the advisory ask so users discover that the
-  // box answers open questions too — not just column computations.
+  // box answers open questions too - not just column computations.
   const suggestions = useMemo(() => {
     const base = domain ? domainSuggestions(domain, profiles) : buildSuggestions(profiles);
     const advisory = analysis && ((analysis.actions?.length ?? 0) > 0 || (analysis.findings?.length ?? 0) > 0);
@@ -102,8 +102,8 @@ export function QueryBox({
       </div>
       <p className="mt-1 text-xs text-slate-400">
         {ai
-          ? "Plain-English questions, answered like a professional analyst — grounded in your real numbers. The AI only sees the figures for your question, never your raw rows."
-          : "Plain-English questions, answered with your real numbers. Computed on your device — no AI key needed."}
+          ? "Plain-English questions, answered like a professional analyst - grounded in your real numbers. The AI only sees the figures for your question, never your raw rows."
+          : "Plain-English questions, answered with your real numbers. Computed on your device - no AI key needed."}
       </p>
 
       {/* Conversation thread */}
@@ -146,7 +146,7 @@ export function QueryBox({
                         </p>
                       ) : (
                         <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-amber-300/90">
-                          ⚠ Couldn’t verify: {t.result.grounding.unverified.join(", ")} — double-check before relying on {t.result.grounding.unverified.length > 1 ? "them" : "it"}
+                          ⚠ Couldn’t verify: {t.result.grounding.unverified.join(", ")} - double-check before relying on {t.result.grounding.unverified.length > 1 ? "them" : "it"}
                         </p>
                       )
                     )}

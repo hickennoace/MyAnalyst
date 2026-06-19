@@ -22,10 +22,10 @@ interface StoredItem {
   domain: string;
   specPayload: string; // compressed DashboardSpec
   tablePayload: string; // compressed Table (enables the chart builder on reopen)
-  /** compressed PyAnalysisSpec — the Python engine's KPIs/charts, so reopened dashboards don't degrade
+  /** compressed PyAnalysisSpec - the Python engine's KPIs/charts, so reopened dashboards don't degrade
    *  to the TS fallback. Absent on entries saved before this field existed. */
   pyPayload?: string;
-  /** compressed PyConclusions — the AI conclusions panel survives a reopen without another LLM call. */
+  /** compressed PyConclusions - the AI conclusions panel survives a reopen without another LLM call. */
   conclusionsPayload?: string;
 }
 
@@ -103,7 +103,7 @@ async function migrateLegacy(): Promise<void> {
       );
     }
   } catch {
-    /* corrupt legacy data — ignore */
+    /* corrupt legacy data - ignore */
   }
   try {
     localStorage.removeItem(LEGACY_KEY);

@@ -2,7 +2,7 @@ import type { DashboardSpec } from "./types";
 import { cadenceNoun } from "./timeseries";
 
 // Executive summary: a few plain-language paragraphs that synthesize the whole analysis into the kind
-// of opening a human analyst writes — what the data is and how trustworthy, the headline numbers, the
+// of opening a human analyst writes - what the data is and how trustworthy, the headline numbers, the
 // key movement and its driver, and the standout finding. Grounded entirely in the computed spec (no
 // fabrication). Rendered at the top of the dashboard, so it leads the exported PDF/PNG report too.
 
@@ -26,7 +26,7 @@ export function buildExecutiveSummary(spec: DashboardSpec): string[] {
       const trend = typeof k.trend === "number" ? ` (${pct(k.trend)})` : "";
       return `${k.name} is ${val}${unit}${trend}`;
     });
-    paras.push(`Key numbers — ${parts.join("; ")}.`);
+    paras.push(`Key numbers - ${parts.join("; ")}.`);
   }
 
   // 3. The key movement + its driver.
@@ -50,7 +50,7 @@ export function buildExecutiveSummary(spec: DashboardSpec): string[] {
   }
   if (spec.concentration?.length) {
     const c = spec.concentration[0];
-    finding.push(`${c.metricIsCount ? "Volume" : c.metric} is concentrated — the top ${c.paretoCount} ${c.dimension}${c.paretoCount === 1 ? "" : "s"} hold ${Math.round(c.paretoShare * 100)}% of it.`);
+    finding.push(`${c.metricIsCount ? "Volume" : c.metric} is concentrated - the top ${c.paretoCount} ${c.dimension}${c.paretoCount === 1 ? "" : "s"} hold ${Math.round(c.paretoShare * 100)}% of it.`);
   }
   if (spec.rfm) {
     const champ = spec.rfm.segments.find((s) => s.key === "champions");

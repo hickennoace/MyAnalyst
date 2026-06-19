@@ -1,7 +1,7 @@
 import type { Table } from "./types";
 
 // Multi-table joins. SQLite databases and Excel workbooks expose several tables/sheets; this lets the
-// user enrich one with another (the classic fact × dimension join — e.g. orders + customers). We
+// user enrich one with another (the classic fact × dimension join - e.g. orders + customers). We
 // auto-suggest the join key by name match and value overlap, then do a left lookup join: every left row
 // is kept and gains the matching right row's columns (first match on a one-to-many). Pure + worker-safe.
 
@@ -10,7 +10,7 @@ export interface JoinKeySuggestion {
   rightKey: string;
   /** fraction of (non-empty) left key values that have a match in the right table, 0..1. */
   overlap: number;
-  /** whether the right key is unique — a clean one-to-one lookup. */
+  /** whether the right key is unique - a clean one-to-one lookup. */
   rightUnique: boolean;
 }
 

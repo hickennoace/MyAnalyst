@@ -8,7 +8,7 @@ import { currencySymbol } from "@/lib/currency";
 // features that set it apart (▲ high / ▼ low vs the overall average). Renders from precomputed data.
 
 function fmt(n: number, p?: ColumnProfile): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   if (p?.type === "currency") return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   const abs = Math.abs(n);
   if (abs >= 1e6) return (n / 1e6).toFixed(1) + "M";
@@ -36,7 +36,7 @@ export function SegmentCard({ segmentation, profiles, table }: { segmentation: S
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-400">
-        Clustered on {features.join(", ")} — the data splits into {segments.length} natural group{segments.length > 1 ? "s" : ""}.
+        Clustered on {features.join(", ")} - the data splits into {segments.length} natural group{segments.length > 1 ? "s" : ""}.
         {sampled ? ` Based on a ${sampled.toLocaleString()}-row sample.` : ""}
         {byCluster ? " Download any group's rows as CSV." : ""}
       </p>

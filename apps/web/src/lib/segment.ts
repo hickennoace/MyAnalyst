@@ -142,7 +142,7 @@ function cluster(table: Table, profiles: ColumnProfile[]): Clustering | undefine
   return { k, result, sampleIdx, cols, n: X.length };
 }
 
-/** Per-row cluster assignment (sampled rows) — used to export a cluster's rows from the raw table. */
+/** Per-row cluster assignment (sampled rows) - used to export a cluster's rows from the raw table. */
 export function segmentMembers(table: Table, profiles: ColumnProfile[]): SegmentMember[] | undefined {
   const c = cluster(table, profiles);
   if (!c) return undefined;

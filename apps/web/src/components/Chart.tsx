@@ -33,7 +33,7 @@ export function Chart({ spec }: { spec: ChartSpec }) {
 
   // echarts-for-react@3 binds no resize listener of its own, so keep the canvas in step with its
   // container width (responsive layouts, window resizes) via a ResizeObserver. Inactive tab panels stay
-  // laid out (clipped, not display:none), so charts always initialise at the right width — no tab-switch
+  // laid out (clipped, not display:none), so charts always initialise at the right width - no tab-switch
   // resize dance needed.
   useEffect(() => {
     const el = wrapRef.current;
@@ -114,7 +114,7 @@ export function Chart({ spec }: { spec: ChartSpec }) {
         )}
       >
         {/* The ECharts canvas is invisible to screen readers; describe it as an image. */}
-        <div ref={wrapRef} role="img" aria-label={`${spec.type} chart: ${spec.title}${spec.subtitle ? ` — ${spec.subtitle}` : ""}`}>
+        <div ref={wrapRef} role="img" aria-label={`${spec.type} chart: ${spec.title}${spec.subtitle ? ` - ${spec.subtitle}` : ""}`}>
           <ReactECharts
             option={spec.option}
             style={{ height: 320, width: "100%" }}

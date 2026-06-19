@@ -17,7 +17,7 @@ export function buildCaveats(profiles: ColumnProfile[]): Caveat[] {
   return out.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "bad" ? -1 : 1)).slice(0, 6);
 }
 
-/** The caveat (if any) affecting a KPI — matched by the column name appearing in its name/computation. */
+/** The caveat (if any) affecting a KPI - matched by the column name appearing in its name/computation. */
 export function caveatForKpi(kpi: Kpi, caveats: Caveat[]): Caveat | undefined {
   const hay = `${kpi.name} ${kpi.howComputed}`.toLowerCase();
   // Prefer the most severe match, then the longest column name (most specific).

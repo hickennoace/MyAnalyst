@@ -2,10 +2,10 @@ import type { ColumnProfile, ContributionAnalysis, ContributionSegment, Table } 
 import { numericColumn } from "./profile";
 import { detectCadence, periodKey } from "./timeseries";
 
-// Contribution / mix-shift decomposition — the single most common thing a human analyst is paid to
+// Contribution / mix-shift decomposition - the single most common thing a human analyst is paid to
 // explain: when a total moves between two periods, *how much* did each segment drive it? The per-segment
 // deltas sum exactly to the total change (an additive decomposition), so the story always reconciles.
-// Pure, dependency-free, metadata-only output (segment labels + numbers) — safe in the worker and on
+// Pure, dependency-free, metadata-only output (segment labels + numbers) - safe in the worker and on
 // the read-only shared view.
 
 const MAX_SEGMENTS = 8;
@@ -28,7 +28,7 @@ export function decomposeChange(table: Table, timeCol: string, metric: string, d
     const d = new Date(String(r[timeCol]));
     if (Number.isNaN(d.getTime()) || !Number.isFinite(vals[i])) return;
     times.push(d.getTime());
-    recs.push({ t: d.getTime(), seg: String(r[dimension] ?? "—"), v: vals[i] });
+    recs.push({ t: d.getTime(), seg: String(r[dimension] ?? "-"), v: vals[i] });
   });
   if (recs.length < 4) return undefined;
 
@@ -126,8 +126,8 @@ export function buildContributions(table: Table, profiles: ColumnProfile[], metr
     const a = decomposeChange(table, time.name, metricName, dim.name);
     if (!a || Math.abs(a.totalDelta) < 1e-9) continue;
     // "Concentration": how much of the GROSS movement one segment accounts for, in [0,1]. We divide by
-    // the sum of |delta| (not by totalDelta) so near-cancelling segments — where totalDelta is tiny and
-    // delta/totalDelta explodes to absurd percentages — don't get ranked as the sharpest story.
+    // the sum of |delta| (not by totalDelta) so near-cancelling segments - where totalDelta is tiny and
+    // delta/totalDelta explodes to absurd percentages - don't get ranked as the sharpest story.
     const gross = a.segments.reduce((s, x) => s + Math.abs(x.delta), 0);
     const spread = gross > 0 ? Math.max(...a.segments.map((s) => Math.abs(s.delta))) / gross : 0;
     out.push({ a, spread });

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 // Privacy indicator: a small, HONEST badge. The compute engine now runs on a server (the Python
-// backend), so the file is sent there over HTTPS to produce your dashboard — but it isn't stored, and
+// backend), so the file is sent there over HTTPS to produce your dashboard - but it isn't stored, and
 // only computed numbers/aggregates (never raw rows) ever reach the AI narrator. The popover spells the
 // real flow out so the claim is verifiable, not decorative.
 
@@ -40,7 +40,7 @@ export function PrivacyBadge() {
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
             The AI narrator only ever receives computed numbers and column names (totals, averages,
-            correlations) — never your raw rows. History and shareable links stay in your browser.
+            correlations) - never your raw rows. History and shareable links stay in your browser.
           </p>
         </div>
       )}

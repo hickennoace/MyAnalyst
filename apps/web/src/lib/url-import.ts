@@ -1,5 +1,5 @@
 // Import a dataset from a public URL by fetching it into a File, then handing it to the normal parser.
-// Privacy note: this PULLS data in from a URL the user chose — none of their own data is sent anywhere,
+// Privacy note: this PULLS data in from a URL the user chose - none of their own data is sent anywhere,
 // and no MyAnalyst server is involved (the browser fetches directly). Cross-origin URLs that don't send
 // CORS headers will be blocked by the browser; we surface a clear message in that case.
 
@@ -44,7 +44,7 @@ export async function fetchAsFile(url: string): Promise<File> {
     res = await fetch(target, { redirect: "follow" });
   } catch {
     // A network/CORS failure throws a TypeError with no useful detail in the browser.
-    throw new Error("Couldn't fetch that URL — the site may block cross-origin requests. Try downloading the file and uploading it.");
+    throw new Error("Couldn't fetch that URL - the site may block cross-origin requests. Try downloading the file and uploading it.");
   }
   if (!res.ok) throw new Error(`The server returned ${res.status} ${res.statusText || ""}`.trim() + ".");
   const blob = await res.blob();

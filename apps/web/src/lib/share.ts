@@ -2,11 +2,11 @@ import type { DashboardSpec } from "./types";
 import type { PyConclusions } from "./py-engine";
 
 // Shareable read-only links. The entire DashboardSpec is serialized, gzip-compressed (browser-native
-// CompressionStream), and base64url-encoded into the URL HASH fragment — which browsers never send to
+// CompressionStream), and base64url-encoded into the URL HASH fragment - which browsers never send to
 // the server. So a shared link reconstructs the dashboard entirely client-side; the data still never
 // leaves the browser. No backend, no storage, no account.
 
-/** Links beyond this many characters get unwieldy / may break in some apps — refuse and suggest PNG/PDF. */
+/** Links beyond this many characters get unwieldy / may break in some apps - refuse and suggest PNG/PDF. */
 export const MAX_LINK_CHARS = 200_000;
 
 /** Compress any JSON-serializable value to a base64url string (gzip + base64url). */
@@ -25,7 +25,7 @@ export async function decompress<T>(payload: string): Promise<T> {
  * Strip raw free-text excerpts before a spec leaves the device in a shareable link. The open-text
  * `sample` quotes are verbatim respondent text (possible PII); the rest of the spec is aggregate
  * metadata. A shared link reconstructs the dashboard without the quotes, while the live in-browser
- * analysis (and local history, which never leaves the device) keep them — upholding "raw rows never leave".
+ * analysis (and local history, which never leaves the device) keep them - upholding "raw rows never leave".
  */
 export function redactForShare(spec: DashboardSpec): DashboardSpec {
   if (!spec.textAnalysis?.length) return spec;
@@ -39,7 +39,7 @@ export function redactForShare(spec: DashboardSpec): DashboardSpec {
 }
 
 /** A shared dashboard: the rendered spec plus the AI conclusions, so a read-only link reproduces the full
- *  decision-first view (KPIs, charts, and the AI "bottom line") — not just the templated dashboard. */
+ *  decision-first view (KPIs, charts, and the AI "bottom line") - not just the templated dashboard. */
 export interface SharedDashboard {
   spec: DashboardSpec;
   conclusions: PyConclusions | null;

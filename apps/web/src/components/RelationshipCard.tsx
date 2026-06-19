@@ -6,7 +6,7 @@ import { numericColumn } from "@/lib/profile";
 import { linearRegression } from "@/lib/stats";
 
 // Relationship explorer: an interactive correlation heatmap. Hover/click any cell to drill into that
-// pair — a scatter with its fitted trend line, the correlation strength, significance, 95% CI, and an
+// pair - a scatter with its fitted trend line, the correlation strength, significance, 95% CI, and an
 // honest "correlation isn't causation" reminder. The matrix is precomputed; the scatter is drawn from
 // the raw table when it's available (live analyzer + read-only shared view both pass it through).
 
@@ -97,7 +97,7 @@ export function RelationshipCard({ relationships, table, profiles }: { relations
                           type="button"
                           disabled={diag}
                           onClick={() => setSel({ a: rowName, b: colName })}
-                          title={`${rowName} vs ${colName}: r = ${Number.isFinite(r) ? r.toFixed(2) : "—"}`}
+                          title={`${rowName} vs ${colName}: r = ${Number.isFinite(r) ? r.toFixed(2) : "-"}`}
                           style={{ background: diag ? "rgba(100,116,139,0.25)" : cellBg(r) }}
                           className={`grid h-8 w-8 place-items-center rounded tabular-nums text-slate-100 transition ${
                             isSel ? "ring-2 ring-white/70" : ""
@@ -147,11 +147,11 @@ export function RelationshipCard({ relationships, table, profiles }: { relations
 
               {selPair.redundant && (
                 <p className="mt-2 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">
-                  ⚠ This pair is near-perfectly correlated — one column is likely derived from the other, not an independent finding.
+                  ⚠ This pair is near-perfectly correlated - one column is likely derived from the other, not an independent finding.
                 </p>
               )}
               <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                A relationship isn't proof of cause — both can be driven by something else. Treat it as a lead to investigate, not a conclusion.
+                A relationship isn't proof of cause - both can be driven by something else. Treat it as a lead to investigate, not a conclusion.
               </p>
             </div>
           ) : (

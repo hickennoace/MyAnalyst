@@ -1,10 +1,10 @@
 import type { ColumnProfile, Table } from "./types";
 
-// Currency detection + money formatting for the TS engine — mirrors the Python `_currency` module so the
+// Currency detection + money formatting for the TS engine - mirrors the Python `_currency` module so the
 // in-browser fallback and the secondary dashboard cards (Insights, Actions, ask-your-data, charts) show the
 // same currency the engine detects, instead of hardcoding "$". Covers ~50 world currencies, detected from
 // money-column headers (ISO codes, symbols, or the currency's NAME) and raw cell values. The dashboard
-// DISPLAYS money in the detected currency — it does not convert between currencies.
+// DISPLAYS money in the detected currency - it does not convert between currencies.
 //
 // The active currency is module-level state, set once at the start of each analysis. The TS engine analyzes
 // one dataset at a time (worker or main thread), so there's no interleaving. The detected currency also
@@ -29,7 +29,7 @@ const GLYPH_TO_CODE: Record<string, string> = {
   "₺": "TRY", "฿": "THB", "₱": "PHP", "₫": "VND", "₦": "NGN", "₴": "UAH", "₵": "GHS", "₲": "PYG",
   "₸": "KZT", "₾": "GEL", "₡": "CRC", "R$": "BRL", "NT$": "TWD", "E£": "EGP",
 };
-// Distinctive currency NAMES (word-boundary). No bare pound/won/real/peso/krona — too ambiguous.
+// Distinctive currency NAMES (word-boundary). No bare pound/won/real/peso/krona - too ambiguous.
 const WORD_TO_CODE: Record<string, string> = {
   dollar: "USD", dollars: "USD", euro: "EUR", euros: "EUR", sterling: "GBP", yen: "JPY", yuan: "CNY",
   renminbi: "CNY", shekel: "ILS", shekels: "ILS", shekalim: "ILS", rupee: "INR", rupees: "INR",
@@ -92,7 +92,7 @@ export function currencySymbol(): string {
 
 /** Compact money in the active currency: $1.2M / €340K / ₪1,200 / ¥50K. */
 export function fmtMoney(n: number): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   const s = active.symbol;
   const a = Math.abs(n);
   if (a >= 1e6) return s + (n / 1e6).toFixed(1) + "M";

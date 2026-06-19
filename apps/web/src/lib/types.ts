@@ -31,7 +31,7 @@ export interface ColumnProfile {
   /** Fraction of non-null values, 0..1 */
   fillRate: number;
   distinctCount: number;
-  /** distinctCount / nonNull count, 0..1 — low = categorical-ish */
+  /** distinctCount / nonNull count, 0..1 - low = categorical-ish */
   cardinalityRatio: number;
   /** Numeric-only summary stats (undefined for non-numeric). */
   numeric?: NumericSummary;
@@ -41,7 +41,7 @@ export interface ColumnProfile {
   samples: string[];
   /** Heuristic role used by the KPI/chart engines. */
   role: "metric" | "dimension" | "time" | "identifier" | "other";
-  /** Most frequent values (for categorical/dimension columns) — powers frequency charts & "most common" answers. */
+  /** Most frequent values (for categorical/dimension columns) - powers frequency charts & "most common" answers. */
   topValues?: ValueCount[];
 }
 
@@ -114,7 +114,7 @@ export interface Insight {
   id: string;
   text: string;
   confidence: "high" | "medium" | "low";
-  /** ids of KPIs/stats this claim is grounded in — every insight must cite at least one. */
+  /** ids of KPIs/stats this claim is grounded in - every insight must cite at least one. */
   cites: string[];
   kind: "trend" | "correlation" | "regression" | "outlier" | "composition" | "summary";
 }
@@ -122,7 +122,7 @@ export interface Insight {
 /** Metadata-only context handed to an InsightProvider. NEVER contains raw rows. */
 export interface InsightContext {
   domain: Domain;
-  /** optional free-text description of the user's job/goal — sharpens AI wording & relevance. */
+  /** optional free-text description of the user's job/goal - sharpens AI wording & relevance. */
   userContext?: string;
   rowCount: number;
   columns: { name: string; type: SemanticType; role: ColumnProfile["role"] }[];
@@ -139,7 +139,7 @@ export interface InsightContext {
   drivers?: DriverAnalysis;
   /** the most concentrated measure×category views ("80–20"), for a concentration-risk insight */
   concentration?: Concentration[];
-  /** best-selling products/categories by revenue and by volume — the lead story for sales data */
+  /** best-selling products/categories by revenue and by volume - the lead story for sales data */
   bestSellers?: BestSellers;
   /** group-comparison keys ("metric~dimension") whose "copy the leader" framing is a price/product
    *  tautology (a premium product just costs more) and must NOT become a "close the gap" recommendation. */
@@ -275,7 +275,7 @@ export interface OutlierBreakdown {
   outlierShare: number;
   /** share of all rows in this segment, 0..1. */
   baseShare: number;
-  /** outlierShare / baseShare — >1 means anomalies cluster here more than chance. */
+  /** outlierShare / baseShare - >1 means anomalies cluster here more than chance. */
   lift: number;
 }
 
@@ -420,13 +420,13 @@ export interface SeasonIndex {
 
 /** A recurring seasonal pattern: which positions in the cycle run hot/cold, and how strongly. */
 export interface SeasonPattern {
-  /** the cycle unit — "month", "quarter", or "weekday". */
+  /** the cycle unit - "month", "quarter", or "weekday". */
   unit: "month" | "quarter" | "weekday";
   /** every cycle position in order, with its seasonal index. */
   indices: SeasonIndex[];
   peak: SeasonIndex;
   trough: SeasonIndex;
-  /** peak.index − trough.index — the amplitude of the swing. */
+  /** peak.index − trough.index - the amplitude of the swing. */
   strength: number;
 }
 
@@ -441,7 +441,7 @@ export interface ContributionSegment {
   delta: number;
   /** signed share of the total change (delta / totalDelta); can exceed 1 or be negative when segments offset. */
   contributionPct: number;
-  /** share of the period total in the previous and latest periods (0..1) — the mix-shift view. */
+  /** share of the period total in the previous and latest periods (0..1) - the mix-shift view. */
   sharePrev: number;
   shareLatest: number;
   status: "grew" | "shrank" | "new" | "lost" | "flat";
@@ -483,7 +483,7 @@ export interface Segmentation {
   sampled?: number;
 }
 
-/** A clustered row's assignment — `rowIndex` into the table, `cluster` matching a Segment.id. */
+/** A clustered row's assignment - `rowIndex` into the table, `cluster` matching a Segment.id. */
 export interface SegmentMember {
   rowIndex: number;
   cluster: number;
@@ -506,7 +506,7 @@ export interface ConcentrationSegment {
   isOther?: boolean;
 }
 
-/** One "vital few" category behind a concentration result — the exportable membership detail. */
+/** One "vital few" category behind a concentration result - the exportable membership detail. */
 export interface ConcentrationMember {
   rank: number;
   name: string;
@@ -531,7 +531,7 @@ export interface Concentration {
   paretoCount: number;
   /** the actual cumulative share at paretoCount (≥ 0.8 unless the whole set is below it). */
   paretoShare: number;
-  /** paretoCount / distinct — the "vital few" as a fraction of all categories. */
+  /** paretoCount / distinct - the "vital few" as a fraction of all categories. */
   paretoPctOfCategories: number;
   /** share held by the single largest category, 0..1. */
   topShare: number;
@@ -587,7 +587,7 @@ export interface RfmSegment {
   monetaryShare: number;
 }
 
-/** One scored entity (customer) behind the RFM segments — the exportable membership detail. */
+/** One scored entity (customer) behind the RFM segments - the exportable membership detail. */
 export interface RfmMember {
   /** the entity id (value of the entity column). */
   id: string;
@@ -606,7 +606,7 @@ export interface RfmAnalysis {
   entity: string;
   dateColumn: string;
   valueColumn: string;
-  /** the most recent date in the data — recency is measured back from here. */
+  /** the most recent date in the data - recency is measured back from here. */
   asOf: string;
   customers: number;
   /** segments ranked by total monetary value, largest first. */
@@ -618,7 +618,7 @@ export interface RfmAnalysis {
 /** One prioritized, grounded "do this next" recommendation derived from the analysis. */
 export interface ActionItem {
   id: string;
-  /** imperative headline — "do this". */
+  /** imperative headline - "do this". */
   title: string;
   /** grounded rationale with the actual numbers. */
   detail: string;
@@ -718,10 +718,10 @@ export interface DashboardSpec {
   insights: Insight[];
   /** AI-derived, action-oriented conclusions (with a "not professional advice" disclaimer in the UI). */
   conclusions: Conclusion[];
-  /** which narrator wrote the insights — drives the "AI-narrated" badge. */
+  /** which narrator wrote the insights - drives the "AI-narrated" badge. */
   narrator: "llm" | "templated";
   /** A short plain-language "what is this data" narrative: inferred industry,
-   *  subject, and likely purpose — so findings stay connected to the subject. */
+   *  subject, and likely purpose - so findings stay connected to the subject. */
   story?: DataStory;
   /** A 0–100 data-quality health score with a per-dimension breakdown and fixes. */
   quality?: DataQuality;
@@ -737,7 +737,7 @@ export interface DashboardSpec {
   cohorts?: CohortAnalysis;
   /** A ranked, quantified "what to do next" action plan derived from the analysis. */
   actions?: ActionItem[];
-  /** "What drove the change" — period-over-period movement of the primary metric, attributed by dimension. */
+  /** "What drove the change" - period-over-period movement of the primary metric, attributed by dimension. */
   contributions?: ContributionAnalysis[];
   /** Themes + sentiment for free-text columns (open-ended feedback, reviews, notes). */
   textAnalysis?: TextAnalysis[];
@@ -754,7 +754,7 @@ export interface DashboardSpec {
 }
 
 export interface DataStory {
-  /** e.g. "Sales / retail", "SaaS", "Marketing" — the inferred industry/subject. */
+  /** e.g. "Sales / retail", "SaaS", "Marketing" - the inferred industry/subject. */
   industry: string;
   /** 2–3 sentence plain-language description of what the dataset is and is used for. */
   summary: string;

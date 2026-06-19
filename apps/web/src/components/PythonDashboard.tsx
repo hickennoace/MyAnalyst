@@ -221,7 +221,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function money(n: number): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   const sym = currencySymbol();
   const a = Math.abs(n);
   if (a >= 1e6) return sym + (n / 1e6).toFixed(1) + "M";

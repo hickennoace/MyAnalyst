@@ -7,9 +7,9 @@ import { isTransactionGrain } from "./semantics";
 // revenue analysis is disabled. The fix: "price/volume" alone are weak financial hints, and a stream of
 // transactions (many repeating-category rows over time) is operational data, never a financial series.
 
-// Real market-data structure — these strongly imply a financial price/return series.
+// Real market-data structure - these strongly imply a financial price/return series.
 const STRONG_FINANCIAL = /(\bclose\b|\bopen\b|\bhigh\b|\blow\b|ohlc|ticker|portfolio|\bnav\b|\byield\b|dividend|\bequity\b|adj[_\s-]?close|candlestick|drawdown|coupon|maturity|cusip|isin|sharpe)/i;
-// Ambiguous: common in BOTH finance and ordinary sales — only count for finance on non-transaction data.
+// Ambiguous: common in BOTH finance and ordinary sales - only count for finance on non-transaction data.
 const WEAK_FINANCIAL = /(\bprice\b|\bvolume\b|\breturn\b|\bbalance\b|\basset\b|\binterest\b)/i;
 
 const SALES = /(sales|revenue|orders?|quantity|\bqty\b|\bunits?\b|product|customer|client|invoice|profit|margin|\bsku\b|region|stores?|\bprice\b|\bcost\b|discount|brand|model|make|dealer|vendor|supplier|category|shipment|warehouse|inventory|payment|transaction|deal)/i;
@@ -33,7 +33,7 @@ export function detectDomain(profiles: ColumnProfile[], userContext?: string, ro
   const financialScore = strongFin * 2 + (grain ? 0 : weakFin + (hasTime && finSignal > 0 ? 1 : 0)) + ctxHit(STRONG_FINANCIAL);
 
   // Operational/sales: keyword matches plus a structural bonus. The transaction-grain bonus only
-  // REINFORCES a real sales signal — it must not invent "sales" from a keyword-less stream (e.g. a
+  // REINFORCES a real sales signal - it must not invent "sales" from a keyword-less stream (e.g. a
   // fitness log: Date + Activity + Duration + Calories is a transaction grain but isn't sales/ops).
   const salesKw = count(SALES) + ctxHit(SALES);
   const salesScore = salesKw > 0 ? salesKw + (grain ? 1 : 0) : 0;

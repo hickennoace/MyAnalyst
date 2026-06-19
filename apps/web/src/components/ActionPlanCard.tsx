@@ -1,6 +1,6 @@
 import type { ActionItem } from "@/lib/types";
 
-// The action plan: a ranked, quantified "what to do next" list — the consultant-style deliverable,
+// The action plan: a ranked, quantified "what to do next" list - the consultant-style deliverable,
 // generated instantly and grounded in the analysis. Renders from precomputed actions.
 
 const IMPACT: Record<ActionItem["impact"], { ring: string; text: string; label: string }> = {
@@ -13,7 +13,7 @@ export function ActionPlanCard({ actions }: { actions: ActionItem[] }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-400">
-        Prioritized, specific next steps — generated from your data, ranked by impact. Each is grounded in the real numbers above.
+        Prioritized, specific next steps - generated from your data, ranked by impact. Each is grounded in the real numbers above.
       </p>
       <ol className="space-y-3">
         {actions.map((a, i) => {

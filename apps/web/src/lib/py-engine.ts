@@ -101,15 +101,15 @@ export interface PyConclusions {
 
 // Base URL for the Python API. Empty = same-origin (`/api/...`, in-project functions). Set
 // NEXT_PUBLIC_PY_API to a separate Python project's URL (e.g. https://myanalyst-api.vercel.app) when the
-// Python backend is deployed as its own Vercel project — the robust setup, since Next.js shadows /api in
+// Python backend is deployed as its own Vercel project - the robust setup, since Next.js shadows /api in
 // the monorepo. CORS is enabled on the API.
 const API_BASE = (process.env.NEXT_PUBLIC_PY_API || "").replace(/\/$/, "");
 const api = (path: string) => `${API_BASE}${path}`;
 
 // The POST body must stay under Vercel's 4.5 MB serverless limit. Rather than a fixed row cap, sample
 // ADAPTIVELY to fill a byte budget: estimate bytes/row from the real serialized shape, then send as many
-// evenly-spaced rows as fit. Narrow tables (the common case) get ~100k rows instead of a flat 40k — a
-// richer, more faithful analysis — while wide tables stay safely under the limit (no 413s).
+// evenly-spaced rows as fit. Narrow tables (the common case) get ~100k rows instead of a flat 40k - a
+// richer, more faithful analysis - while wide tables stay safely under the limit (no 413s).
 const MAX_PAYLOAD_BYTES = 3_800_000; // safety margin under 4.5 MB
 const HARD_ROW_CAP = 100_000; // statistical plenty; also bounds server compute time
 
@@ -143,7 +143,7 @@ async function postJson<T>(path: string, payload: unknown, label: string, retrie
     try {
       res = await fetch(api(path), { method: "POST", headers: { "Content-Type": "application/json" }, body });
     } catch (e) {
-      // Network-level failure (DNS, CORS, dropped connection) — transient, retry.
+      // Network-level failure (DNS, CORS, dropped connection) - transient, retry.
       lastErr = e instanceof Error ? e : new Error(String(e));
       if (attempt < retries) { await backoff(attempt); continue; }
       throw lastErr;

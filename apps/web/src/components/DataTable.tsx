@@ -95,7 +95,7 @@ export function DataTable({ table, profiles }: { table: Table; profiles: ColumnP
                       key={c}
                       className={`whitespace-nowrap px-3 py-1.5 ${numeric ? "text-right tabular-nums text-slate-200" : "text-slate-300"}`}
                     >
-                      {String(r[c] ?? "—")}
+                      {String(r[c] ?? "-")}
                     </td>
                   );
                 })}

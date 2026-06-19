@@ -10,7 +10,7 @@ import { LlmInsightProvider } from "./llm";
 // gracefully falls back to the templated narrator on any failure, so enabling it can never break the
 // dashboard. Left unset, the local templated narrator runs with zero network calls and zero cost.
 //
-// The privacy boundary — only the metadata-only InsightContext crosses the wire — is enforced by the
+// The privacy boundary - only the metadata-only InsightContext crosses the wire - is enforced by the
 // InsightProvider interface and the /api/insights route, regardless of which provider is active.
 
 export function getInsightProvider(byok?: LlmConfig): InsightProvider {

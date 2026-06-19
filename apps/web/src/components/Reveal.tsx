@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 // Reveals its children with a fade-up the first time they scroll into view.
 // Lightweight: a single IntersectionObserver + a CSS class (`.reveal` / `.reveal-in`
-// in globals.css) — no animation library. Reduced-motion users get the content
+// in globals.css) - no animation library. Reduced-motion users get the content
 // immediately (the CSS media query neutralises the animation), and if JS never
 // runs / IO is unavailable the content still shows via the fallback below.
 export function Reveal({

@@ -4,7 +4,7 @@ import { useRef } from "react";
 
 // Wraps an element so it slides toward the pointer on hover (a "magnetic" pull)
 // and eases back on leave. Lightweight: sets a CSS transform directly and lets a
-// CSS transition do the smoothing — no animation library. Honors
+// CSS transition do the smoothing - no animation library. Honors
 // prefers-reduced-motion (checked per-move, so no pull is applied).
 export function Magnetic({
   children,

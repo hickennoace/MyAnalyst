@@ -25,7 +25,7 @@ function aggregateBy(table: Table, dim: string, metric: string, topN = 12): [str
   const acc = new Map<string, number>();
   const vals = numericColumn(table, metric);
   table.rows.forEach((r, i) => {
-    const key = String(r[dim] ?? "—");
+    const key = String(r[dim] ?? "-");
     const v = vals[i];
     if (Number.isFinite(v)) acc.set(key, (acc.get(key) ?? 0) + v);
   });
@@ -75,7 +75,7 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
   const metrics = profiles.filter((p) => p.role === "metric" && p.numeric);
   const dims = profiles.filter((p) => p.role === "dimension");
 
-  // 1. Trend over time. For transaction data, that's total REVENUE per month (a clean trend line) — not
+  // 1. Trend over time. For transaction data, that's total REVENUE per month (a clean trend line) - not
   //    a noisy tangle of every sale's price and the buyer's age. Otherwise, the raw metrics over time.
   const grainForTrend = isTransactionGrain(profiles, table.rowCount);
   const revForTrend = grainForTrend ? revenueMetric(profiles, grainForTrend) : undefined;
@@ -125,7 +125,7 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
     });
   }
 
-  // 2. "What sells the most": total REVENUE by the product/category dimension — the headline sales chart.
+  // 2. "What sells the most": total REVENUE by the product/category dimension - the headline sales chart.
   //    Falls back to summing a generic additive metric by the first dimension when there's no revenue.
   const grain = isTransactionGrain(profiles, table.rowCount);
   const revenue = revenueMetric(profiles, grain);
@@ -133,7 +133,7 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
   if (revenue && bs) {
     const pairs = aggregateBy(table, bs.dimension, revenue.name);
     if (pairs.length >= 2) {
-      charts.push(barByDim(`Revenue by ${bs.dimension}`, "Total revenue per category — which products actually drive the money.", pairs));
+      charts.push(barByDim(`Revenue by ${bs.dimension}`, "Total revenue per category - which products actually drive the money.", pairs));
     }
   } else if (dims.length && metrics.length) {
     const dim = dims[0];
@@ -150,7 +150,7 @@ export function recommendCharts(table: Table, profiles: ColumnProfile[]): ChartS
     if (fc) charts.push(fc);
   }
 
-  // 2c. Frequency (count) charts for key categorical columns — the core of categorical-only datasets.
+  // 2c. Frequency (count) charts for key categorical columns - the core of categorical-only datasets.
   const RANKY = /(reason|category|type|status|segment|group|class|gender|channel|source|outcome|result|stage|priority|label|tag)/i;
   const freqDims = profiles
     .filter((p) => p.role === "dimension" && p.distinctCount >= 2 && p.distinctCount <= 25)
@@ -280,7 +280,7 @@ function frequencyChart(table: Table, col: string): ChartSpec {
     type: "bar",
     title: `Most common ${col}`,
     subtitle: pairs.length ? `“${pairs[0][0]}” leads (${topShare.toFixed(0)}%)` : undefined,
-    rationale: "Counts how often each value occurs — works for any text/category column.",
+    rationale: "Counts how often each value occurs - works for any text/category column.",
     option: {
       ...ANIMATION,
       tooltip: tooltip(),
@@ -357,7 +357,7 @@ export function aggregateCount(table: Table, col: string, topN = 15): [string, n
   return [...acc.entries()].sort((a, b) => b[1] - a[1]).slice(0, topN);
 }
 
-/** A side-by-side bar of labeled slices — powers "X vs Y" comparison answers. Values are pre-aggregated. */
+/** A side-by-side bar of labeled slices - powers "X vs Y" comparison answers. Values are pre-aggregated. */
 export function buildComparisonChart(metricName: string, agg: "sum" | "mean", pairs: [string, number][]): ChartSpec {
   const labels = pairs.map((p) => p[0]);
   const values = pairs.map((p) => p[1]);
@@ -440,12 +440,12 @@ export function buildChart(table: Table, profiles: ColumnProfile[], req: ChartRe
     const top = pairs[0];
     const sub = top ? `“${top[0]}” most common (${((top[1] / total) * 100).toFixed(0)}%)` : undefined;
     if (req.type === "pie") {
-      return { id, type: "pie", title: `Share of ${req.x}`, subtitle: sub, rationale: "Share of rows per value — works for any column type.", option: pieOption(pairs) };
+      return { id, type: "pie", title: `Share of ${req.x}`, subtitle: sub, rationale: "Share of rows per value - works for any column type.", option: pieOption(pairs) };
     }
     const isLine = req.type === "line" || req.type === "area";
     return {
       id, type: isLine ? req.type : "bar", title: `Count by ${req.x}`, subtitle: sub,
-      rationale: "Counts how often each value occurs — works for strings/categories, not just numbers.",
+      rationale: "Counts how often each value occurs - works for strings/categories, not just numbers.",
       option: {
         ...ANIMATION,
         tooltip: tooltip(),

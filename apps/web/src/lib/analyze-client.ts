@@ -60,7 +60,7 @@ export function runAnalysis(
 
     worker.onerror = (e) => {
       if (settled) return;
-      // The worker failed to even start/run — fall back to the main thread so analysis still works.
+      // The worker failed to even start/run - fall back to the main thread so analysis still works.
       cleanup();
       runOnMainThread(table, userContext, onStage, typeOverrides, llm).then(resolve, reject);
       e.preventDefault?.();

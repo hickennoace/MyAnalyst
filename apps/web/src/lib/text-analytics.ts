@@ -16,7 +16,7 @@ const STOPWORDS = new Set(
    "other some such own get got really would also even much many one two it’s").split(/\s+/)
 );
 
-// Compact sentiment lexicon — enough to separate clearly positive/negative verbatims.
+// Compact sentiment lexicon - enough to separate clearly positive/negative verbatims.
 const POSITIVE = new Set(
   ("good great excellent amazing awesome love loved loving like helpful friendly fast easy best perfect happy " +
    "satisfied recommend wonderful fantastic nice smooth reliable quality clean enjoy enjoyed pleasant impressed " +
@@ -81,7 +81,7 @@ export function analyzeText(table: Table, column: string): TextAnalysis | undefi
     const content = toks.filter(isContent);
     const seenUni = new Set<string>();
     for (const t of content) if (!seenUni.has(t)) { uni.set(t, (uni.get(t) ?? 0) + 1); seenUni.add(t); }
-    // Bigrams must be ADJACENT in the original text (both content words) — building them from the
+    // Bigrams must be ADJACENT in the original text (both content words) - building them from the
     // compacted `content` array would join words that weren't next to each other ("good slow" from
     // "...good but slow..."), surfacing phrases nobody actually wrote.
     const seenBi = new Set<string>();

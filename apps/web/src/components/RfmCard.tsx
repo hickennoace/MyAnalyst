@@ -6,10 +6,10 @@ import { currencySymbol } from "@/lib/currency";
 
 // RFM card: the customer-value segments (Champions, Loyal, At Risk, …) found by scoring every customer
 // on Recency, Frequency, and Monetary value. Each tile shows the segment's size, its share of revenue,
-// and the average R/F/M behind it — so "who are my best customers and who's slipping" is one glance.
+// and the average R/F/M behind it - so "who are my best customers and who's slipping" is one glance.
 
 function money(n: number): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   const sym = currencySymbol();
   const abs = Math.abs(n);
   if (abs >= 1e6) return sym + (n / 1e6).toFixed(1) + "M";

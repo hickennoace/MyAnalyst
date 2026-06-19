@@ -7,11 +7,11 @@ import { BrandMark } from "@/components/BrandMark";
 import { DISCLAIMER_TEXT } from "@/components/Disclaimer";
 
 // Marketing landing page. Static (server component) for fast first paint + SEO.
-// Aesthetic: "Refined Light" — clean near-white SaaS canvas, a single indigo
+// Aesthetic: "Refined Light" - clean near-white SaaS canvas, a single indigo
 // accent, solid fills, neutral type. Motion is CSS/SVG-driven; the product
 // lives at /analyze.
 
-// Crafted stroke icons (consistent 24-grid, 1.6px) — no emoji.
+// Crafted stroke icons (consistent 24-grid, 1.6px) - no emoji.
 const I = {
   broom: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -56,18 +56,18 @@ const I = {
 };
 
 const FEATURES = [
-  { icon: I.broom, title: "Relentless cleaning", body: "Strips currency symbols, unifies date formats, removes duplicates, empty rows and trailing totals — with a transparent before/after report." },
-  { icon: I.compass, title: "Auto domain detection", body: "Figures out whether your data is financial, sales, marketing or survey — and picks the metrics that matter for it." },
+  { icon: I.broom, title: "Relentless cleaning", body: "Strips currency symbols, unifies date formats, removes duplicates, empty rows and trailing totals - with a transparent before/after report." },
+  { icon: I.compass, title: "Auto domain detection", body: "Figures out whether your data is financial, sales, marketing or survey - and picks the metrics that matter for it." },
   { icon: I.bars, title: "Instant KPIs & charts", body: "Ranked KPIs and precise charts for your data shape: trends, comparisons, correlations, distributions." },
-  { icon: I.sigma, title: "Real statistics", body: "Significance tests, OLS & multiple regression, ANOVA, chi-square, forecasting — statsmodels-grade rigor, in your browser." },
-  { icon: I.quote, title: "Understands your data", body: "Reads the rows, columns and subject behind your file to explain what the dataset actually is — so every finding stays tied to your real-world context." },
-  { icon: I.spark, title: "Ask your data", body: "Ask “which region sells best” or “what drives churn” and get a thorough, analyst-grade answer — grounded in your real numbers, with follow-ups to dig deeper." },
+  { icon: I.sigma, title: "Real statistics", body: "Significance tests, OLS & multiple regression, ANOVA, chi-square, forecasting - statsmodels-grade rigor, in your browser." },
+  { icon: I.quote, title: "Understands your data", body: "Reads the rows, columns and subject behind your file to explain what the dataset actually is - so every finding stays tied to your real-world context." },
+  { icon: I.spark, title: "Ask your data", body: "Ask “which region sells best” or “what drives churn” and get a thorough, analyst-grade answer - grounded in your real numbers, with follow-ups to dig deeper." },
 ];
 
 const STEPS = [
-  { n: "01", title: "Upload", body: "Drop a CSV, TSV, Excel or JSON file — big CSVs stream up to ~1GB and are read right in your browser." },
-  { n: "02", title: "We analyze", body: "Clean → profile → detect domain → KPIs → statistics → forecast → conclusions, in seconds — processed securely and never stored." },
-  { n: "03", title: "Explore", body: "Read your dashboard, ask questions, generate charts, export & share — no skills required." },
+  { n: "01", title: "Upload", body: "Drop a CSV, TSV, Excel or JSON file - big CSVs stream up to ~1GB and are read right in your browser." },
+  { n: "02", title: "We analyze", body: "Clean → profile → detect domain → KPIs → statistics → forecast → conclusions, in seconds - processed securely and never stored." },
+  { n: "03", title: "Explore", body: "Read your dashboard, ask questions, generate charts, export & share - no skills required." },
 ];
 
 const TICKER = ["Cleaning report", "Domain detection", "Ranked KPIs", "OLS regression", "ANOVA", "Chi-square", "Forecasting", "Correlation", "Distributions", "Plain-language insight"];
@@ -75,7 +75,7 @@ const TICKER = ["Cleaning report", "Domain detection", "Ranked KPIs", "OLS regre
 export default function Landing() {
   return (
     <main id="main-content" className="lp grain-layer">
-      {/* Site-wide faint warp backdrop — carries the hero's motion language behind
+      {/* Site-wide faint warp backdrop - carries the hero's motion language behind
           every section (fixed, decorative). */}
       <div className="lp-warp" aria-hidden />
 
@@ -106,7 +106,7 @@ export default function Landing() {
                 Turn raw data<br />into <span className="cine-accent">answers</span>
               </h1>
               <p className="cine-rise mt-6 max-w-lg text-[1.05rem] leading-relaxed text-[var(--c-muted)]" style={{ animationDelay: "0.18s" }}>
-                MyAnalyst cleans your spreadsheet, runs real statistics, and explains what it means —
+                MyAnalyst cleans your spreadsheet, runs real statistics, and explains what it means -
                 automatically. Drop in a file and watch a clear, trustworthy dashboard build itself in
                 seconds, with the rigor of a working data scientist.
               </p>
@@ -127,7 +127,7 @@ export default function Landing() {
               <p className="cine-rise mt-6 text-[0.82rem] text-[var(--c-faint)]" style={{ animationDelay: "0.42s" }}>No account · processed securely · never stored or shared.</p>
             </div>
 
-            {/* Animated data core — the data-themed centerpiece. */}
+            {/* Animated data core - the data-themed centerpiece. */}
             <div className="relative">
               <DataCore />
               <div className="cine-card">
@@ -163,7 +163,7 @@ export default function Landing() {
                 <h2 className="display mt-3 text-[1.9rem] text-[var(--ink)] sm:text-[2.4rem]">Everything, automatically</h2>
               </div>
               <p className="hidden max-w-xs text-sm leading-relaxed text-[var(--muted)] md:block">
-                The work a data scientist does by hand — done the moment your file lands.
+                The work a data scientist does by hand - done the moment your file lands.
               </p>
             </div>
           </Reveal>
@@ -210,9 +210,9 @@ export default function Landing() {
                 <div className="lp-ico">{I.lock}</div>
                 <h3 className="mt-5 text-base font-semibold text-[var(--ink)]">Private by design</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-                  Your file is sent over an encrypted connection only to build your dashboard, then discarded —
+                  Your file is sent over an encrypted connection only to build your dashboard, then discarded -
                   never written to a database, never sold or shared, no accounts. The AI only ever sees computed
-                  numbers and column names — never your raw rows.
+                  numbers and column names - never your raw rows.
                 </p>
               </div>
               <div className="lp-feature">
@@ -220,7 +220,7 @@ export default function Landing() {
                 <h3 className="mt-5 text-base font-semibold text-[var(--ink)]">Smart, your way</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
                   Works fully offline with a built-in engine that writes conclusions from real statistical
-                  tests. Want richer prose? Plug in any LLM — Claude, Groq, Gemini — with one environment
+                  tests. Want richer prose? Plug in any LLM - Claude, Groq, Gemini - with one environment
                   variable. No key, no problem: it still works.
                 </p>
               </div>

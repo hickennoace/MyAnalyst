@@ -3,7 +3,7 @@
 import type { HistoryEntry } from "@/lib/history";
 
 // Recent analyses, restored from localStorage. Lets the user reopen a past dashboard without
-// re-uploading — fully local, nothing is sent anywhere.
+// re-uploading - fully local, nothing is sent anywhere.
 
 export function HistoryList({
   entries,

@@ -5,7 +5,7 @@ import { join } from "node:path";
 // Branded social-share card (used for OpenGraph + Twitter). Next generates this at build time and
 // wires it into the metadata for every route, so links to the site preview with a real image.
 
-export const alt = "MyAnalyst — turn a spreadsheet into a beautiful, explained dashboard";
+export const alt = "MyAnalyst - turn a spreadsheet into a beautiful, explained dashboard";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -43,7 +43,7 @@ export default function Image() {
             Turn a spreadsheet into a beautiful, explained dashboard.
           </div>
           <div style={{ fontSize: "30px", color: "#94a3b8", maxWidth: "900px", lineHeight: 1.3 }}>
-            KPIs, statistics, forecasts, and plain-language insights — automatically. Processed securely, never stored.
+            KPIs, statistics, forecasts, and plain-language insights - automatically. Processed securely, never stored.
           </div>
         </div>
 

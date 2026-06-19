@@ -6,7 +6,7 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Richer time-series analysis: detect the data's natural cadence (daily…yearly), aggregate a metric
 // into those periods, and compute period-over-period change (incl. year-over-year when a full season is
-// present) plus a moving average. Pure, dependency-free, metadata-only output — safe in the worker.
+// present) plus a moving average. Pure, dependency-free, metadata-only output - safe in the worker.
 
 const DAY = 86_400_000;
 const cadenceLabel: Record<Cadence, string> = { daily: "day", weekly: "week", monthly: "month", quarterly: "quarter", yearly: "year" };
@@ -55,7 +55,7 @@ function bucketLabel(d: Date, cadence: Cadence): string {
 
 /**
  * Drop an obviously incomplete final period (e.g. the current, half-finished month) so it doesn't drag a
- * revenue trend or forecast artificially downward. Conservative — only trims when the last value sits far
+ * revenue trend or forecast artificially downward. Conservative - only trims when the last value sits far
  * below the typical level of the periods before it, so a genuinely weak final month isn't discarded.
  */
 export function trimPartialTail(values: number[]): number[] {
@@ -81,7 +81,7 @@ function movingAverage(values: number[], window: number): (number | null)[] {
   return out;
 }
 
-/** Detect cadence from a set of timestamps (ms) — exposed for reuse (e.g. cohort analysis). */
+/** Detect cadence from a set of timestamps (ms) - exposed for reuse (e.g. cohort analysis). */
 export function detectCadence(times: number[]): Cadence {
   const sorted = [...times].sort((a, b) => a - b);
   const gaps: number[] = [];
@@ -89,7 +89,7 @@ export function detectCadence(times: number[]): Cadence {
   return cadenceFromGapDays(median(gaps.filter((g) => g > 0)) || 30);
 }
 
-/** The period bucket label for a date at a given cadence (e.g. "2023-Q2") — exposed for reuse. */
+/** The period bucket label for a date at a given cadence (e.g. "2023-Q2") - exposed for reuse. */
 export function periodKey(d: Date, cadence: Cadence): string {
   return bucketLabel(d, cadence);
 }
@@ -139,7 +139,7 @@ export function detectSeasonality(periods: PeriodPoint[], cadence: Cadence): Sea
   let peak = indices[0];
   let trough = indices[0];
   for (const s of indices) { if (s.index > peak.index) peak = s; if (s.index < trough.index) trough = s; }
-  // Require a real swing — a flat profile isn't "seasonal".
+  // Require a real swing - a flat profile isn't "seasonal".
   if (peak.index < 1.15) return undefined;
 
   return { unit, indices, peak, trough, strength: peak.index - trough.index };
@@ -155,7 +155,7 @@ export function analyzeTimeSeries(table: Table, timeCol: string, metricName: str
   if (points.length < 3) return undefined;
   points.sort((a, b) => a.t - b.t);
 
-  // Cadence from the median gap between consecutive timestamps — or a caller-forced one (e.g. summing
+  // Cadence from the median gap between consecutive timestamps - or a caller-forced one (e.g. summing
   // dense transactions up to MONTHLY so a revenue trend isn't drowned in day-to-day noise).
   const gaps: number[] = [];
   for (let i = 1; i < points.length; i++) gaps.push((points[i].t - points[i - 1].t) / DAY);

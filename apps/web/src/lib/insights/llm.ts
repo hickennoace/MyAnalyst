@@ -4,7 +4,7 @@ import { TemplatedInsightProvider } from "./templated";
 
 // LLM-backed narrator. It POSTs the metadata-only InsightContext to the server route (which holds the
 // API key, or uses the caller's bring-your-own key) and returns the model's grounded insights. On ANY
-// failure — no key, network error, bad response, or running outside the browser (e.g. the smoke test) —
+// failure - no key, network error, bad response, or running outside the browser (e.g. the smoke test) -
 // it falls back to the templated narrator so the dashboard always renders.
 
 export class LlmInsightProvider implements InsightProvider {
@@ -29,7 +29,7 @@ export class LlmInsightProvider implements InsightProvider {
         }
       }
     } catch {
-      // swallow — fall through to templated
+      // swallow - fall through to templated
     }
     this.lastSource = "templated";
     return this.fallback.generate(ctx);

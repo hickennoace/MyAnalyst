@@ -4,13 +4,13 @@ import { detectCadence, periodKey } from "./timeseries";
 // Cohort & retention analysis. When the data has an entity id (a customer/user/account that RECURS over
 // time) plus a time column, group entities by the period they first appear (their cohort) and measure
 // how many remain active in each later period. Output is a cohort × offset retention grid (offset 0 =
-// 100%). Pure, metadata-only, worker-safe. Only meaningful when entities actually recur — otherwise
+// 100%). Pure, metadata-only, worker-safe. Only meaningful when entities actually recur - otherwise
 // returns undefined (e.g. one row per id is transactional, not retention, data).
 
 const MAX_COHORTS = 12;
 const MAX_OFFSETS = 12;
 
-// Match entity-ish column names even when concatenated (CustomerID, user_id) — no \b, since there's no
+// Match entity-ish column names even when concatenated (CustomerID, user_id) - no \b, since there's no
 // word boundary inside "CustomerID". A false positive is harmless: the recurrence gate below drops any
 // "entity" whose rows don't actually repeat over time.
 export function looksLikeEntity(name: string): boolean {

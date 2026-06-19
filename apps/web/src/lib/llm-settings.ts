@@ -1,6 +1,6 @@
 // Bring-your-own-key LLM settings. Stored locally only (never synced, never logged). When set, the
 // analyzer routes the optional narrator/query-planner through the user's own provider key for
-// higher-reliability output — at zero cost to us and with no change to the privacy boundary (only the
+// higher-reliability output - at zero cost to us and with no change to the privacy boundary (only the
 // metadata-only context is ever sent, exactly as with the server key).
 
 export type LlmProvider = "groq" | "openai" | "anthropic" | "gemini" | "openrouter";
@@ -15,7 +15,7 @@ export interface LlmConfig {
 /** Persisted shape, including the on/off toggle and the on-device (WebGPU) option. */
 export interface LlmSettings extends LlmConfig {
   enabled: boolean;
-  /** Run an on-device model (transformers.js + WebGPU) instead of calling a provider — zero network. */
+  /** Run an on-device model (transformers.js + WebGPU) instead of calling a provider - zero network. */
   localModel?: boolean;
 }
 

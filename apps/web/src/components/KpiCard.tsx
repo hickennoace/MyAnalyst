@@ -5,7 +5,7 @@ export function KpiCard({ kpi, index = 0, caveat }: { kpi: Kpi; index?: number; 
   const trend = kpi.trend;
   const trendColor =
     trend === undefined ? "" : trend > 0 ? "text-emerald-400" : trend < 0 ? "text-rose-400" : "text-slate-400";
-  const arrow = trend === undefined ? "" : trend > 0 ? "▲" : trend < 0 ? "▼" : "—";
+  const arrow = trend === undefined ? "" : trend > 0 ? "▲" : trend < 0 ? "▼" : "-";
 
   return (
     <div className="card card-hover fade-up group p-4" style={{ animationDelay: `${index * 45}ms` }} title={kpi.howComputed}>
@@ -13,7 +13,7 @@ export function KpiCard({ kpi, index = 0, caveat }: { kpi: Kpi; index?: number; 
         <p className="flex min-w-0 items-center gap-1 truncate text-xs font-medium uppercase tracking-wide text-slate-400">
           <span className="truncate">{kpi.name}</span>
           {caveat && (
-            <span className="shrink-0 text-amber-400" title={`Based on a column to read with care — ${caveat.column}: ${caveat.reason}`} aria-label="data-quality caveat">⚠</span>
+            <span className="shrink-0 text-amber-400" title={`Based on a column to read with care - ${caveat.column}: ${caveat.reason}`} aria-label="data-quality caveat">⚠</span>
           )}
         </p>
         {trend !== undefined && (

@@ -1,8 +1,8 @@
 import type { Table } from "./types";
 
 // Sample data for the "try a sample" button. Every call returns a FRESH, randomly
-// generated dataset — a different domain (sales, SaaS, e-commerce, marketing, HR,
-// real-estate, fitness …) with randomized categories, sizes and values — so the
+// generated dataset - a different domain (sales, SaaS, e-commerce, marketing, HR,
+// real-estate, fitness …) with randomized categories, sizes and values - so the
 // demo dashboard looks different every time. Each set is deliberately seeded with
 // realistic mess (messy dates, currency strings, a duplicate, an empty row, a
 // trailing "Total" row, an outlier) so the cleaning report and stats have work to do.
@@ -91,7 +91,7 @@ function ecommerceData(): Gen {
   const n = randInt(120, 180);
   const start = Date.UTC(2024, 0, 1);
   // A pool of customers with a power-law buying habit: a small "heavy" tier places most orders (and the
-  // bigger baskets), a long tail buys once. Skewing rand()² toward 0 makes low-index customers recur —
+  // bigger baskets), a long tail buys once. Skewing rand()² toward 0 makes low-index customers recur -
   // so the RFM and revenue-concentration cards have a real Champions-vs-one-timers story to tell.
   const customerCount = randInt(34, 46);
   const heavy = (i: number) => i < customerCount * 0.2; // top ~20% are the whales
@@ -261,7 +261,7 @@ function financeData(): Gen {
   return { name: "sample-prices.csv", columns: ["Date", "Ticker", "Open", "High", "Low", "Close", "Volume"], rows, numericKey: "Volume", catKey: "Ticker" };
 }
 
-// Selectable vertical templates — pick your industry, or get a random one.
+// Selectable vertical templates - pick your industry, or get a random one.
 const REGISTRY: { key: string; label: string; gen: () => Gen }[] = [
   { key: "sales", label: "Retail sales", gen: salesData },
   { key: "saas", label: "SaaS metrics", gen: saasData },
@@ -304,7 +304,7 @@ function withMess(gen: Gen): Table {
   return { name: gen.name, columns, rows, rowCount: rows.length };
 }
 
-/** A fresh demo dataset — a specific vertical when `kind` is given, else a random one each call. */
+/** A fresh demo dataset - a specific vertical when `kind` is given, else a random one each call. */
 export function sampleTable(kind?: string): Table {
   const entry = kind ? REGISTRY.find((r) => r.key === kind) : undefined;
   return withMess((entry ? entry.gen : pick(GENERATORS))());

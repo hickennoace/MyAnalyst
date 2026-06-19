@@ -3,7 +3,7 @@
 import { downloadRows } from "@/lib/csv";
 
 // A small "export this segment as a worklist" button. Builds a CSV from the given columns + rows and
-// downloads it client-side (no upload — same privacy posture as the rest of the app). Rendered only
+// downloads it client-side (no upload - same privacy posture as the rest of the app). Rendered only
 // where the raw table is available (the live analyzer), so shared read-only views never leak row ids.
 
 export function DownloadCsvButton({

@@ -2,11 +2,11 @@ import type { ColumnProfile, OutlierFact } from "@/lib/types";
 import { currencySymbol } from "@/lib/currency";
 
 // Anomalies card: surfaces the unusual values the engine flagged (|z| > 3) per metric, with the
-// typical range for context and a direction marker (above/below the average). Metadata-only — works on
+// typical range for context and a direction marker (above/below the average). Metadata-only - works on
 // the read-only shared view too.
 
 function fmt(n: number, p?: ColumnProfile): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   if (p?.type === "currency") return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }
@@ -15,7 +15,7 @@ export function AnomalyCard({ anomalies, profiles }: { anomalies: OutlierFact[];
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-400">
-        Values more than 3 standard deviations from the average — unusually far from typical. Worth a look: a data-entry error, or a
+        Values more than 3 standard deviations from the average - unusually far from typical. Worth a look: a data-entry error, or a
         genuine rare event? A few extremes can quietly skew averages and trends.
       </p>
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

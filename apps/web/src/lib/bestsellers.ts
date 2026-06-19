@@ -3,10 +3,10 @@ import { numericColumn } from "./profile";
 import { gini } from "./concentration";
 import { quantityMetric, revenueMetric } from "./semantics";
 
-// Best-seller analysis — the first question any sales dataset prompts: "what sells the most?"
+// Best-seller analysis - the first question any sales dataset prompts: "what sells the most?"
 // For the most telling product/category dimension, rank every value by the revenue it drives AND by
 // volume (units sold, or transaction count). Revenue and volume leaders are often DIFFERENT products
-// (a cheap item sells the most units; a premium item makes the most money) — surfacing both is the
+// (a cheap item sells the most units; a premium item makes the most money) - surfacing both is the
 // decisive read a dealer/retailer wants. Pure + worker-safe.
 
 const MIN_DISTINCT = 2;
@@ -36,7 +36,7 @@ export function analyzeBestSellers(table: Table, profiles: ColumnProfile[]): Bes
   const dims = candidateDimensions(profiles, table.rowCount, new Set([revenue.name, qty?.name ?? ""]));
   if (!dims.length) return undefined;
 
-  // Pick the dimension where the choice matters most — the one whose revenue is most unevenly spread
+  // Pick the dimension where the choice matters most - the one whose revenue is most unevenly spread
   // across its values (highest Gini). That's the dimension with real winners and losers (usually the
   // product/model), not an evenly-split attribute like color or region.
   let best: { dim: ColumnProfile; agg: Map<string, { rev: number; units: number }>; totalRev: number; g: number } | undefined;

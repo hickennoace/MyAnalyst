@@ -2,7 +2,7 @@ import type { DriverModel } from "./types";
 
 // What-if simulation + goal-seek on the driver regression. Both run entirely client-side from the
 // fitted model's coefficients and baselines (no raw rows). Because an OLS fit passes through the
-// sample means, the modeled outcome with every predictor at its mean equals the target's mean — so we
+// sample means, the modeled outcome with every predictor at its mean equals the target's mean - so we
 // project from there: outcome = targetMean + Σ coefᵢ·(xᵢ − meanᵢ).
 
 /** Project the target given absolute predictor values (missing predictors stay at their mean). */
@@ -21,7 +21,7 @@ export interface LeverSuggestion {
   deltaX: number;
   /** the predictor value it would have to reach. */
   toValue: number;
-  /** that move expressed in standard deviations — a feasibility proxy (smaller = easier). */
+  /** that move expressed in standard deviations - a feasibility proxy (smaller = easier). */
   sds: number;
   /** whether the required value stays within the observed [min, max] range. */
   withinRange: boolean;
@@ -30,7 +30,7 @@ export interface LeverSuggestion {
 /**
  * Goal-seek: to move the target by `targetDelta` (absolute, in the target's units), how far would each
  * single lever have to move on its own? Returns the levers ranked most-feasible first (smallest move in
- * standard deviations, in-range before out-of-range). Levers with a ~zero coefficient are dropped — they
+ * standard deviations, in-range before out-of-range). Levers with a ~zero coefficient are dropped - they
  * can't move the target.
  */
 export function goalSeek(model: DriverModel, targetDelta: number): LeverSuggestion[] {

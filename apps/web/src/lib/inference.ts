@@ -1,4 +1,4 @@
-// Statistical inference engine — "statsmodels-grade", in pure TypeScript.
+// Statistical inference engine - "statsmodels-grade", in pure TypeScript.
 //
 // statsmodels itself is Python and can't run in the browser/Vercel, so this implements the same rigor
 // from first principles: the special functions (log-gamma, regularized incomplete beta & gamma) that
@@ -434,7 +434,7 @@ export interface MultiCoefficient {
   se: number;
   t: number;
   p: number;
-  /** standardized coefficient (β) — comparable effect size across predictors */
+  /** standardized coefficient (β) - comparable effect size across predictors */
   beta: number;
   significant: boolean;
 }

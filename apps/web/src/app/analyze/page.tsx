@@ -34,7 +34,7 @@ const INDUSTRY_KEY = "quantia:industry";
 
 const STAGES = ["Reading file", "Cleaning & normalizing", "Profiling columns", "Detecting domain", "Computing KPIs", "Running statistics", "Writing insights", "Deep analysis (Python)", "Writing AI conclusions"];
 
-/** A file that's been read and is waiting for the user to confirm before analysis starts — so nobody
+/** A file that's been read and is waiting for the user to confirm before analysis starts - so nobody
  *  analyzes the wrong file, and they get a chance to pick the right sheet and add context first. */
 interface PendingFile {
   file: File;
@@ -50,7 +50,7 @@ function fmtBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }
 
-/** Build the spec the dashboard renders: when the Python engine has run, its KPIs + charts take over —
+/** Build the spec the dashboard renders: when the Python engine has run, its KPIs + charts take over -
  *  but only when they're non-empty. Python's smart-KPI selection can legitimately return nothing for some
  *  datasets, and blindly swapping that in wiped the "Key metrics" panel; fall back to the TS engine's
  *  KPIs/charts in that case so the dashboard is never blank. */
@@ -99,7 +99,7 @@ export default function AnalyzePage() {
 
   useEffect(() => {
     listHistory().then(setHistory).catch(() => {});
-    // Work-context + industry tag live only in this browser (localStorage) — never sent anywhere.
+    // Work-context + industry tag live only in this browser (localStorage) - never sent anywhere.
     setJobDesc(localStorage.getItem(CONTEXT_KEY) ?? "");
     setIndustry(localStorage.getItem(INDUSTRY_KEY) || null);
   }, []);
@@ -136,7 +136,7 @@ export default function AnalyzePage() {
     setError(null);
     setToast(null);
     // Chart formatters don't survive JSON serialization, so rebuild the charts from the stored
-    // table + profiles — same as the live path — so reopened dashboards look identical to fresh ones.
+    // table + profiles - same as the live path - so reopened dashboards look identical to fresh ones.
     try {
       const { recommendCharts } = await import("@/lib/charts");
       loaded.spec.charts = recommendCharts(loaded.table, loaded.spec.profiles);
@@ -145,7 +145,7 @@ export default function AnalyzePage() {
     }
     setTable(loaded.table);
     setSpec(loaded.spec);
-    // Restore the entry's own Python KPIs/charts + AI conclusions — and, crucially, CLEAR any left over
+    // Restore the entry's own Python KPIs/charts + AI conclusions - and, crucially, CLEAR any left over
     // from the previously open dataset (they'd otherwise merge into this one's dashboard and share link).
     setPySpec(loaded.pySpec);
     setPyConclusions(loaded.conclusions);
@@ -171,11 +171,11 @@ export default function AnalyzePage() {
       const payload = await encodeShare(mergedDashboardSpec(spec, pySpec), pyConclusions);
       const url = `${window.location.origin}/view#${payload}`;
       if (url.length > MAX_LINK_CHARS) {
-        setToast({ text: "Dataset too large for a link — use PNG/PDF export instead.", tone: "error" });
+        setToast({ text: "Dataset too large for a link - use PNG/PDF export instead.", tone: "error" });
         return;
       }
       await navigator.clipboard.writeText(url);
-      setToast({ text: `🔗 Read-only link copied (${(url.length / 1024).toFixed(0)} KB) — paste it anywhere.`, tone: "info" });
+      setToast({ text: `🔗 Read-only link copied (${(url.length / 1024).toFixed(0)} KB) - paste it anywhere.`, tone: "info" });
     } catch {
       setToast({ text: "Couldn't create the link in this browser.", tone: "error" });
     }
@@ -199,8 +199,8 @@ export default function AnalyzePage() {
       setToast({ text: `✓ ${label} downloaded.`, tone: "info" });
     } catch {
       // The export-error banner was previously routed to `error`, which only renders in the
-      // pre-analysis (no-spec) view — so failures were silent. Surface it in the toast instead.
-      setToast({ text: "Export failed — the dashboard may be too large. Try again or use PNG.", tone: "error" });
+      // pre-analysis (no-spec) view - so failures were silent. Surface it in the toast instead.
+      setToast({ text: "Export failed - the dashboard may be too large. Try again or use PNG.", tone: "error" });
     } finally {
       setExporting(null);
     }
@@ -208,7 +208,7 @@ export default function AnalyzePage() {
 
   async function run(sourceTbl: Table) {
     // Fold the chosen industry tag into the analysis context so domain detection + the AI understand
-    // the uploaded file. (The "or by industry" sample buttons are unrelated — they generate showcase data.)
+    // the uploaded file. (The "or by industry" sample buttons are unrelated - they generate showcase data.)
     const ctx = combinedContext(industry, jobDesc);
     setError(null);
     setBusy(true);
@@ -218,13 +218,13 @@ export default function AnalyzePage() {
     setSourceTable(sourceTbl);
     try {
       // The whole pipeline (clean → profile → stats → charts → insights) runs in a Web Worker,
-      // so the UI never freezes even on a 200k-row file — and the progress here reflects the
+      // so the UI never freezes even on a 200k-row file - and the progress here reflects the
       // worker's REAL stage transitions instead of a timed animation.
       setStage("Cleaning & normalizing");
       const { spec: result, table: cleaned } = await runAnalysis(sourceTbl, ctx, (s) => setStage(s), {}, activeLlmConfig() ?? undefined);
 
       // ── The PYTHON engine (pandas/statsmodels) computes the dashboard's KPIs + charts, and Groq writes
-      // the AI conclusions from them. This is the primary view, so we finish it BEFORE revealing anything —
+      // the AI conclusions from them. This is the primary view, so we finish it BEFORE revealing anything -
       // one continuous progress bar, then the whole dashboard (conclusions included) appears at once, rather
       // than showing the TS dashboard first and a confusing second "re-analyzing" pass. If the backend is
       // unreachable (e.g. local `next dev`, or a transient error), we fall back to the in-browser TS spec.
@@ -239,7 +239,7 @@ export default function AnalyzePage() {
         py = null; // backend unreachable → render the TS dashboard so the page never goes blank
       }
 
-      // Reveal the dashboard, Python KPIs/charts, and AI conclusions together — a single finished result.
+      // Reveal the dashboard, Python KPIs/charts, and AI conclusions together - a single finished result.
       setTable(cleaned);
       setPySpec(py);
       setPyConclusions(conclusions);
@@ -262,7 +262,7 @@ export default function AnalyzePage() {
           .then((text) => {
             if (text) {
               setSpec((prev) => (prev && prev.story ? { ...prev, story: { ...prev.story, summary: text, source: "llm" }, narrator: "llm" } : prev));
-              setToast({ text: "✓ Story sharpened on-device — no network used.", tone: "info" });
+              setToast({ text: "✓ Story sharpened on-device - no network used.", tone: "info" });
             } else {
               setToast(null);
             }
@@ -297,7 +297,7 @@ export default function AnalyzePage() {
       if (!result.table.columns.length || !result.table.rowCount) {
         throw new Error("No tabular data found. Make sure the first row contains column headers.");
       }
-      // Don't analyze yet — stage the file for a confirmation step so the user can check it's the right
+      // Don't analyze yet - stage the file for a confirmation step so the user can check it's the right
       // file/sheet, add context, and start deliberately. Analysis begins from handleStartAnalysis().
       setPending({ file, table: result.table, sources: result.sources, sourceId: result.sourceId, sourceKind: result.sourceKind });
     } catch (e) {
@@ -327,7 +327,7 @@ export default function AnalyzePage() {
     }
   }
 
-  // The user confirmed the staged file — commit it as the source and run the pipeline.
+  // The user confirmed the staged file - commit it as the source and run the pipeline.
   async function handleStartAnalysis() {
     if (!pending || stagingSource) return;
     setSourceFile(pending.file);
@@ -384,7 +384,7 @@ export default function AnalyzePage() {
       }
       const k = keys[0];
       const joined = joinTables(sourceTable, right, k.leftKey, k.rightKey, "left");
-      // The result is a new combined dataset — clear the single-source picker to avoid confusion.
+      // The result is a new combined dataset - clear the single-source picker to avoid confusion.
       setFileSources([]);
       setCurrentSourceId("");
       setSourceKind(undefined);
@@ -399,7 +399,7 @@ export default function AnalyzePage() {
   }
 
   function startSample(kind?: string) {
-    // Samples have no underlying file/sheets — clear any picker state from a prior upload.
+    // Samples have no underlying file/sheets - clear any picker state from a prior upload.
     setSourceFile(null);
     setFileSources([]);
     setCurrentSourceId("");
@@ -408,7 +408,7 @@ export default function AnalyzePage() {
   }
 
   // Auto-run the sample when arriving from the landing page's "Try a sample" CTA (/analyze?demo=1).
-  // The ref guard makes this fire exactly once — React StrictMode double-invokes mount effects in dev,
+  // The ref guard makes this fire exactly once - React StrictMode double-invokes mount effects in dev,
   // which would otherwise kick off two concurrent analyses.
   const demoRan = useRef(false);
   useEffect(() => {
@@ -543,12 +543,12 @@ export default function AnalyzePage() {
 
             <details className="card p-4 text-sm">
               <summary className="cursor-pointer font-medium text-slate-200">
-                ✨ Add context <span className="font-normal text-slate-500">(optional) — tell us what this data is about</span>
+                ✨ Add context <span className="font-normal text-slate-500">(optional) - tell us what this data is about</span>
               </summary>
               <p className="mt-2 text-xs text-slate-400">
                 A line about your data or goal sharpens the analysis: it steers domain detection and the metrics
                 we pick, and frames the “About this data” summary and insights around what you care about. Stored
-                only in this browser — never uploaded anywhere.
+                only in this browser - never uploaded anywhere.
               </p>
 
               <textarea
@@ -571,7 +571,7 @@ export default function AnalyzePage() {
             <div className="fade-up card space-y-5 p-5 sm:p-6">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-100">Ready to analyze — does this look right?</h2>
+                  <h2 className="text-lg font-semibold text-slate-100">Ready to analyze - does this look right?</h2>
                   <p className="mt-0.5 text-sm text-slate-400">Check the file (and sheet), add a line of context, then start. Nothing is analyzed until you click the button.</p>
                 </div>
                 <button
@@ -632,18 +632,18 @@ export default function AnalyzePage() {
                 </div>
               </div>
 
-              {/* Context — emphasized, because it markedly improves the conclusions. */}
+              {/* Context - emphasized, because it markedly improves the conclusions. */}
               <div className="rounded-xl border border-[#ff5740]/30 bg-[#ff5740]/5 p-4">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
                   <span aria-hidden>⭐</span> Add context to maximize your conclusions
                 </h3>
                 <p className="mt-1 text-xs leading-relaxed text-slate-300/90">
-                  A sentence or two about what this data is and what you want to learn makes a <strong>real</strong> difference —
+                  A sentence or two about what this data is and what you want to learn makes a <strong>real</strong> difference -
                   it steers domain detection and the metrics we surface, and frames every insight, the “About this data”
                   story, and the AI’s answers around <em>your</em> goal. Stored only in this browser; never uploaded.
                 </p>
 
-                {/* Optional industry tag — another fast way to sharpen the analysis. */}
+                {/* Optional industry tag - another fast way to sharpen the analysis. */}
                 <div className="mt-3">
                   <IndustryTagPicker value={industry} onChange={updateIndustry} label="industry:" justify="start" size="sm" />
                 </div>
@@ -656,7 +656,7 @@ export default function AnalyzePage() {
                   className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-[#ff5740] focus:outline-none"
                 />
                 {!jobDesc.trim() && (
-                  <p className="mt-1.5 text-[11px] text-amber-300/80">Tip: even a short note noticeably sharpens the results — it’s worth the 10 seconds.</p>
+                  <p className="mt-1.5 text-[11px] text-amber-300/80">Tip: even a short note noticeably sharpens the results - it’s worth the 10 seconds.</p>
                 )}
               </div>
 
@@ -700,7 +700,7 @@ export default function AnalyzePage() {
 
         {spec && table?.sampledFrom && (
           <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
-            Large file detected — analyzed a representative random sample of{" "}
+            Large file detected - analyzed a representative random sample of{" "}
             <strong>{table.rowCount.toLocaleString()}</strong> rows out of{" "}
             <strong>{table.sampledFrom.toLocaleString()}</strong>. The statistics are valid for the full
             dataset; exact totals would need the complete file.

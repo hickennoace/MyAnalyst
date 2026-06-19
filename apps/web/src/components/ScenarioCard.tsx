@@ -7,14 +7,14 @@ import { currencySymbol } from "@/lib/currency";
 
 // What-if simulator + goal-seek, driven by the fitted driver model. Sliders move each predictor; the
 // projected target updates live with a rough modeled range. Goal-seek inverts the model: enter a target
-// change and see how far each single lever would have to move. All client-side — the model carries only
+// change and see how far each single lever would have to move. All client-side - the model carries only
 // coefficients + baselines, never raw rows.
 
 function useFmt(p?: ColumnProfile) {
   return useMemo(() => {
     const cur = p?.type === "currency";
     return (n: number) => {
-      if (!Number.isFinite(n)) return "—";
+      if (!Number.isFinite(n)) return "-";
       if (cur) return currencySymbol() + new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
       const abs = Math.abs(n);
       if (abs >= 1e6) return (n / 1e6).toFixed(2) + "M";
@@ -146,7 +146,7 @@ export function ScenarioCard({ drivers, profiles }: { drivers: DriverAnalysis; p
       </div>
 
       <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-        Projections come from the fitted model and assume the relationships hold and other factors stay put — association, not
+        Projections come from the fitted model and assume the relationships hold and other factors stay put - association, not
         proven cause. Treat as a planning aid, not a guarantee.
       </p>
     </div>

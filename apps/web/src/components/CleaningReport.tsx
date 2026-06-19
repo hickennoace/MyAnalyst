@@ -12,7 +12,7 @@ export function CleaningReport({ report }: { report: Report }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">Cleaning report</h3>
-          <p className="text-xs text-slate-400">What we fixed before analyzing — so you can trust the numbers.</p>
+          <p className="text-xs text-slate-400">What we fixed before analyzing - so you can trust the numbers.</p>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <Stat label="rows in" value={report.rowsBefore.toLocaleString()} />
@@ -39,7 +39,7 @@ export function CleaningReport({ report }: { report: Report }) {
             <span>
               <span className="font-medium text-slate-200">{s.label}</span>
               {s.count > 0 && <span className="ml-1 text-[#ff5740]">({s.count.toLocaleString()})</span>}
-              <span className="text-slate-500"> — {s.detail}</span>
+              <span className="text-slate-500"> - {s.detail}</span>
             </span>
           </li>
         ))}
@@ -66,9 +66,9 @@ export function CleaningReport({ report }: { report: Report }) {
                   <td className="py-1 pr-4">
                     <span className="rounded bg-slate-800/70 px-1.5 py-0.5 text-[10px] text-slate-300">{c.detectedType}</span>
                   </td>
-                  <td className="py-1 pr-4">{c.cellsNormalized || "—"}</td>
-                  <td className="py-1 pr-4">{c.trimmed || "—"}</td>
-                  <td className="py-1">{c.missing || "—"}</td>
+                  <td className="py-1 pr-4">{c.cellsNormalized || "-"}</td>
+                  <td className="py-1 pr-4">{c.trimmed || "-"}</td>
+                  <td className="py-1">{c.missing || "-"}</td>
                 </tr>
               ))}
             </tbody>

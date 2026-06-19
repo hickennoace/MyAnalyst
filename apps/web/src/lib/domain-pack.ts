@@ -8,13 +8,13 @@ import type { ColumnProfile, Domain } from "./types";
 export function domainFocus(domain: Domain): string {
   switch (domain) {
     case "financial-timeseries":
-      return "Financial time series — focus on the trend, volatility, and what's projected next.";
+      return "Financial time series - focus on the trend, volatility, and what's projected next.";
     case "sales-operational":
-      return "Sales & operations — focus on top products/regions, averages per order, and seasonality.";
+      return "Sales & operations - focus on top products/regions, averages per order, and seasonality.";
     case "marketing":
-      return "Marketing — focus on channel performance, what converts, and what drives response.";
+      return "Marketing - focus on channel performance, what converts, and what drives response.";
     case "survey":
-      return "Survey data — focus on the distribution of responses and differences between groups.";
+      return "Survey data - focus on the distribution of responses and differences between groups.";
     default:
       return "Focus on the biggest drivers, how groups differ, and any trend over time.";
   }

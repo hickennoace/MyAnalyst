@@ -3,12 +3,12 @@ import { mean, median, std } from "./stats";
 
 // Outlier analysis that knows the difference between a SKEWED SEGMENT and a real ANOMALY.
 //
-// A plain |z|>3 rule flags the whole upper tail of a right-skewed column — e.g. every luxury car in a
-// sales table — and then (unhelpfully, even alarmingly) says "check whether these are real". But a
+// A plain |z|>3 rule flags the whole upper tail of a right-skewed column - e.g. every luxury car in a
+// sales table - and then (unhelpfully, even alarmingly) says "check whether these are real". But a
 // premium price tier isn't a data error. This module classifies a metric's extreme values:
-//   • "skew"    — a heavy one-sided tail / distinct high (or low) segment: report it as distribution
+//   • "skew"    - a heavy one-sided tail / distinct high (or low) segment: report it as distribution
 //                 shape and steer the reader to the MEDIAN, don't cry "errors".
-//   • "anomaly" — a few isolated points detached from the rest: worth checking (likely typos/glitches).
+//   • "anomaly" - a few isolated points detached from the rest: worth checking (likely typos/glitches).
 // Pure + worker-safe.
 
 const MIN_N = 8;
@@ -53,7 +53,7 @@ export function analyzeColumnOutliers(column: string, xs: number[], threshold = 
   // moderate multiple (luxury cars ~5× the typical price); a 50× spike is a glitch, not a segment.
   const tailRatio = Math.abs(extremes[0].value) / (Math.abs(med) || 1);
 
-  // It's a skewed SEGMENT (use the median, don't cry "errors") when there's a genuine one-sided TAIL —
+  // It's a skewed SEGMENT (use the median, don't cry "errors") when there's a genuine one-sided TAIL -
   // several points, clearly one direction, a notably skewed column, at a plausible (not absurd) magnitude.
   // Otherwise it's isolated ANOMALIES: too few, two-sided, or so far out they read as data errors.
   const looksLikeSegment = extremes.length >= 5 && oneSidedFrac >= 0.8 && Math.abs(skew) > 1 && tailRatio <= 15;

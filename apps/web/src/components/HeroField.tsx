@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 // A lightweight, dependency-free animated "data network": drifting nodes connected by lines that
-// react to the pointer (a gentle parallax wake). Pure Canvas 2D — no Three.js, no libraries.
+// react to the pointer (a gentle parallax wake). Pure Canvas 2D - no Three.js, no libraries.
 //
 // Performance guardrails:
 //   • particle count scales with area but is hard-capped (cheap O(n²) link pass at n ≤ ~80)
@@ -22,7 +22,7 @@ interface Node {
 }
 
 const LINK_DIST = 132;
-const ACCENT = [99, 102, 241]; // indigo — reads well on both light and dark hero surfaces
+const ACCENT = [99, 102, 241]; // indigo - reads well on both light and dark hero surfaces
 
 export function HeroField({ className = "" }: { className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -74,7 +74,7 @@ export function HeroField({ className = "" }: { className?: string }) {
         if (n.y < -20) n.y = h + 20;
         if (n.y > h + 20) n.y = -20;
 
-        // pointer parallax wake — gently push nearby nodes outward
+        // pointer parallax wake - gently push nearby nodes outward
         if (pointer.active) {
           const dx = n.x - pointer.x;
           const dy = n.y - pointer.y;

@@ -6,7 +6,7 @@ import { runPythonAnalysis, runPythonConclusions, type PyAnalysisSpec, type PyCo
 import { PythonDashboard } from "@/components/PythonDashboard";
 
 // Isolated test page for the Python analysis backend (Phase 5). Deliberately separate from /analyze so the
-// live TypeScript dashboard is untouched — visit /analyze-py to validate the Python engine end-to-end.
+// live TypeScript dashboard is untouched - visit /analyze-py to validate the Python engine end-to-end.
 
 export default function AnalyzePyPage() {
   const [spec, setSpec] = useState<PyAnalysisSpec | null>(null);
@@ -50,7 +50,7 @@ export default function AnalyzePyPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
-      <h1 className="text-2xl font-bold text-slate-100">MyAnalyst — Python engine (preview)</h1>
+      <h1 className="text-2xl font-bold text-slate-100">MyAnalyst - Python engine (preview)</h1>
       <p className="mt-1 text-sm text-slate-400">
         Upload a CSV to analyze it with the Python (pandas/statsmodels) backend. This page is isolated from
         the live analyzer.

@@ -2,10 +2,10 @@ import type { ColumnProfile, RfmAnalysis, RfmMember, RfmSegment, Table } from ".
 import { numericColumn, dateColumn } from "./profile";
 import { looksLikeEntity } from "./cohort";
 
-// RFM segmentation — the classic customer-value model. Score every entity (customer) on three axes:
-//   Recency   — how long since their last transaction (lower = better),
-//   Frequency — how many transactions they made,
-//   Monetary  — how much they spent in total,
+// RFM segmentation - the classic customer-value model. Score every entity (customer) on three axes:
+//   Recency   - how long since their last transaction (lower = better),
+//   Frequency - how many transactions they made,
+//   Monetary  - how much they spent in total,
 // each into 1–5 quintiles, then bucket them into recognizable segments (Champions, Loyal, At Risk, …).
 // Fires only on transaction-shaped data (an entity id + a date + a value column). Pure + worker-safe.
 
@@ -20,14 +20,14 @@ interface SegmentDef {
   match: (r: number, f: number) => boolean;
 }
 
-// Ordered, mutually-exclusive rules (first match wins) — every (R,F) in 1–5 lands in exactly one bucket.
+// Ordered, mutually-exclusive rules (first match wins) - every (R,F) in 1–5 lands in exactly one bucket.
 const SEGMENTS: SegmentDef[] = [
-  { key: "champions", label: "Champions", blurb: "Recent, frequent, and high-spending — your best customers.", match: (r, f) => r >= 4 && f >= 4 },
-  { key: "loyal", label: "Loyal", blurb: "Buy often and are still active — reward and retain them.", match: (r, f) => f >= 4 && r >= 2 },
-  { key: "potential", label: "Potential / New", blurb: "Recent buyers who haven't built a habit yet — nurture them.", match: (r, f) => r >= 4 && f < 4 },
-  { key: "at-risk", label: "At Risk", blurb: "Were valuable but haven't bought in a while — win them back.", match: (r, f) => r <= 2 && f >= 3 },
-  { key: "hibernating", label: "Hibernating / Lost", blurb: "Low recency and low frequency — largely dormant.", match: (r, f) => r <= 2 && f < 3 },
-  { key: "attention", label: "Needs Attention", blurb: "Middling on every axis — a nudge could tip them either way.", match: () => true },
+  { key: "champions", label: "Champions", blurb: "Recent, frequent, and high-spending - your best customers.", match: (r, f) => r >= 4 && f >= 4 },
+  { key: "loyal", label: "Loyal", blurb: "Buy often and are still active - reward and retain them.", match: (r, f) => f >= 4 && r >= 2 },
+  { key: "potential", label: "Potential / New", blurb: "Recent buyers who haven't built a habit yet - nurture them.", match: (r, f) => r >= 4 && f < 4 },
+  { key: "at-risk", label: "At Risk", blurb: "Were valuable but haven't bought in a while - win them back.", match: (r, f) => r <= 2 && f >= 3 },
+  { key: "hibernating", label: "Hibernating / Lost", blurb: "Low recency and low frequency - largely dormant.", match: (r, f) => r <= 2 && f < 3 },
+  { key: "attention", label: "Needs Attention", blurb: "Middling on every axis - a nudge could tip them either way.", match: () => true },
 ];
 
 /** Assign a 1–5 quintile score to each value by rank position. `higherIsBetter=false` inverts (for recency). */
@@ -44,7 +44,7 @@ function quintiles(values: number[], higherIsBetter: boolean): number[] {
 }
 
 function pickColumns(table: Table, profiles: ColumnProfile[]): { entity: ColumnProfile; date: ColumnProfile; value: ColumnProfile } | null {
-  // A repeating customer column is usually typed "category" (not "id"), so — like cohort analysis — fall
+  // A repeating customer column is usually typed "category" (not "id"), so - like cohort analysis - fall
   // back to an id-ish-named column that recurs. `distinctCount < rowCount` ensures real repeat custom.
   const entity =
     profiles.find((p) => p.role === "identifier" && p.distinctCount >= MIN_CUSTOMERS && p.distinctCount < table.rowCount) ??
@@ -68,7 +68,7 @@ interface RfmDetail {
   members: RfmMember[];
 }
 
-/** Score every entity into RFM members — the shared core behind both the summary and the export. */
+/** Score every entity into RFM members - the shared core behind both the summary and the export. */
 function rfmDetail(table: Table, profiles: ColumnProfile[]): RfmDetail | undefined {
   const cols = pickColumns(table, profiles);
   if (!cols) return undefined;
@@ -124,7 +124,7 @@ function rfmDetail(table: Table, profiles: ColumnProfile[]): RfmDetail | undefin
   return { entity: cols.entity.name, dateColumn: cols.date.name, valueColumn: cols.value.name, asOfDay, members };
 }
 
-/** The per-entity membership behind the RFM segments — used to export a segment as a worklist. */
+/** The per-entity membership behind the RFM segments - used to export a segment as a worklist. */
 export function rfmMembers(table: Table, profiles: ColumnProfile[]): RfmMember[] | undefined {
   return rfmDetail(table, profiles)?.members;
 }
