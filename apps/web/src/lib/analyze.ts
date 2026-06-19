@@ -37,7 +37,7 @@ import { analyzeBestSellers } from "./bestsellers";
 import { isTransactionGrain, isValueTautology, revenueMetric } from "./semantics";
 import { buildRelationships } from "./relationships";
 import { analyzeRfm } from "./rfm";
-import { detectCurrency, setActiveCurrency } from "./currency";
+import { detectCurrency, setActiveCurrency, type Currency } from "./currency";
 import { getInsightProvider } from "./insights";
 import { llmEnabled, sharpenStory } from "./insights/humanize";
 import type { LlmConfig } from "./llm-settings";
@@ -57,6 +57,10 @@ export async function analyze(
      *  structured-cloned across a Web Worker boundary, so the worker skips them and the main
      *  thread (analyze-client) builds the charts after receiving the spec. */
     skipCharts?: boolean;
+    /** Profiles + currency the worker already derived (to kick off the deep Python analysis in
+     *  parallel). Reused here so we don't profile / currency-detect the same table twice. */
+    profiles?: ColumnProfile[];
+    currency?: Currency;
   } = {}
 ): Promise<DashboardSpec> {
   const stage = (s: string) => opts.onStage?.(s);
@@ -68,10 +72,10 @@ export async function analyze(
   const { table, report: cleaning, typeHints } = opts.cleaned ?? cleanTable(rawTable);
 
   stage("Profiling columns");
-  const profiles = profileTable(table, typeHints);
+  const profiles = opts.profiles ?? profileTable(table, typeHints);
   // Detect the dataset's currency (from raw headers + cells) and make it the active currency for every
   // money formatter below, so the whole TS dashboard agrees instead of hardcoding "$".
-  const currency = detectCurrency(rawTable, profiles);
+  const currency = opts.currency ?? detectCurrency(rawTable, profiles);
   setActiveCurrency(currency);
   const quality = computeDataQuality(table, profiles, cleaning);
   const anomalies = detectAnomalies(table, profiles);

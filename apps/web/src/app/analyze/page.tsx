@@ -220,19 +220,37 @@ export default function AnalyzePage() {
       // The whole pipeline (clean → profile → stats → charts → insights) runs in a Web Worker,
       // so the UI never freezes even on a 200k-row file - and the progress here reflects the
       // worker's REAL stage transitions instead of a timed animation.
-      setStage("Cleaning & normalizing");
-      const { spec: result, table: cleaned } = await runAnalysis(sourceTbl, ctx, (s) => setStage(s), {}, activeLlmConfig() ?? undefined);
+      //
+      // ── The deep PYTHON analysis (pandas/statsmodels) is the authoritative engine: it computes the
+      // headline KPIs + charts and is the basis for every AI conclusion. It only needs the cleaned +
+      // profiled table, so we kick it off IN PARALLEL the moment the worker has that ready (via the
+      // `onPrepared` callback) rather than waiting for the entire TS pass to finish - its network
+      // round-trip overlaps the rest of the in-browser dashboard build. We still reveal everything at
+      // once (a single finished result, no confusing "re-analyzing" flash). If the backend is
+      // unreachable (e.g. local `next dev`, or a transient error), we fall back to the TS spec.
+      let pyPromise: Promise<PyAnalysisSpec> | null = null;
 
-      // ── The PYTHON engine (pandas/statsmodels) computes the dashboard's KPIs + charts, and Groq writes
-      // the AI conclusions from them. This is the primary view, so we finish it BEFORE revealing anything -
-      // one continuous progress bar, then the whole dashboard (conclusions included) appears at once, rather
-      // than showing the TS dashboard first and a confusing second "re-analyzing" pass. If the backend is
-      // unreachable (e.g. local `next dev`, or a transient error), we fall back to the in-browser TS spec.
+      setStage("Cleaning & normalizing");
+      const { spec: result, table: cleaned } = await runAnalysis(
+        sourceTbl,
+        ctx,
+        (s) => setStage(s),
+        {},
+        activeLlmConfig() ?? undefined,
+        (cleanedTbl, currency) => {
+          // Data is cleaned & profiled - start the deep Python analysis now, in parallel.
+          pyPromise = runPythonAnalysis(cleanedTbl.columns, cleanedTbl.rows, currency);
+          pyPromise.catch(() => {}); // mark handled; the await below turns any failure into the TS fallback
+        }
+      );
+
       let py: PyAnalysisSpec | null = null;
       let conclusions: PyConclusions | null = null;
       try {
         setStage("Deep analysis (Python)");
-        py = await runPythonAnalysis(cleaned.columns, cleaned.rows, result.currency);
+        // Started in parallel via onPrepared (so it's often already finished here). Fall back to
+        // starting it now if, on some unusual path, onPrepared never fired.
+        py = await (pyPromise ?? runPythonAnalysis(cleaned.columns, cleaned.rows, result.currency));
         setStage("Writing AI conclusions");
         conclusions = await runPythonConclusions(py, ctx).catch(() => null);
       } catch {
