@@ -81,7 +81,7 @@ export function DashboardView({
 
   const aiBadge =
     spec.narrator === "llm" ? (
-      <span className="rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
+      <span className="rounded-full bg-gradient-to-r from-[#ff5740]/20 to-[#ff8a4c]/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#ff5740]">
         ✨ AI-narrated
       </span>
     ) : undefined;
@@ -97,7 +97,7 @@ export function DashboardView({
           </p>
         </div>
         <div className="text-right">
-          <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-semibold text-blue-300">
+          <span className="rounded-full bg-[#ff5740]/15 px-3 py-1 text-xs font-semibold text-[#ff5740]">
             {spec.domain.domain} · {(spec.domain.confidence * 100).toFixed(0)}% confidence
           </span>
           <p className="mt-1 max-w-md text-[11px] text-slate-500">{spec.domain.reason}</p>
@@ -121,7 +121,7 @@ export function DashboardView({
               aria-current={on ? "page" : undefined}
               onClick={() => setActive(t.id)}
               className={`whitespace-nowrap rounded-lg px-4 py-1.5 text-sm font-medium transition ${
-                on ? "bg-blue-500 text-white shadow-sm shadow-blue-500/30" : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                on ? "bg-[#ff5740] text-white shadow-sm shadow-[#ff5740]/30" : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
               }`}
             >
               {t.label}
@@ -152,7 +152,7 @@ export function DashboardView({
 
         {spec.story && (
           <div className="card flex gap-3 p-5">
-            <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300">
+            <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#ff5740]/15 text-[#ff5740]">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                 <circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" />
               </svg>
@@ -164,7 +164,7 @@ export function DashboardView({
                   {spec.story.industry}
                 </span>
                 {spec.story.source === "llm" && (
-                  <span className="rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
+                  <span className="rounded-full bg-gradient-to-r from-[#ff5740]/20 to-[#ff8a4c]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#ff5740]">
                     ✨ AI-sharpened
                   </span>
                 )}

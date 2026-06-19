@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import Link from "next/link";
 import type { DashboardSpec, Table } from "@/lib/types";
 import { parseFile, type SourceInfo } from "@/lib/parse";
@@ -522,7 +521,7 @@ export default function AnalyzePage() {
               </button>
               <button
                 onClick={reset}
-                className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400"
+                className="rounded-xl bg-[#ff5740] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#ff3b30]"
               >
                 New analysis
               </button>
@@ -557,7 +556,7 @@ export default function AnalyzePage() {
                 onChange={(e) => updateContext(e.target.value)}
                 rows={2}
                 placeholder="e.g. I run a used-car dealership and want to understand why customers don't buy."
-                className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
+                className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-[#ff5740] focus:outline-none"
               />
             </details>
 
@@ -569,12 +568,7 @@ export default function AnalyzePage() {
             context to maximize the conclusions, then start deliberately. */}
         {!spec && pending && (
           <div className="space-y-4">
-            <motion.div
-              initial={{ opacity: 0, y: 18, scale: 0.985 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: "spring", stiffness: 120, damping: 20 }}
-              className="card space-y-5 p-5 sm:p-6"
-            >
+            <div className="fade-up card space-y-5 p-5 sm:p-6">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-100">Ready to analyze — does this look right?</h2>
@@ -591,7 +585,7 @@ export default function AnalyzePage() {
               {/* File summary */}
               <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ff5740]/15 text-[#ff5740]">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
                     </svg>
@@ -613,7 +607,7 @@ export default function AnalyzePage() {
                       onChange={(e) => handleStageSource(e.target.value)}
                       disabled={stagingSource}
                       aria-label={`Choose which ${pending.sourceKind === "table" ? "table" : "sheet"} to analyze`}
-                      className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+                      className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 focus:border-[#ff5740] focus:outline-none disabled:opacity-50"
                     >
                       {pending.sources.map((s) => (
                         <option key={s.id} value={s.id}>
@@ -639,7 +633,7 @@ export default function AnalyzePage() {
               </div>
 
               {/* Context — emphasized, because it markedly improves the conclusions. */}
-              <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
+              <div className="rounded-xl border border-[#ff5740]/30 bg-[#ff5740]/5 p-4">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
                   <span aria-hidden>⭐</span> Add context to maximize your conclusions
                 </h3>
@@ -659,7 +653,7 @@ export default function AnalyzePage() {
                   onChange={(e) => updateContext(e.target.value)}
                   rows={2}
                   placeholder="e.g. I run a used-car dealership and want to understand why customers don't buy."
-                  className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
+                  className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-[#ff5740] focus:outline-none"
                 />
                 {!jobDesc.trim() && (
                   <p className="mt-1.5 text-[11px] text-amber-300/80">Tip: even a short note noticeably sharpens the results — it’s worth the 10 seconds.</p>
@@ -671,18 +665,15 @@ export default function AnalyzePage() {
                 <button onClick={cancelPending} className="text-sm text-slate-400 transition hover:text-slate-200">
                   ← Choose a different file
                 </button>
-                <motion.button
+                <button
                   onClick={handleStartAnalysis}
                   disabled={stagingSource}
-                  whileHover={{ scale: stagingSource ? 1 : 1.035 }}
-                  whileTap={{ scale: stagingSource ? 1 : 0.97 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  className="btn-shine rounded-xl bg-blue-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400 disabled:opacity-50"
+                  className="btn-press btn-shine rounded-xl bg-[#ff5740] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#ff5740]/25 transition hover:bg-[#ff3b30] disabled:opacity-50"
                 >
                   🚀 Start analyzing
-                </motion.button>
+                </button>
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
 
@@ -693,7 +684,7 @@ export default function AnalyzePage() {
             className={`fade-up mb-4 flex items-start justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm ${
               toast.tone === "error"
                 ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
-                : "border-blue-500/30 bg-blue-500/10 text-blue-200"
+                : "border-[#ff5740]/30 bg-[#ff5740]/10 text-[#ff5740]"
             }`}
           >
             <span>{toast.text}</span>
@@ -724,7 +715,7 @@ export default function AnalyzePage() {
               onChange={(e) => handleSelectSource(e.target.value)}
               disabled={busy}
               aria-label={`Choose which ${sourceKind === "table" ? "table" : "sheet"} to analyze`}
-              className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+              className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 focus:border-[#ff5740] focus:outline-none disabled:opacity-50"
             >
               {fileSources.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -743,7 +734,7 @@ export default function AnalyzePage() {
               onChange={(e) => setJoinId(e.target.value)}
               disabled={busy}
               aria-label="Choose a table to join with the current one"
-              className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+              className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 focus:border-[#ff5740] focus:outline-none disabled:opacity-50"
             >
               <option value="">{sourceKind === "table" ? "another table…" : "another sheet…"}</option>
               {fileSources
@@ -757,7 +748,7 @@ export default function AnalyzePage() {
             <button
               onClick={handleJoin}
               disabled={busy || !joinId}
-              className="rounded-lg bg-blue-500/90 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-400 disabled:opacity-50"
+              className="rounded-lg bg-[#ff5740]/90 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-[#ff3b30] disabled:opacity-50"
             >
               Join
             </button>

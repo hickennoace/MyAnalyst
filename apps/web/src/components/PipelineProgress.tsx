@@ -17,7 +17,7 @@ export function PipelineProgress({ stages, current, detail }: { stages: string[]
 
       <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-500 to-cyan-400 transition-all duration-300"
+          className="h-full rounded-full bg-gradient-to-r from-[#ff5740] via-[#ff8a4c] to-[#ff8a4c] transition-all duration-300"
           style={{ width: `${pct}%`, backgroundSize: "200% 100%", animation: "gradientPan 2.4s linear infinite" }}
         />
       </div>
@@ -33,7 +33,7 @@ export function PipelineProgress({ stages, current, detail }: { stages: string[]
                   done
                     ? "bg-emerald-500/20 text-emerald-300"
                     : active
-                    ? "bg-blue-500 text-white"
+                    ? "bg-[#ff5740] text-white"
                     : "bg-slate-800 text-slate-600"
                 }`}
                 style={active ? { animation: "stepPulse 1.4s ease-in-out infinite" } : undefined}

@@ -43,7 +43,7 @@ export function PythonDashboard({
               Data quality {spec.quality.score}/100
             </span>
           )}
-          <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-300">
+          <span className="rounded-full bg-[#ff5740]/15 px-2.5 py-0.5 text-[11px] font-semibold text-[#ff5740]">
             Python engine
           </span>
         </div>
@@ -231,7 +231,7 @@ function money(n: number): string {
 
 function ConclusionsCard({ c }: { c: PyConclusions }) {
   return (
-    <section className="card border border-blue-500/20 p-5">
+    <section className="card border border-[#ff5740]/20 p-5">
       <h3 className="text-sm font-semibold text-slate-100">Conclusions</h3>
       {c.bottomLine && <p className="mt-2 text-[15px] font-medium text-slate-100">{c.bottomLine}</p>}
       {c.summary && <p className="mt-2 text-[13px] leading-relaxed text-slate-300">{c.summary}</p>}
@@ -250,7 +250,7 @@ function ConclusionsCard({ c }: { c: PyConclusions }) {
         <ul className="mt-3 space-y-1.5">
           {c.conclusions.map((t, i) => (
             <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-slate-300">
-              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-blue-400" aria-hidden />
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#ff5740]" aria-hidden />
               <span>{t}</span>
             </li>
           ))}

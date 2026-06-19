@@ -16,7 +16,7 @@ function fmt(n: number, p?: ColumnProfile): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(n);
 }
 
-const TONE = ["border-blue-500/30", "border-violet-500/30", "border-emerald-500/30", "border-amber-500/30"];
+const TONE = ["border-[#ff5740]/30", "border-violet-500/30", "border-emerald-500/30", "border-amber-500/30"];
 
 export function SegmentCard({ segmentation, profiles, table }: { segmentation: Segmentation; profiles: ColumnProfile[]; table?: Table | null }) {
   const { segments, features, sampled } = segmentation;

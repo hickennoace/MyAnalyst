@@ -1,59 +1,69 @@
-// Animated data-analysis centerpiece for the cinematic hero — a glowing 3D-ish
-// bar-chart "core" on a reflective platform, ringed by orbiting data nodes, with
-// a sweeping scan line and a self-drawing trend curve. This is the data-themed
-// stand-in for the hero subject (the car) in the reference design.
-//
-// Pure SVG + CSS (animations live in globals.css under the `.cine` scope) so it
-// stays crisp at any size, needs no JS, and goes still under prefers-reduced-motion.
+// Animated line-chart centerpiece for the cinematic hero — a self-drawing coral
+// trend line over a glowing area fill, with data points that pop in along the
+// curve, a pulsing leading point, a sweeping highlight, and a tracer dot that
+// races along the line. Pure SVG + CSS (animations live in globals.css under the
+// `.cine` scope) so it stays crisp at any size, needs no JS, and settles still
+// under prefers-reduced-motion.
 
-const BARS = [
-  { h: 96, hue: 0.15 },
-  { h: 150, hue: 0.35 },
-  { h: 124, hue: 0.25 },
-  { h: 196, hue: 0.6 },
-  { h: 168, hue: 0.45 },
-  { h: 224, hue: 0.85 },
-  { h: 142, hue: 0.3 },
-];
+// Plot geometry (SVG user units).
+const X0 = 54;
+const X1 = 420;
+const TOP = 72;
+const BOTTOM = 300;
+const SPAN = BOTTOM - TOP;
 
-// Orbiting nodes laid out on an ellipse (rx, ry) around the core center.
-const ORBIT = Array.from({ length: 9 }, (_, i) => {
-  const a = (i / 9) * Math.PI * 2;
-  return { x: Math.cos(a) * 178, y: Math.sin(a) * 52, big: i % 3 === 0 };
-});
+// Normalised series (0 = baseline, 1 = top) — an upward trend with a realistic dip.
+const SERIES = [0.16, 0.44, 0.30, 0.68, 0.52, 0.9, 0.74];
 
-// Self-drawing trend curve threaded across the bar tops.
-const TREND = "M 96 250 C 140 232, 168 196, 196 206 S 250 150, 286 120 S 330 168, 360 138";
+const PTS: [number, number][] = SERIES.map((v, i) => [
+  X0 + (i / (SERIES.length - 1)) * (X1 - X0),
+  BOTTOM - v * SPAN,
+]);
+
+// Catmull-Rom → cubic-bezier smoothing so the line reads as a smooth curve.
+function smoothPath(pts: [number, number][]): string {
+  if (pts.length < 2) return "";
+  const d = [`M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d.push(`C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`);
+  }
+  return d.join(" ");
+}
+
+const LINE = smoothPath(PTS);
+const AREA = `${LINE} L ${X1} ${BOTTOM} L ${X0} ${BOTTOM} Z`;
+
+// Faint horizontal gridlines across the plot.
+const GRID = [0.2, 0.4, 0.6, 0.8].map((g) => BOTTOM - g * SPAN);
 
 export function DataCore({ className = "" }: { className?: string }) {
-  const baseY = 300; // platform line
-  const x0 = 96; // first bar x
-  const gap = 44; // bar pitch
-  const bw = 30; // bar width
-
   return (
     <div className={`cine-core ${className}`} aria-hidden>
-      <svg viewBox="0 0 460 400" className="cine-core-svg" role="img" aria-label="Animated data analysis visualization">
+      <svg viewBox="0 0 460 360" className="cine-core-svg" role="img" aria-label="Animated line-chart visualization">
         <defs>
-          <linearGradient id="cBar" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#b31d1d" />
-            <stop offset="0.55" stopColor="#ff3b30" />
-            <stop offset="1" stopColor="#ff8a4c" />
-          </linearGradient>
-          <linearGradient id="cBarSoft" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#ff7a45" stopOpacity="0.5" />
-            <stop offset="1" stopColor="#ff3b30" stopOpacity="0" />
-          </linearGradient>
-          <radialGradient id="cFloor" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stopColor="#ff4326" stopOpacity="0.45" />
-            <stop offset="1" stopColor="#ff4326" stopOpacity="0" />
-          </radialGradient>
-          <linearGradient id="cTrend" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#ffb37a" />
+          <linearGradient id="cLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#ff8a4c" />
+            <stop offset="0.5" stopColor="#ff5740" />
             <stop offset="1" stopColor="#ff2d2d" />
           </linearGradient>
-          <filter id="cGlow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="6" result="b" />
+          <linearGradient id="cArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ff5740" stopOpacity="0.42" />
+            <stop offset="1" stopColor="#ff5740" stopOpacity="0" />
+          </linearGradient>
+          <radialGradient id="cFloor" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stopColor="#ff4326" stopOpacity="0.4" />
+            <stop offset="1" stopColor="#ff4326" stopOpacity="0" />
+          </radialGradient>
+          <filter id="cGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="5" result="b" />
             <feMerge>
               <feMergeNode in="b" />
               <feMergeNode in="SourceGraphic" />
@@ -61,81 +71,62 @@ export function DataCore({ className = "" }: { className?: string }) {
           </filter>
         </defs>
 
-        {/* Platform glow + reflective base */}
-        <ellipse cx="230" cy={baseY} rx="210" ry="40" fill="url(#cFloor)" className="cine-floor" />
-        <ellipse cx="230" cy={baseY} rx="186" ry="30" fill="none" stroke="rgba(220,56,36,0.45)" strokeWidth="1" />
+        {/* Baseline glow anchoring the chart */}
+        <ellipse cx="237" cy={BOTTOM + 6} rx="205" ry="30" fill="url(#cFloor)" className="cine-floor" />
 
-        {/* Orbiting data ring (outer, slow) */}
-        <g className="cine-orbit">
-          <ellipse cx="230" cy={baseY - 64} rx="178" ry="52" fill="none" stroke="rgba(220,60,40,0.3)" strokeWidth="1" />
-          {ORBIT.map((n, i) => (
-            <circle
-              key={i}
-              cx={230 + n.x}
-              cy={baseY - 64 + n.y}
-              r={n.big ? 4 : 2.4}
-              fill={n.big ? "#ffb37a" : "#ff5a3c"}
-              className="cine-orbit-node"
-            />
+        {/* Faint plot grid */}
+        <g className="cine-grid-lines">
+          {GRID.map((y, i) => (
+            <line key={i} x1={X0} x2={X1} y1={y} y2={y} stroke="rgba(220,70,40,0.14)" strokeWidth="1" strokeDasharray="2 7" />
           ))}
+          <line x1={X0} x2={X1} y1={BOTTOM} y2={BOTTOM} stroke="rgba(220,60,40,0.4)" strokeWidth="1.2" />
+          <line x1={X0} x2={X0} y1={TOP - 6} y2={BOTTOM} stroke="rgba(220,60,40,0.28)" strokeWidth="1.2" />
         </g>
 
-        {/* Reflection of the bars (mirrored + faded) */}
-        <g className="cine-reflection">
-          {BARS.map((b, i) => (
-            <rect
-              key={`r${i}`}
-              x={x0 + i * gap}
-              y={baseY}
-              width={bw}
-              height={b.h}
-              rx="5"
-              fill="url(#cBarSoft)"
-              className="cine-bar"
-              style={{ animationDelay: `${0.15 + i * 0.08}s`, ["--pulse-delay" as string]: `${1.1 + i * 0.08}s` }}
-            />
-          ))}
+        {/* Area fill under the line (fades in as the line draws) */}
+        <path d={AREA} fill="url(#cArea)" className="cine-area" />
+
+        {/* The self-drawing trend line */}
+        <path
+          d={LINE}
+          pathLength={1}
+          fill="none"
+          stroke="url(#cLine)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="cine-line"
+          filter="url(#cGlow)"
+        />
+
+        {/* Tracer dot racing along the line */}
+        <g className="cine-tracer">
+          <circle r="5.5" fill="#fff2e6" stroke="#ff3b30" strokeWidth="1.5">
+            <animateMotion dur="3.2s" repeatCount="indefinite" rotate="0" path={LINE} keyPoints="0;1" keyTimes="0;1" calcMode="linear" />
+          </circle>
         </g>
 
-        {/* The bars */}
-        <g filter="url(#cGlow)">
-          {BARS.map((b, i) => (
+        {/* Data points pop in along the curve; the last one keeps pulsing */}
+        {PTS.map(([x, y], i) => {
+          const last = i === PTS.length - 1;
+          return (
             <g key={i}>
-              <rect
-                x={x0 + i * gap}
-                y={baseY - b.h}
-                width={bw}
-                height={b.h}
-                rx="5"
-                fill="url(#cBar)"
-                className="cine-bar"
-                style={{ animationDelay: `${0.15 + i * 0.08}s`, ["--pulse-delay" as string]: `${1.1 + i * 0.08}s` }}
-              />
-              {/* bright cap */}
-              <rect
-                x={x0 + i * gap}
-                y={baseY - b.h}
-                width={bw}
-                height="4"
-                rx="2"
-                fill="#ffd9b0"
-                className="cine-bar"
-                style={{ animationDelay: `${0.15 + i * 0.08}s`, ["--pulse-delay" as string]: `${1.1 + i * 0.08}s` }}
+              <circle
+                cx={x}
+                cy={y}
+                r={last ? 5 : 3.6}
+                fill={last ? "#ff3b30" : "#fff2e6"}
+                stroke="#ff5740"
+                strokeWidth="1.6"
+                className={`cine-dot${last ? " cine-dot-lead" : ""}`}
+                style={{ ["--dot-delay" as string]: `${0.9 + i * 0.18}s` }}
               />
             </g>
-          ))}
-        </g>
+          );
+        })}
 
-        {/* Self-drawing trend curve over the tops */}
-        <path d={TREND} fill="none" stroke="url(#cTrend)" strokeWidth="2.5" strokeLinecap="round" className="cine-trend" filter="url(#cGlow)" />
-
-        {/* Inner counter-rotating ring */}
-        <g className="cine-orbit-inner">
-          <ellipse cx="230" cy={baseY - 40} rx="120" ry="34" fill="none" stroke="rgba(220,90,50,0.28)" strokeWidth="1" strokeDasharray="2 9" />
-        </g>
-
-        {/* Sweeping scan line */}
-        <line x1="78" x2="382" y1="0" y2="0" stroke="rgba(220,70,40,0.6)" strokeWidth="1.5" className="cine-scan" />
+        {/* Sweeping highlight line */}
+        <line x1={X0} x2={X0} y1={TOP - 8} y2={BOTTOM} stroke="rgba(255,140,90,0.5)" strokeWidth="1.5" className="cine-sweep" />
       </svg>
     </div>
   );

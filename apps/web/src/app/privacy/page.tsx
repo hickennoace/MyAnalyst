@@ -38,14 +38,14 @@ export default function Privacy() {
           </Block>
 
           <Block title="What stays on your device">
-            Recent analyses are stored only in your browser&apos;s <code className="text-blue-300">localStorage</code>{" "}
+            Recent analyses are stored only in your browser&apos;s <code className="text-[#ff5740]">localStorage</code>{" "}
             — never synced anywhere; clearing your browser data removes them. PNG/PDF/report exports are generated
             locally. The optional on-device AI model (WebGPU) runs entirely in your browser with no network.
           </Block>
 
           <Block title="Shareable links">
             A share link encodes the dashboard into the URL&apos;s hash fragment (the part after
-            <code className="text-blue-300"> # </code>). Browsers never send the hash to a server, so a shared
+            <code className="text-[#ff5740]"> # </code>). Browsers never send the hash to a server, so a shared
             dashboard is reconstructed entirely in the recipient&apos;s browser, and verbatim free-text values are
             redacted from it. Anyone with the link can view it — treat links like the data they contain.
           </Block>
@@ -56,7 +56,7 @@ export default function Privacy() {
         </div>
 
         <div className="mt-10 border-t border-slate-800 pt-6">
-          <Link href="/analyze" className="rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400">
+          <Link href="/analyze" className="rounded-xl bg-[#ff5740] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#ff3b30]">
             Try the analyzer →
           </Link>
         </div>

@@ -19,7 +19,7 @@ function money(n: number): string {
 
 const TONE: Record<string, string> = {
   champions: "border-emerald-500/40 bg-emerald-500/5",
-  loyal: "border-blue-500/40 bg-blue-500/5",
+  loyal: "border-[#ff5740]/40 bg-[#ff5740]/5",
   potential: "border-cyan-500/30 bg-cyan-500/5",
   "at-risk": "border-amber-500/40 bg-amber-500/5",
   hibernating: "border-slate-600/50 bg-slate-800/20",

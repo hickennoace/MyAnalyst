@@ -25,7 +25,7 @@ function Delta({ pct }: { pct: number | null }) {
 export function ComparisonCard({ comparison, onClose }: { comparison: DatasetComparison; onClose: () => void }) {
   const c = comparison;
   return (
-    <div className="card border border-blue-500/30 p-5">
+    <div className="card border border-[#ff5740]/30 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">What changed</h3>

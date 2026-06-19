@@ -84,10 +84,10 @@ export function PresenterMode({ spec, conclusions, onClose }: { spec: DashboardS
 
       <div key={i} className="fade-up flex flex-1 flex-col items-center justify-center px-8 text-center sm:px-16">
         <div className="w-full max-w-3xl">
-          {s.eyebrow && <p className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-blue-400">{s.eyebrow}</p>}
+          {s.eyebrow && <p className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-[#ff5740]">{s.eyebrow}</p>}
           <h2 className={`font-bold tracking-tight ${s.kind === "title" ? "text-5xl sm:text-6xl" : "text-3xl leading-tight sm:text-4xl"}`}>{s.title}</h2>
           {s.badge && (
-            <span className={`mt-4 inline-block rounded-full bg-white/5 px-3 py-1 text-sm font-semibold ${IMPACT_TONE[s.badge.toLowerCase()] ?? "text-blue-300"}`}>{s.badge}</span>
+            <span className={`mt-4 inline-block rounded-full bg-white/5 px-3 py-1 text-sm font-semibold ${IMPACT_TONE[s.badge.toLowerCase()] ?? "text-[#ff5740]"}`}>{s.badge}</span>
           )}
           {s.body.map((p, j) => (
             <p key={j} className="mt-5 text-lg leading-relaxed text-slate-300 sm:text-xl">
@@ -103,7 +103,7 @@ export function PresenterMode({ spec, conclusions, onClose }: { spec: DashboardS
         </button>
         <div className="flex gap-1.5">
           {slides.map((_, j) => (
-            <button key={j} onClick={() => setI(j)} aria-label={`Slide ${j + 1}`} className={`h-2 rounded-full transition-all ${j === i ? "w-6 bg-blue-500" : "w-2 bg-white/20 hover:bg-white/40"}`} />
+            <button key={j} onClick={() => setI(j)} aria-label={`Slide ${j + 1}`} className={`h-2 rounded-full transition-all ${j === i ? "w-6 bg-[#ff5740]" : "w-2 bg-white/20 hover:bg-white/40"}`} />
           ))}
         </div>
         <button onClick={() => setI((v) => Math.min(last, v + 1))} disabled={i === last} className="rounded-full border border-white/10 px-5 py-2 text-sm transition hover:bg-white/5 disabled:opacity-30">

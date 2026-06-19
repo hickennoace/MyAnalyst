@@ -68,12 +68,12 @@ export function Uploader({
       onDragLeave={() => setDrag(false)}
       onDrop={handleDrop}
       className={`card flex flex-col items-center justify-center px-8 py-16 text-center transition-all duration-300 ${
-        drag ? "scale-[1.01] border-blue-400 bg-blue-500/10 shadow-[0_0_50px_-12px_rgba(61,139,255,0.55)]" : ""
+        drag ? "scale-[1.01] border-[#ff7a5c] bg-[#ff5740]/10 shadow-[0_0_50px_-12px_rgba(255,87,64,0.55)]" : ""
       }`}
     >
       <div className="mb-4 animate-float">
         <div
-          className={`grid h-14 w-14 place-items-center rounded-2xl bg-blue-500/15 text-blue-300 transition-transform duration-300 ${drag ? "scale-110" : ""}`}
+          className={`grid h-14 w-14 place-items-center rounded-2xl bg-[#ff5740]/15 text-[#ff5740] transition-transform duration-300 ${drag ? "scale-110" : ""}`}
           style={{ animation: "stepPulse 2.6s ease-in-out infinite" }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
@@ -92,7 +92,7 @@ export function Uploader({
         <button
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="btn-shine rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400 disabled:opacity-50"
+          className="btn-press btn-shine rounded-xl bg-[#ff5740] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#ff5740]/25 transition hover:bg-[#ff3b30] disabled:opacity-50"
         >
           {busy ? "Analyzing…" : "Choose file"}
         </button>
@@ -128,7 +128,7 @@ export function Uploader({
             placeholder="…or paste a CSV / Google Sheets URL"
             aria-label="Public CSV or Google Sheets URL"
             disabled={busy || urlLoading}
-            className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none disabled:opacity-60"
+            className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-[#ff7a5c] focus:outline-none disabled:opacity-60"
           />
           <button
             onClick={loadUrl}
@@ -154,13 +154,13 @@ export function Uploader({
               aria-label="Paste table data"
               rows={5}
               disabled={busy}
-              className="w-full rounded-xl border border-slate-700 bg-slate-900/60 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-700 bg-slate-900/60 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-[#ff7a5c] focus:outline-none disabled:opacity-60"
             />
             <div className="mt-2 flex items-center gap-2">
               <button
                 onClick={analyzePaste}
                 disabled={busy || !pasteText.trim()}
-                className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400 disabled:opacity-50"
+                className="btn-press rounded-xl bg-[#ff5740] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#ff3b30] disabled:opacity-50"
               >
                 Analyze pasted data
               </button>

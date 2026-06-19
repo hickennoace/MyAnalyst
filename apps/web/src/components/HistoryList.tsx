@@ -26,7 +26,7 @@ export function HistoryList({
         {entries.map((e) => (
           <li key={e.id} className="flex items-center justify-between gap-3 py-2.5">
             <button onClick={() => onOpen(e.id)} className="group min-w-0 flex-1 text-left">
-              <p className="truncate text-sm font-medium text-slate-200 group-hover:text-blue-300">{e.name}</p>
+              <p className="truncate text-sm font-medium text-slate-200 group-hover:text-[#ff5740]">{e.name}</p>
               <p className="text-[11px] text-slate-500">
                 {e.rowCount.toLocaleString()} rows · {e.colCount} cols · {e.domain} ·{" "}
                 {new Date(e.date).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}

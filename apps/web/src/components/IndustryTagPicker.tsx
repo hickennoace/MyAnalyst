@@ -44,8 +44,8 @@ export function IndustryTagPicker({
             onClick={() => onChange(active ? null : t.key)}
             className={`rounded-full border ${pad} text-xs transition hover:-translate-y-0.5 ${
               active
-                ? "border-blue-400 bg-blue-500/15 text-blue-200"
-                : "border-slate-700 text-slate-300 hover:border-blue-500/50 hover:text-blue-300"
+                ? "border-[#ff5740] bg-[#ff5740]/15 text-[#ff5740]"
+                : "border-slate-700 text-slate-300 hover:border-[#ff5740]/50 hover:text-[#ff5740]"
             }`}
           >
             {t.label}
@@ -56,7 +56,7 @@ export function IndustryTagPicker({
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className={`rounded-full border border-dashed border-slate-600 ${pad} text-xs text-slate-400 transition hover:border-blue-500/50 hover:text-blue-300`}
+          className={`rounded-full border border-dashed border-slate-600 ${pad} text-xs text-slate-400 transition hover:border-[#ff5740]/50 hover:text-[#ff5740]`}
         >
           +{hidden} more
         </button>

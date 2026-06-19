@@ -62,7 +62,7 @@ export function QualityCard({ quality }: { quality: DataQuality }) {
                 <span className={`text-xs font-semibold tabular-nums ${s.text}`}>{Math.round(c.score * 100)}</span>
               </div>
               <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">{c.detail}</p>
-              {c.fix && <p className="mt-1 text-[11px] leading-relaxed text-blue-300/80">→ {c.fix}</p>}
+              {c.fix && <p className="mt-1 text-[11px] leading-relaxed text-[#ff5740]/80">→ {c.fix}</p>}
             </div>
           );
         })}

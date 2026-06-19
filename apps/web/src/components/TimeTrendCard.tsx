@@ -37,7 +37,7 @@ function Sparkline({ values, ma }: { values: number[]; ma: (number | null)[] }) 
   const maPts = ma.map((v, i) => (v === null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`)).filter(Boolean) as string[];
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-12 w-full" preserveAspectRatio="none" aria-hidden>
-      <path d={path} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-blue-400" />
+      <path d={path} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[#ff5740]" />
       {maPts.length > 1 && <polyline points={maPts.join(" ")} fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" className="text-slate-500" />}
     </svg>
   );
@@ -83,7 +83,7 @@ export function TimeTrendCard({ analyses, profiles }: { analyses: TimeSeriesAnal
 
             <p className="mt-2 text-2xl font-bold tabular-nums text-slate-100">{fmt(a.latest.value, p)}</p>
 
-            <div className="mt-2 text-blue-400">
+            <div className="mt-2 text-[#ff5740]">
               <Sparkline values={a.periods.map((q) => q.value)} ma={a.movingAvg} />
             </div>
 

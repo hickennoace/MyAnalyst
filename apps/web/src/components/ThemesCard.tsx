@@ -52,7 +52,7 @@ export function ThemesCard({ analyses }: { analyses: TextAnalysis[] }) {
                   <span className="shrink-0 tabular-nums text-slate-500">{t.count}× · {pct(t.share)}</span>
                 </div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full rounded-full bg-blue-400/70" style={{ width: `${Math.max(4, Math.min(100, t.share * 100))}%` }} />
+                  <div className="h-full rounded-full bg-[#ff5740]/70" style={{ width: `${Math.max(4, Math.min(100, t.share * 100))}%` }} />
                 </div>
                 {t.sample && <p className="mt-1 truncate text-[11px] italic text-slate-500" title={t.sample}>“{t.sample}”</p>}
               </li>

@@ -88,7 +88,7 @@ export function ScenarioCard({ drivers, profiles }: { drivers: DriverAnalysis; p
                 step={b.step}
                 value={cur}
                 onChange={(e) => setVals((v) => ({ ...v, [p.name]: Number(e.target.value) }))}
-                className="mt-1.5 w-full accent-blue-500"
+                className="mt-1.5 w-full accent-[#ff5740]"
                 aria-label={`${p.name} value`}
               />
               <div className="flex justify-between text-[10px] text-slate-600">
@@ -121,7 +121,7 @@ export function ScenarioCard({ drivers, profiles }: { drivers: DriverAnalysis; p
             onChange={(e) => setGoal(e.target.value)}
             inputMode="decimal"
             placeholder={`e.g. ${Math.round(Math.abs(baseline) * 0.1) || 10}`}
-            className="w-28 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100 outline-none focus:border-blue-500"
+            className="w-28 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100 outline-none focus:border-[#ff5740]"
           />
           <span>(in {targetP?.type === "currency" ? "$" : "units"})</span>
         </label>

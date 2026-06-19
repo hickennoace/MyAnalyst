@@ -62,7 +62,7 @@ function One({ c, profiles, table }: { c: Concentration; profiles: ColumnProfile
               </span>
               <div className="relative h-4 flex-1 overflow-hidden rounded bg-slate-800/50">
                 <div
-                  className={`h-full rounded ${vital ? "bg-gradient-to-r from-blue-500 to-cyan-400" : "bg-slate-600"}`}
+                  className={`h-full rounded ${vital ? "bg-gradient-to-r from-[#ff5740] to-[#ff8a4c]" : "bg-slate-600"}`}
                   style={{ width: `${Math.max(2, (s.share / max) * 100).toFixed(1)}%` }}
                 />
               </div>

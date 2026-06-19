@@ -64,7 +64,7 @@ export function DataTable({ table, profiles }: { table: Table; profiles: ColumnP
           }}
           placeholder="Search all columns…"
           aria-label="Search the data table"
-          className="w-56 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
+          className="w-56 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-[#ff5740] focus:outline-none"
         />
       </div>
 
@@ -80,7 +80,7 @@ export function DataTable({ table, profiles }: { table: Table; profiles: ColumnP
                   title="Click to sort"
                 >
                   {c}
-                  {sortCol === c && <span className="ml-1 text-blue-400">{sortDir === "asc" ? "▲" : "▼"}</span>}
+                  {sortCol === c && <span className="ml-1 text-[#ff5740]">{sortDir === "asc" ? "▲" : "▼"}</span>}
                 </th>
               ))}
             </tr>

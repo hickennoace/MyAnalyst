@@ -25,7 +25,7 @@ export default function Image() {
           padding: "72px",
           backgroundColor: "#0a0e16",
           backgroundImage:
-            "radial-gradient(circle at 20% 0%, rgba(61,139,255,0.32), transparent 55%), radial-gradient(circle at 100% 100%, rgba(95,210,224,0.22), transparent 55%)",
+            "radial-gradient(circle at 20% 0%, rgba(255, 87, 64,0.32), transparent 55%), radial-gradient(circle at 100% 100%, rgba(95,210,224,0.22), transparent 55%)",
           color: "#e2e8f0",
           fontFamily: "sans-serif",
         }}
@@ -58,8 +58,8 @@ export default function Image() {
                 color: "#bcd2ff",
                 padding: "10px 22px",
                 borderRadius: "9999px",
-                border: "1px solid rgba(61,139,255,0.45)",
-                background: "rgba(61,139,255,0.10)",
+                border: "1px solid rgba(255, 87, 64,0.45)",
+                background: "rgba(255, 87, 64,0.10)",
               }}
             >
               {f}

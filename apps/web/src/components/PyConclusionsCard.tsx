@@ -7,7 +7,7 @@ import type { PyConclusions } from "@/lib/py-engine";
 
 export function PyConclusionsCard({ c }: { c: PyConclusions }) {
   return (
-    <section className="card border border-blue-500/20 p-5">
+    <section className="card border border-[#ff5740]/20 p-5">
       <h3 className="font-display text-[15px] font-semibold text-slate-100">AI conclusions</h3>
       {c.bottomLine && <p className="font-display mt-2 text-[19px] font-medium leading-snug text-slate-100">{c.bottomLine}</p>}
       {c.summary && <p className="mt-2 text-[13px] leading-relaxed text-slate-300">{c.summary}</p>}
@@ -26,7 +26,7 @@ export function PyConclusionsCard({ c }: { c: PyConclusions }) {
         <ul className="mt-3 space-y-1.5">
           {c.conclusions.map((t, i) => (
             <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-slate-300">
-              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-blue-400" aria-hidden />
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#ff5740]" aria-hidden />
               <span>{t}</span>
             </li>
           ))}

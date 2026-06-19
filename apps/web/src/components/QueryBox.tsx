@@ -86,7 +86,7 @@ export function QueryBox({
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-semibold text-slate-100">Ask your data</h3>
         {ai && (
-          <span className="rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
+          <span className="rounded-full bg-gradient-to-r from-[#ff5740]/20 to-[#ff8a4c]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#ff5740]">
             ✨ AI analyst
           </span>
         )}
@@ -124,7 +124,7 @@ export function QueryBox({
                   <div
                     className={`rounded-2xl rounded-bl-sm border px-4 py-3 text-sm leading-relaxed ${
                       t.result.ok
-                        ? "border-blue-500/30 bg-blue-500/10 text-slate-100"
+                        ? "border-[#ff5740]/30 bg-[#ff5740]/10 text-slate-100"
                         : "border-slate-700 bg-slate-800/40 text-slate-300"
                     }`}
                   >
@@ -133,7 +133,7 @@ export function QueryBox({
                       {t.result.answer}
                     </div>
                     {t.result.source === "llm" && (
-                      <p className="mt-2 text-[10px] uppercase tracking-wide text-blue-300/70">
+                      <p className="mt-2 text-[10px] uppercase tracking-wide text-[#ff5740]/70">
                         ✨ AI-written · numbers computed locally from your data
                       </p>
                     )}
@@ -178,7 +178,7 @@ export function QueryBox({
                             onClick={() => ask(f)}
                             disabled={loading}
                             style={{ animationDelay: `${i * 60}ms` }}
-                            className="chip-in rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:-translate-y-0.5 hover:border-blue-500/50 hover:text-blue-300 disabled:opacity-50"
+                            className="chip-in rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:-translate-y-0.5 hover:border-[#ff5740]/50 hover:text-[#ff5740] disabled:opacity-50"
                           >
                             {f} →
                           </button>
@@ -190,7 +190,7 @@ export function QueryBox({
               ) : t.partial ? (
                 // Streaming: the answer types out live as tokens arrive.
                 <div aria-live="polite">
-                  <div className="rounded-2xl rounded-bl-sm border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm leading-relaxed text-slate-100">
+                  <div className="rounded-2xl rounded-bl-sm border border-[#ff5740]/30 bg-[#ff5740]/10 px-4 py-3 text-sm leading-relaxed text-slate-100">
                     <div className="whitespace-pre-line">
                       💡 {t.partial}
                       <span className="type-caret">▋</span>
@@ -199,7 +199,7 @@ export function QueryBox({
                 </div>
               ) : (
                 // Thinking state (before the first token arrives)
-                <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-sm border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-blue-300/80">
+                <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-sm border border-[#ff5740]/20 bg-[#ff5740]/5 px-4 py-3 text-[#ff5740]/80">
                   <span className="think-dot" />
                   <span className="think-dot" />
                   <span className="think-dot" />
@@ -221,12 +221,12 @@ export function QueryBox({
           placeholder={turns.length ? "Ask a follow-up…" : suggestions[0] ?? "e.g. total revenue by region"}
           aria-label="Ask a question about your data"
           disabled={loading}
-          className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none disabled:opacity-60"
+          className="flex-1 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-[#ff5740] focus:outline-none disabled:opacity-60"
         />
         <button
           onClick={() => ask(q)}
           disabled={loading || !q.trim()}
-          className="btn-shine inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-shine inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#ff5740] to-[#ff8a4c] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? (
             <>
@@ -248,7 +248,7 @@ export function QueryBox({
               onClick={() => ask(s)}
               disabled={loading}
               style={{ animationDelay: `${i * 60}ms` }}
-              className="chip-in rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:-translate-y-0.5 hover:border-blue-500/50 hover:text-blue-300 disabled:opacity-50"
+              className="chip-in rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:-translate-y-0.5 hover:border-[#ff5740]/50 hover:text-[#ff5740] disabled:opacity-50"
             >
               {s}
             </button>

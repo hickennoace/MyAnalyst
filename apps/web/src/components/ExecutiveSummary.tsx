@@ -10,7 +10,7 @@ export function ExecutiveSummary({ spec }: { spec: DashboardSpec }) {
 
   return (
     <div className="card relative overflow-hidden p-5">
-      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-blue-500/70 to-cyan-500/40" aria-hidden />
+      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-[#ff5740]/70 to-[#ff8a4c]/40" aria-hidden />
       <div className="flex items-center gap-2">
         <h3 className="text-sm font-semibold text-slate-100">Executive summary</h3>
         <span className="rounded-full bg-slate-800/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">

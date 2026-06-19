@@ -70,7 +70,7 @@ export default function AnalyzePyPage() {
         />
       </label>
 
-      {status && <p className="mt-4 text-sm text-blue-300">{status}</p>}
+      {status && <p className="mt-4 text-sm text-[#ff5740]">{status}</p>}
       {error && (
         <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
           {error}

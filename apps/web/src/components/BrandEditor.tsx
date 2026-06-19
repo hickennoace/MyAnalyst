@@ -42,7 +42,7 @@ export function BrandEditor({ onClose }: { onClose: () => void }) {
           <input
             value={brand.name}
             onChange={(e) => update({ name: e.target.value })}
-            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-100 outline-none focus:border-blue-500"
+            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-100 outline-none focus:border-[#ff5740]"
           />
         </label>
 
@@ -68,7 +68,7 @@ export function BrandEditor({ onClose }: { onClose: () => void }) {
 
         <div className="mt-5 flex justify-between">
           <button onClick={() => { saveBrand(DEFAULT_BRAND); setBrand(DEFAULT_BRAND); }} className="text-xs text-slate-500 hover:text-slate-300">Reset</button>
-          <button onClick={onClose} className="rounded-lg bg-blue-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-400">Done</button>
+          <button onClick={onClose} className="rounded-lg bg-[#ff5740] px-4 py-1.5 text-sm font-medium text-white hover:bg-[#ff3b30]">Done</button>
         </div>
       </div>
     </div>

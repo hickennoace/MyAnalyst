@@ -29,7 +29,7 @@ export function DriverCard({ drivers }: { drivers: DriverAnalysis }) {
         {weakFit ? " (a weak overall fit — treat as a hint, not a rule)" : ""}.
       </p>
 
-      <p className="mt-3 rounded-lg bg-blue-500/10 px-3 py-2 text-sm leading-relaxed text-slate-200">{read}</p>
+      <p className="mt-3 rounded-lg bg-[#ff5740]/10 px-3 py-2 text-sm leading-relaxed text-slate-200">{read}</p>
 
       <div className="mt-4 space-y-2.5">
         {ranked.map((d) => {

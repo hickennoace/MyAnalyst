@@ -30,11 +30,17 @@ is in `apps/web/src`.
 | Piece | Source | Where it lives | Reuse plan |
 |---|---|---|---|
 | Warp light-streaks (Canvas) | `components/SpeedStreaks.tsx` | hero | bright variant; reuse faint behind CTA + app headers |
-| Glowing data core (SVG) | `components/DataCore.tsx` | hero | reuse smaller in CTA / empty states |
+| Animated **line chart** (SVG) | `components/DataCore.tsx` | hero | self-drawing coral line + area + popping points + tracer; reuse smaller in CTA / empty states |
 | Perspective speed-grid (CSS) | `.cine-grid` in `globals.css` | hero | faint global `.lp-warp` backdrop |
 | Pulsing bloom (CSS) | `.cine-glow` | hero | section + panel accents |
 | Rise-in reveal | `.cine-rise` / `components/Reveal.tsx` | hero / sections | already site-wide; keep |
 | Coral CTA + glow | `.cine-cta` / `.lp-cta` | buttons | unify all CTAs |
+
+> Note: the hero centerpiece is an **animated line chart** (self-drawing trend
+> line, fading area fill, sequentially-popping data points, a pulsing leading
+> point, an SVG `animateMotion` tracer dot, and a one-shot sweep). It replaced
+> the earlier bar-chart core. Animations live under `.cine-line/area/dot/tracer/
+> sweep` in `globals.css` and all settle still under reduced-motion.
 
 ## Color tokens (single source — `globals.css`)
 
@@ -71,22 +77,31 @@ is in `apps/web/src`.
       a small `DataCore` and faint streaks.
 - [ ] Ticker: warm fade masks; pause on hover.
 
-### Phase 3 — App chrome (analyzer + shared view + privacy)
-- [ ] Replace `.app-bg` / `.app-aurora` blue washes with the warm warp backdrop
-      (very faint, fixed, behind content — must not reduce dashboard legibility).
-- [ ] Warm, animated page headers (BrandMark + coral underline sweep).
-- [ ] Coral primary buttons; unify focus ring to coral.
-- [ ] Pipeline/loading states: reuse warp streaks or speed-grid as the "working"
-      animation (`PipelineProgress.tsx`).
-- [ ] Keep ECharts series multi-color; only restyle axes/tooltip/grid to the warm
-      light theme (already light via `isLight()`).
+### ✅ Phase 3 — App chrome (analyzer + shared view + privacy)
+- [x] Warmed `.app-bg` / `.app-aurora` / `.glow` washes + the light-mode overrides
+      to coral; warmed the core app surface tokens (`--color-bg` etc.) to bright cream.
+- [x] Warmed the brand tokens (`--color-brand`, `.brand-mark`, `.card-hover`,
+      `.text-gradient`, `stepPulse`) and the focus ring / skip link.
+- [x] Swept **every** `blue-*` Tailwind accent → coral `#ff5740` across all 33
+      app components (Uploader, dashboard cards, QueryBox, editors, etc.), with a
+      darker `#ff3b30` hover. ECharts series palette left multi-color (red≠bad).
+- [ ] (Follow-up) Warm, animated app page headers (BrandMark + coral underline sweep).
+- [ ] (Follow-up) Pipeline/loading state could reuse warp streaks/speed-grid.
+- [ ] (Follow-up) Replace the blue `logo.png` brand asset with a coral version
+      (it's a raster image, so CSS can't recolor it).
 
-### Phase 4 — Polish, performance & a11y
-- [ ] Audit every animation under `prefers-reduced-motion: reduce` (streaks →
-      single static frame, grids/glows → still, reveals → instant).
-- [ ] One shared, parameterized streak/grid component instead of per-section
-      copies; clamp DPR, pause off-screen + on tab hide (already in SpeedStreaks).
+### ✅ Performance (this pass)
+- [x] **Removed framer-motion from all source** — the big win. `Reveal` now uses a
+      tiny IntersectionObserver + CSS (`.reveal`/`.reveal-in`); `Magnetic` sets a CSS
+      transform with a CSS-transition settle; the analyzer's `motion.div`/`motion.button`
+      became plain elements with `.fade-up` / `.btn-press`. Deleted the unused
+      `Motion.tsx` + `Tilt.tsx`. No route imports framer-motion now, so Next no longer
+      bundles it on any page. (It's still declared in `package.json` to keep
+      `package-lock.json` consistent for Vercel `npm ci`; safe to `npm uninstall` later.)
+
+### Phase 4 — Remaining polish & a11y
 - [ ] Lighthouse pass (CLS from reveals, paint cost of blurs/filters).
+- [ ] One shared, parameterized streak/grid component instead of per-section copies.
 - [ ] Visual QA on the PNG/PDF dashboard export (animations must settle to a
       static, correct frame — `fill: both`, no mid-flight capture).
 

@@ -38,7 +38,7 @@ export function CleaningReport({ report }: { report: Report }) {
             <span className="mt-0.5 text-emerald-400">✓</span>
             <span>
               <span className="font-medium text-slate-200">{s.label}</span>
-              {s.count > 0 && <span className="ml-1 text-blue-300">({s.count.toLocaleString()})</span>}
+              {s.count > 0 && <span className="ml-1 text-[#ff5740]">({s.count.toLocaleString()})</span>}
               <span className="text-slate-500"> — {s.detail}</span>
             </span>
           </li>
@@ -83,7 +83,7 @@ export function CleaningReport({ report }: { report: Report }) {
             <h4 className="text-xs font-semibold text-slate-200">Before / after preview</h4>
             <button
               onClick={() => setShowPreview((v) => !v)}
-              className="text-[11px] text-blue-300 hover:text-blue-200"
+              className="text-[11px] text-[#ff5740] hover:text-[#ff5740]"
             >
               {showPreview ? "Hide" : "Show"}
             </button>
@@ -158,7 +158,7 @@ function Chip({ n, label, tone }: { n: number; label: string; tone: "warn" | "br
     tone === "warn"
       ? "bg-amber-500/15 text-amber-300"
       : tone === "brand"
-      ? "bg-blue-500/15 text-blue-300"
+      ? "bg-[#ff5740]/15 text-[#ff5740]"
       : "bg-slate-700/30 text-slate-400";
   return (
     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${cls}`}>
