@@ -44,3 +44,36 @@ templated narrator is used). See `apps/web/.env.example` for details.
 - `/` → landing page
 - `/analyze` → the analyzer (try `/analyze?demo=1` for the sample)
 - `/api/insights` → returns `{"insights":[],"provider":"none"}` on a POST when no key is set
+
+## SEO — refreshing the favicon & search snippet on Google
+
+Google does **not** update the favicon or the search-result description the moment you deploy.
+It only refreshes them when **Googlebot re-crawls** the site, which lags a deploy by **days to
+weeks**. So right after changing the logo or the description, the old version keeps showing — this
+is a cache/crawl-timing issue, not a bug, and there is nothing to "fix" in code once the new assets
+are live.
+
+**Where the assets live** (all should already be the coral logomark):
+- Favicon / app icons: `apps/web/src/app/{favicon.ico, icon.png, icon.svg, apple-icon.png}`.
+  `favicon.ico` exists specifically so the legacy **`/favicon.ico`** path Google fetches directly
+  doesn't 404 (Next also emits `<link rel="icon">` from `icon.png`/`icon.svg`).
+- Social/share image: `apps/web/src/app/opengraph-image.tsx` (embeds `public/logo.png`).
+- Title + meta description: the `DESCRIPTION` constant + `metadata` export in
+  `apps/web/src/app/layout.tsx` (the home page inherits these).
+
+> Note: Google may **ignore the meta description** and auto-generate the snippet from visible page
+> text (e.g. the hero copy in `apps/web/src/app/page.tsx`). A crisp, accurate `DESCRIPTION` makes it
+> more likely Google uses ours, but the final snippet is Google's choice per query.
+
+**To force a refresh (do this after any logo/description change):**
+1. Open **[Google Search Console](https://search.google.com/search-console)** for `myanalyst.net`.
+2. **URL Inspection** → enter `https://myanalyst.net` → **Request Indexing**.
+3. Snippet typically updates within a few days; the favicon can take a couple of weeks.
+
+Quick local check that the new assets are actually served (before blaming the cache):
+```bash
+cd apps/web && npx next build && npx next start
+# then in another shell:
+curl -sI http://localhost:3000/favicon.ico   # 200, image/x-icon
+curl -s  http://localhost:3000/ | grep -i 'rel="icon"\|name="description"'
+```
