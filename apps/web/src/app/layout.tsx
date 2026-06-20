@@ -26,7 +26,7 @@ const display = Fraunces({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://myanalyst.net";
 const DESCRIPTION =
-  "Upload a spreadsheet, get an instant, fully-explained analytical dashboard: KPIs, statistics, forecasts, and plain-language insights - automatically. Your data is processed securely, never stored, and never shared.";
+  "Drop in a CSV, Excel, or JSON file and get an instant, fully-explained analytics dashboard - KPIs, charts, real statistics, and forecasts, all written up in plain language anyone can understand. Ask questions about your data and get grounded answers in seconds. Free, no signup, and your data is processed securely, never stored, and never shared.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
