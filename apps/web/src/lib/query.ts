@@ -1488,6 +1488,9 @@ export interface AskAnalysis {
   /** Key findings (AI conclusions, falling back to the dashboard insights) - lets the box answer
    *  open/advisory questions ("what should I do?", "summarize this") like the rest of the app would. */
   findings?: string[];
+  /** A plain-language "what this dataset is" description (the engine's story). Background ONLY - it
+   *  orients the AI's answers; it is never shown to the user as its own panel. */
+  datasetDescription?: string;
 }
 
 /** Advisory questions ("what should I do?", "give me recommendations") answered locally from the
@@ -1587,6 +1590,8 @@ function buildEvidence(question: string, table: Table, profiles: ColumnProfile[]
       rowCount: table.rowCount,
       sampledFrom: table.sampledFrom ?? null,
       domain: domain || undefined,
+      // Background orientation for the model (what this dataset is) - never shown to the user directly.
+      description: analysis?.datasetDescription || undefined,
       userContext: readUserContext(),
       columns: profiles.map((p) => ({ name: p.name, role: p.role, type: p.type, fillRatePct: round2(p.fillRate * 100) })),
     },

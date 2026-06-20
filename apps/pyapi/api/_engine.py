@@ -406,6 +406,7 @@ def analyze(df: pd.DataFrame, currency: dict | None = None) -> dict[str, Any]:
 
     # Time series + Holt-Winters forecast on revenue summed per month.
     monthly = None
+    monthly_complete = None  # history with any partial final month trimmed — what the forecast extends from
     trend = None
     forecast = None
     if revenue and time_col:
@@ -413,6 +414,7 @@ def analyze(df: pd.DataFrame, currency: dict | None = None) -> dict[str, Any]:
         if len(values):
             monthly = (labels, values)
             series = _ts.trim_partial_tail(values)
+            monthly_complete = (labels[: len(series)], series)
             trend = _ts.trend_analysis(labels[: len(series)], series, f"monthly {revenue['name'].lower()}")
             if trend is not None:
                 trend["seasonalityStrength"] = _ts.seasonality_strength(series, 12)
@@ -464,7 +466,8 @@ def analyze(df: pd.DataFrame, currency: dict | None = None) -> dict[str, Any]:
         "distributions": _dist.distributions(df, profiles),
     }
     spec["charts"] = _ch.build_charts(df, profiles, {
-        "revenue": revenue, "bestsellers": bs, "monthly": monthly, "forecast": forecast,
+        "revenue": revenue, "bestsellers": bs, "monthly": monthly,
+        "monthlyComplete": monthly_complete, "forecast": forecast,
         "correlations": stats_block.get("correlations", []), "metric_names": metric_names,
         "currency": currency,
     })

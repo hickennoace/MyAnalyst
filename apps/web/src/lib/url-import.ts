@@ -36,6 +36,14 @@ export function filenameFromUrl(url: string): string {
   }
 }
 
+// A remote response is buffered whole into memory before parsing, so an unbounded body (a multi-GB file,
+// or a redirect to one) can OOM/crash the tab before any per-format cap in parse.ts runs. Cap it here. This
+// comfortably exceeds the largest format cap (500 MB Parquet); larger sources should be downloaded and
+// uploaded so the parser can stream them from a File.
+const MAX_REMOTE_BYTES = 600 * 1024 * 1024;
+const tooBig = () =>
+  new Error(`That file is larger than ${MAX_REMOTE_BYTES / 1048576} MB. Download it and upload the file instead - uploads can stream much larger datasets.`);
+
 /** Fetch a public URL (incl. Google Sheets) and wrap the response as a File for the existing parser. */
 export async function fetchAsFile(url: string): Promise<File> {
   const target = normalizeSourceUrl(url);
@@ -47,6 +55,36 @@ export async function fetchAsFile(url: string): Promise<File> {
     throw new Error("Couldn't fetch that URL - the site may block cross-origin requests. Try downloading the file and uploading it.");
   }
   if (!res.ok) throw new Error(`The server returned ${res.status} ${res.statusText || ""}`.trim() + ".");
+
+  // Fast reject when the server declares an oversized body.
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_REMOTE_BYTES) throw tooBig();
+
+  const name = filenameFromUrl(url);
+  const type = res.headers.get("content-type")?.split(";")[0]?.trim() || "text/csv";
+
+  // Stream the body so a chunked response with no Content-Length can't blow past the cap.
+  if (res.body) {
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        total += value.byteLength;
+        if (total > MAX_REMOTE_BYTES) {
+          await reader.cancel();
+          throw tooBig();
+        }
+        chunks.push(value);
+      }
+    }
+    // Uint8Array is a valid BlobPart at runtime; the cast bridges lib.dom's ArrayBufferLike-generic typing.
+    return new File(chunks as unknown as BlobPart[], name, { type });
+  }
+
   const blob = await res.blob();
-  return new File([blob], filenameFromUrl(url), { type: blob.type || "text/csv" });
+  if (blob.size > MAX_REMOTE_BYTES) throw tooBig();
+  return new File([blob], name, { type: blob.type || type });
 }

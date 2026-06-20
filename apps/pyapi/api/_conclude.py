@@ -16,19 +16,26 @@ DISCLAIMER =("Automated analysis — not financial or investment advice. Verify 
               "with a qualified professional.")
 
 SYSTEM = (
-    "You are a principal data analyst. A Python engine (pandas/statsmodels) has already CLEANED the data, "
-    "computed the KPIs and statistics, and produced the CHARTS — your job is to read all of that and explain "
-    "it to a busy operator. You are given the KPIs, the computed FACTS, and a plain-language READING of each "
-    "chart the engine drew.\n"
-    "Write: (1) bottomLine — one decisive sentence; (2) summary — a short paragraph (3-5 sentences) that "
-    "explains what the data shows overall, weaving together the KPIs and what the charts reveal; "
-    "(3) chartInsights — for the 2-4 most important charts, one sentence each interpreting what that chart "
-    "MEANS for the business (reference the chart by its title); (4) conclusions — 2-4 crisp findings (number "
-    "+ meaning + implication); (5) actions — 1-3 prioritized, concrete next steps.\n"
-    "Rules: use ONLY figures that appear in the KPIs/FACTS/chart readings — never invent or extrapolate "
-    "numbers; you MAY divide two given figures to state a share/ratio. Lead with business meaning, not "
-    "statistics; quantify the size of the opportunity or risk; be honest about uncertainty. Do NOT number "
-    "the conclusions (no '1.', '2.' prefixes) — they render as a list. Output STRICT JSON: "
+    "You are a sharp analyst explaining a dataset to a SMART FRIEND WHO HAS NO BUSINESS OR STATISTICS "
+    "BACKGROUND. A Python engine (pandas/statsmodels) has already CLEANED the data, computed the KPIs and "
+    "statistics, and produced the CHARTS — your job is to read all of that and explain what it means in "
+    "everyday words. You are given the KPIs, the computed FACTS, and a plain-language READING of each chart "
+    "the engine drew.\n"
+    "Write: (1) bottomLine — one short, decisive sentence a non-expert instantly gets; (2) summary — a short "
+    "paragraph (3-5 sentences) that explains what the data shows overall, weaving together the KPIs and what "
+    "the charts reveal; (3) chartInsights — for the 2-4 most important charts, one sentence each saying what "
+    "that chart MEANS in practice (reference the chart by its title); (4) conclusions — 2-4 crisp findings "
+    "(the number + what it means + why it matters); (5) actions — 1-3 prioritized, concrete next steps "
+    "phrased as plain instructions someone could act on tomorrow.\n"
+    "PLAIN-LANGUAGE RULES (critical): write so ANYONE can understand — short sentences, everyday words, no "
+    "jargon. NEVER use a statistics term without explaining it in the same breath (say 'these rise and fall "
+    "together' not 'correlated'; 'the usual middle value' not 'median'; 'a real pattern, not luck' not "
+    "'statistically significant'; 'the top few account for most of it' not 'Pareto'). Spell out what each "
+    "number means for a real person, not just what it is.\n"
+    "GROUNDING RULES: use ONLY figures that appear in the KPIs/FACTS/chart readings — never invent or "
+    "extrapolate numbers; you MAY divide two given figures to state a share/ratio. Quantify the size of the "
+    "opportunity or risk in plain terms, and be honest about uncertainty. Do NOT number the conclusions "
+    "(no '1.', '2.' prefixes) — they render as a list. Output STRICT JSON: "
     '{"bottomLine": str, "summary": str, "chartInsights": [{"chart": str, "insight": str}], '
     '"conclusions": [str], "actions": [{"title": str, "detail": str}]}'
 )
@@ -139,11 +146,24 @@ def generate_conclusions(facts: list[dict], domain: str = "generic", user_contex
             }
         except Exception:
             pass
-    # Fallback — deterministic, zero-API.
+    # Fallback — deterministic, zero-API. Lead with the SHORT headline fact as the bottom line and use the
+    # fuller templated narrative (minus its trailing disclaimer, which the card renders separately) as the
+    # summary, so the headline and summary don't read as the same sentence twice.
+    headline = facts[0]["text"] if facts else "No confident findings."
+    narrative = re.sub(r"\s*\(Automated analysis.*?\)\s*$", "", templated_fallback).strip()
+    # The narrative leads with the same headline KPI we put in the bottom line — drop that leading copy so
+    # the summary ADDS the story/risk rather than repeating the headline verbatim.
+    summary = narrative
+    if summary.startswith(headline):
+        summary = summary[len(headline):].lstrip(" .—-").strip()
+    # Always give the reader a real summary paragraph: if stripping left nothing (a sparse dataset whose
+    # narrative was only the headline), stitch one from the next few facts instead.
+    if not summary:
+        summary = " ".join(f["text"] for f in facts[1:4]).strip() or narrative
     return {
         "provider": "none",
-        "bottomLine": templated_fallback or (facts[0]["text"] if facts else "No confident findings."),
-        "summary": templated_fallback,
+        "bottomLine": headline,
+        "summary": summary,
         "chartInsights": [{"chart": c["title"], "insight": c["reading"]} for c in (chart_readings or [])[:4]],
         "conclusions": [f["text"] for f in facts[:4]],
         "actions": [],

@@ -14,10 +14,24 @@ function forceLtr(s: string): string {
   return RTL.test(clean) ? "‎" + clean : clean;
 }
 
+// CSV/formula injection guard. A cell whose text begins with = + - @ (or a leading tab/CR) is executed as
+// a formula when the file is opened in Excel/Sheets — e.g. `=HYPERLINK(...)` exfiltrating data, or `=cmd|…`.
+// Our data is attacker-influenced (uploaded files, OCR'd images, URL imports), so neutralize those by
+// prefixing a single quote (the spreadsheet's "treat as literal text" marker). Plain numbers like "-5.3"
+// or "+10" are exempt — Excel reads them as numbers, not formulas, so we keep them numeric.
+function needsFormulaGuard(raw: string): boolean {
+  if (!raw) return false;
+  const c = raw[0];
+  if (c === "\t" || c === "\r") return true;
+  if (c === "=" || c === "+" || c === "-" || c === "@") return !Number.isFinite(Number(raw));
+  return false;
+}
+
 function escapeCell(v: unknown): string {
   if (v === null || v === undefined) return "";
   const raw = typeof v === "boolean" ? (v ? "true" : "false") : String(v);
-  const s = forceLtr(raw);
+  // Put the quote at the very front (ahead of any LTR mark) so it's the cell's first character.
+  const s = needsFormulaGuard(raw) ? "'" + forceLtr(raw) : forceLtr(raw);
   // Quote if the value contains a comma, quote, or newline.
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }

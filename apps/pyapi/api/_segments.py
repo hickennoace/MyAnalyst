@@ -15,7 +15,9 @@ SEED = 1234567
 
 
 def _inertia(Z, centroids, labels):
-    return float(sum(((Z[i] - centroids[labels[i]]) ** 2).sum() for i in range(len(Z))))
+    # Vectorized within-cluster sum of squares (gather each row's centroid, then one squared diff) — same
+    # result as a per-row Python loop but O(1) numpy passes instead of O(n), which matters at ~100k rows.
+    return float(((Z - centroids[labels]) ** 2).sum())
 
 
 def segment_rows(df: pd.DataFrame, profiles: list[dict]) -> dict | None:

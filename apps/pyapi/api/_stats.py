@@ -53,7 +53,13 @@ def _numeric(df: pd.DataFrame, name: str) -> pd.Series:
 
 
 def correlations(df: pd.DataFrame, metric_names: list[str], top: int = 8) -> list[dict]:
-    """Pearson r for every numeric pair, with 95% CI (Fisher z) and FDR-controlled significance."""
+    """Pearson r for every numeric pair, with 95% CI (Fisher z) and FDR-controlled significance.
+
+    Each pair also carries Spearman's rho (rank correlation). When rho is materially stronger than the
+    linear r, the relationship is monotonic-but-curved — a real signal Pearson alone would under-report
+    (e.g. diminishing returns). The `nonlinear` flag marks those so the narrative can say "rises, but with
+    diminishing returns" instead of calling a strong relationship "weak".
+    """
     data = {m: _numeric(df, m) for m in metric_names}
     pairs = []
     for a, b in combinations(metric_names, 2):
@@ -62,13 +68,21 @@ def correlations(df: pd.DataFrame, metric_names: list[str], top: int = 8) -> lis
         if n < 4 or s[a].std() == 0 or s[b].std() == 0:
             continue
         r, p = stats.pearsonr(s[a], s[b])
+        try:
+            rho, _ = stats.spearmanr(s[a], s[b])
+            rho = float(rho)
+        except Exception:
+            rho = float(r)
         # Fisher z 95% CI
         z = np.arctanh(r)
         se = 1.0 / np.sqrt(n - 3)
         lo, hi = np.tanh(z - 1.96 * se), np.tanh(z + 1.96 * se)
         ar = abs(r)
+        # Monotonic but non-linear: ranks agree far better than the straight-line fit does.
+        nonlinear = bool(abs(rho) - ar >= 0.15 and abs(rho) > 0.5)
         pairs.append({
             "a": a, "b": b, "r": float(r), "p": float(p), "n": int(n),
+            "spearman": rho, "nonlinear": nonlinear,
             "ciLow": float(lo), "ciHigh": float(hi),
             "strength": "strong" if ar > 0.7 else "moderate" if ar > 0.4 else "weak",
             "redundant": ar >= 0.98,

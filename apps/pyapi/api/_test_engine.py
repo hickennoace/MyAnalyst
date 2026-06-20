@@ -185,6 +185,40 @@ check("bare-year integers profile as metric, not date", year_col["role"] == "met
 from _engine import _time_col as _tc
 check("the real Date column is the time axis", _tc(year_profiles)["name"] == "Date")
 
+# Robust outliers (median/MAD): several moderate spikes inflate SD enough that classic 3σ scoring "masks"
+# them (nothing clears the threshold) — the robust modified z-score is unmoved and catches them.
+from _outliers import analyze_column_outliers
+rng_ol = np.random.default_rng(3)
+masked = np.concatenate([rng_ol.normal(100, 2, 35), np.full(5, 1000.0)])  # 5 spikes drag mean/SD up
+classic_z_max = float(np.abs((masked - masked.mean()) / masked.std(ddof=1)).max())
+check("classic 3-sigma is MASKED by the spikes (max z < 3)", classic_z_max < 3.0)
+ol = analyze_column_outliers("Amount", masked)
+check("robust outlier detection catches the masked spikes", ol is not None and ol["count"] >= 5)
+check("a flagged outlier is a spike value", ol is not None and any(e["value"] == 1000.0 for e in ol["examples"]))
+check("robust scale is reported as 'mad'", ol is not None and ol["scale"] == "mad")
+# A clean, tight column has no outliers (no false positives from the robust score).
+check("no false outliers on clean data", analyze_column_outliers("Clean", np.arange(40, dtype=float)) is None)
+# MAD=0 (a column that is >50% one exact value) falls back to classic z without crashing.
+mostly_const = np.concatenate([np.full(40, 5.0), [500.0]])
+ol_const = analyze_column_outliers("Const", mostly_const)
+check("MAD=0 column falls back to std scale, still flags the spike",
+      ol_const is not None and ol_const["scale"] == "std" and ol_const["count"] >= 1)
+
+# Spearman / non-linear: a strongly curved monotonic relationship (exponential) has near-perfect rank
+# correlation but a weaker straight-line r — the engine flags it nonlinear so it isn't under-reported.
+from _stats import correlations
+rng3 = np.random.default_rng(11)
+xs = np.linspace(1, 100, 200)
+curved_df = pd.DataFrame({"Spend": xs, "Reach": np.exp(xs / 15) + rng3.normal(0, 0.02, 200)})
+cor = correlations(curved_df, ["Spend", "Reach"])
+check("correlations carry a Spearman rho", cor and "spearman" in cor[0])
+check("monotonic-but-curved pair flagged nonlinear", cor and cor[0]["nonlinear"] is True)
+check("rank correlation exceeds the linear r for the curved pair", cor and abs(cor[0]["spearman"]) > abs(cor[0]["r"]))
+# A clean linear pair is NOT flagged nonlinear.
+lin_df = pd.DataFrame({"A": xs, "B": 3 * xs + rng3.normal(0, 1, 200)})
+lin = correlations(lin_df, ["A", "B"])
+check("clean linear pair is not flagged nonlinear", lin and lin[0]["nonlinear"] is False)
+
 print()
 if check.failed:
     print(f"{check.failed} FAILED")

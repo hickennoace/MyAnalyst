@@ -76,10 +76,13 @@ def build_charts(df, profiles, ctx) -> list[dict]:
         if hist:
             charts.append(hist)
 
-    # 3. Monthly revenue forecast (history + projection + 95% band).
+    # 3. Monthly revenue forecast (history + projection + 95% band). Use the COMPLETE-month history the
+    # forecast was actually fit on (a partial final month is trimmed before forecasting) — otherwise the
+    # projection would be drawn one month too far out and dangle off a half-finished month.
     fc = ctx.get("forecast")
-    if fc and monthly and len(monthly[1]):
-        labels, values = monthly
+    fhist = ctx.get("monthlyComplete") or monthly
+    if fc and fhist and len(fhist[1]):
+        labels, values = fhist
         hist = [float(v) for v in values]
         h = len(fc["forecast"])
         x = labels + [f"+{i+1}" for i in range(h)]

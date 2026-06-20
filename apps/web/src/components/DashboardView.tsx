@@ -150,29 +150,9 @@ export function DashboardView({
           </div>
         </Section>
 
-        {spec.story && (
-          <div className="card flex gap-3 p-5">
-            <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#ff5740]/15 text-[#ff5740]">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                <circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" />
-              </svg>
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-semibold text-slate-100">About this data</h3>
-                <span className="rounded-full bg-slate-800/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-300">
-                  {spec.story.industry}
-                </span>
-                {spec.story.source === "llm" && (
-                  <span className="rounded-full bg-gradient-to-r from-[#ff5740]/20 to-[#ff8a4c]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#ff5740]">
-                    ✨ AI-sharpened
-                  </span>
-                )}
-              </div>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-300">{spec.story.summary}</p>
-            </div>
-          </div>
-        )}
+        {/* The "About this data" story is intentionally NOT rendered: it's background context for the AI
+            (orienting the Ask-your-data answers), not a panel for the reader. See `spec.story` passed into
+            QueryBox's `analysis` below. */}
       </Panel>
 
       {/* ── Insights ───────────────────────────────────────────────────────── */}
@@ -307,6 +287,9 @@ export function DashboardView({
                   ? conclusions.actions.slice(0, 5).map((a) => ({ title: a.title, impact: "", detail: a.detail?.slice(0, 240) }))
                   : spec.actions?.slice(0, 5).map((a) => ({ title: a.title, impact: a.impact, detail: a.detail?.slice(0, 240) })),
                 bottomLine: conclusions?.bottomLine,
+                // The "About this data" story isn't shown anymore - it rides here as background so the AI
+                // understands what the dataset is when answering questions.
+                datasetDescription: spec.story ? `${spec.story.industry ? spec.story.industry + ". " : ""}${spec.story.summary}` : undefined,
                 findings: (conclusions?.conclusions?.length
                   ? conclusions.conclusions
                   : spec.insights.filter((i) => i.kind !== "summary").map((i) => i.text)

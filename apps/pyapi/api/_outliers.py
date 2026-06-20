@@ -2,33 +2,52 @@
 
 A heavy one-sided tail (a premium price tier) is distribution SHAPE — report it and steer to the median,
 don't cry "errors". A few isolated points (or an absurd 50× spike) are anomalies worth checking.
+
+Flagging uses the ROBUST modified z-score (median + MAD), not the classic mean/std z. The mean and SD are
+themselves dragged by the very outliers we're hunting (a single 50× spike inflates SD so nothing — not even
+the spike — clears 3σ: the "masking" effect). The median/MAD are unmoved by a few extremes, so genuine
+anomalies actually surface. We fall back to mean/SD only when MAD is 0 (a column more than half identical),
+where the modified z is undefined.
 """
 from __future__ import annotations
 
 import numpy as np
 from scipy import stats
 
+# Iglewicz–Hoaglin: M_i = 0.6745·(x−median)/MAD is ~N(0,1) for normal data, so 3.5 is the standard cutoff
+# (slightly stricter than the classic 3σ, which is the point — robust scores catch real outliers cleanly).
+_MAD_TO_SIGMA = 0.6745
+_MOD_Z_CUTOFF = 3.5
 
-def analyze_column_outliers(name: str, values, threshold: float = 3.0) -> dict | None:
+
+def analyze_column_outliers(name: str, values, std_threshold: float = 3.0) -> dict | None:
     x = np.asarray([v for v in values if np.isfinite(v)], dtype=float)
     n = len(x)
     if n < 8:
         return None
     mu, sigma = float(x.mean()), float(x.std(ddof=1))
-    if sigma == 0:
+    if sigma == 0:  # a constant column has no outliers
         return None
     med = float(np.median(x))
     skew = float(stats.skew(x))
-    z = (x - mu) / sigma
-    mask = np.abs(z) >= threshold
-    idx = np.where(mask)[0]
+
+    mad = float(np.median(np.abs(x - med)))
+    if mad > 0:
+        scores = _MAD_TO_SIGMA * (x - med) / mad  # robust modified z-score
+        cutoff, scale = _MOD_Z_CUTOFF, "mad"
+    else:
+        # >50% of values identical → MAD is 0 and the robust score blows up; fall back to classic z.
+        scores = (x - mu) / sigma
+        cutoff, scale = std_threshold, "std"
+
+    idx = np.where(np.abs(scores) >= cutoff)[0]
     if idx.size == 0:
         return None
 
-    zvals = z[idx]
-    order = idx[np.argsort(-np.abs(zvals))]
-    examples = [{"value": float(x[i]), "z": float((x[i] - mu) / sigma)} for i in order[:4]]
-    high = int((zvals > 0).sum())
+    svals = scores[idx]
+    order = idx[np.argsort(-np.abs(svals))]
+    examples = [{"value": float(x[i]), "z": float(scores[i])} for i in order[:4]]
+    high = int((svals > 0).sum())
     low = int(idx.size - high)
     direction = "both" if high and low else ("high" if high else "low")
     share = idx.size / n
@@ -40,5 +59,5 @@ def analyze_column_outliers(name: str, values, threshold: float = 3.0) -> dict |
     return {
         "column": name, "count": int(idx.size), "share": float(share), "kind": kind,
         "direction": direction, "skew": skew, "mean": mu, "median": med, "std": sigma,
-        "examples": examples,
+        "scale": scale, "examples": examples,
     }

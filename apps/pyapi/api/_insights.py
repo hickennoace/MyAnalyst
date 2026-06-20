@@ -62,8 +62,8 @@ def build_facts(spec: dict) -> list[dict]:
         add("fact-yoy", f"Revenue is {'up' if tr['yoyChangePct']>=0 else 'down'} "
             f"{_pct(abs(tr['yoyChangePct']))} year-over-year.", "trend", tr["yoyChangePct"])
     if tr and tr.get("significant"):
-        add("fact-trend", f"{tr['metric']} has a statistically real {tr['direction']}ward trend "
-            f"(p={tr['slopeP']:.3f}). Best month {tr['best']['label']} ({_m(tr['best']['value'])}).", "trend")
+        add("fact-trend", f"{tr['metric']} is genuinely trending {tr['direction']} over time — a real pattern, "
+            f"not random noise (p={tr['slopeP']:.3f}). Best month {tr['best']['label']} ({_m(tr['best']['value'])}).", "trend")
     sw = (tr or {}).get("biggestSwing")
     if sw and sw.get("notable"):
         add("fact-swing", f"The sharpest move was a {_pct(abs(sw['changePct']))} {sw['direction']} from "
@@ -84,8 +84,10 @@ def build_facts(spec: dict) -> list[dict]:
     if d and d.get("fP", 1) < 0.05 and d["drivers"]:
         lead = d["drivers"][0]
         if lead["significant"]:
-            add("fact-driver", f"{lead['name']} is the strongest independent driver of {d['target']} "
-                f"(β={lead['beta']:.2f}, p={lead['p']:.3f}); the model explains {_pct(d['r2'])} of it.", "driver")
+            direction = "up" if lead["beta"] >= 0 else "down"
+            add("fact-driver", f"{lead['name']} is the biggest factor moving {d['target']} {direction} — even "
+                f"after accounting for the others — and together they explain {_pct(d['r2'])} of why it varies "
+                f"(a real effect, not chance; p={lead['p']:.3f}).", "driver")
 
     # Group gaps — only when it's a real outcome×operational gap, not a price/product tautology.
     for g in st.get("groupComparisons", []):
@@ -95,10 +97,19 @@ def build_facts(spec: dict) -> list[dict]:
                 f"{g['dimension']} explains {_pct(g['etaSq'])} of it.", "gap")
             break
 
-    c = next((x for x in st.get("correlations", []) if x.get("significant") and x["strength"] != "weak" and not x["redundant"]), None)
+    # A relationship qualifies if it's a meaningful straight-line link OR a monotonic-but-curved one that
+    # Pearson alone would under-rate (strong rank agreement, weak r). Either way it's worth a sentence.
+    c = next((x for x in st.get("correlations", [])
+              if x.get("significant") and not x["redundant"]
+              and (x["strength"] != "weak" or x.get("nonlinear"))), None)
     if c:
-        add("fact-corr", f"{c['a']} and {c['b']} move together (r={c['r']:.2f}, {c['strength']}) — "
-            f"association, not proven cause.", "correlation")
+        if c.get("nonlinear"):
+            add("fact-corr", f"{c['a']} and {c['b']} move together but not in a straight line "
+                f"(rank r={c['spearman']:.2f} vs linear r={c['r']:.2f}) — a curved relationship, likely "
+                f"diminishing returns; association, not proven cause.", "correlation")
+        else:
+            add("fact-corr", f"{c['a']} and {c['b']} move together (r={c['r']:.2f}, {c['strength']}) — "
+                f"association, not proven cause.", "correlation")
 
     rfm = spec.get("rfm")
     if rfm and rfm.get("segments"):
@@ -189,10 +200,12 @@ def chart_readings(spec: dict) -> list[dict]:
                        + (" (seasonal pattern carried through)" if fc.get("seasonal") else "")
                        + acc + ".")
         elif c["id"] == "chart-corr" and cors:
-            strong = next((x for x in cors if not x["redundant"] and abs(x["r"]) > 0.3), None)
+            strong = next((x for x in cors if not x["redundant"] and (abs(x["r"]) > 0.3 or x.get("nonlinear"))), None)
             if strong:
+                curved = " (monotonic but curved — diminishing returns)" if strong.get("nonlinear") else ""
                 reading = (f"Strongest relationship: {strong['a']} and {strong['b']} "
-                           f"(r={strong['r']:.2f}, {strong['strength']}{'' if strong.get('significant') else ', not significant'}).")
+                           f"(r={strong['r']:.2f}, {strong['strength']}{'' if strong.get('significant') else ', not significant'})"
+                           f"{curved}.")
             else:
                 reading = "No strong correlations between the numeric metrics."
         elif c["id"] == "chart-scatter" and cors:
