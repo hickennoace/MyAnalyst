@@ -14,6 +14,7 @@ import {
   spearmanTest,
   studentTTwoSidedP,
   tCritical,
+  trendTest,
 } from "./inference";
 
 // Validate the special functions against textbook critical values (≈ tables).
@@ -58,6 +59,30 @@ describe("olsSimple", () => {
     expect(r.r2).toBeCloseTo(1, 6);
     expect(r.slopeP).toBeLessThan(0.001);
     expect(r.significant).toBe(true);
+  });
+});
+
+describe("trendTest (HAC-corrected trend significance)", () => {
+  it("flags a clean linear trend as a real, significant climb", () => {
+    const series = Array.from({ length: 24 }, (_, i) => 10 + 2 * i);
+    const r = trendTest(series);
+    expect(r).not.toBeNull();
+    expect(r!.slope).toBeGreaterThan(0);
+    expect(r!.significant).toBe(true);
+  });
+
+  it("inflates the slope p-value for autocorrelated residuals vs naive OLS (the core fix)", () => {
+    // A slow wave on a faint upward drift: after the linear fit the residuals ARE the wave — strongly
+    // autocorrelated, exactly the case where naive OLS overstates how "real" the trend is.
+    const series = Array.from({ length: 50 }, (_, i) => Math.sin(i / 7) * 6 + i * 0.04);
+    const hac = trendTest(series)!;
+    const ols = olsSimple(series.map((_, i) => i), series)!;
+    expect(hac.autocorr).toBeGreaterThan(0.3); // residuals are strongly autocorrelated
+    expect(hac.slopeP).toBeGreaterThan(ols.slopeP); // HAC widens the SE → strictly less "significant"
+  });
+
+  it("returns null for a series too short to test", () => {
+    expect(trendTest([1, 2, 3])).toBeNull();
   });
 });
 

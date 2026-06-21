@@ -22,6 +22,18 @@ describe("parseNumeric", () => {
     expect(parseNumeric("¥1,250,000")).toBe(1250000);
     expect(parseNumeric("(₪500)")).toBe(-500);
   });
+
+  it("parses European decimal/thousands formats (the silent ~1000x bug)", () => {
+    expect(parseNumeric("1.234,56")).toBeCloseTo(1234.56); // was misread as 1.234
+    expect(parseNumeric("1.234.567,89")).toBeCloseTo(1234567.89);
+    expect(parseNumeric("12,5")).toBeCloseTo(12.5);
+    expect(parseNumeric("1.234.567")).toBe(1234567);
+    expect(parseNumeric("€1.234,56")).toBeCloseTo(1234.56);
+    // US forms still parse exactly as before (no regression).
+    expect(parseNumeric("1,234.56")).toBeCloseTo(1234.56);
+    expect(parseNumeric("1,234")).toBe(1234);
+    expect(parseNumeric("12.5")).toBeCloseTo(12.5);
+  });
 });
 
 describe("inferType", () => {
@@ -39,6 +51,18 @@ describe("inferType", () => {
 
   it("types a plain salary column as currency via the header hint", () => {
     expect(inferType("Salary", ["12500", "13200", "11800", "14000"])).toBe("currency");
+  });
+
+  it("types a European-formatted numeric column as numeric, not text", () => {
+    expect(["number", "currency", "integer"]).toContain(
+      inferType("Measure", ["1.234,56", "2.500,00", "990,50", "12.000,00"])
+    );
+  });
+
+  it("keeps a mostly-numeric column numeric despite scattered null markers", () => {
+    expect(["number", "currency", "integer"]).toContain(
+      inferType("Profit", ["100", "200", "N/A", "300", "-", "150", "NULL", "250"])
+    );
   });
 });
 

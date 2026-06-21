@@ -21,7 +21,7 @@ import { computeKpis, primaryMetric, sortByTime } from "./kpi";
 import { recommendCharts } from "./charts";
 import { isRedundantCorrelation } from "./stats";
 import { analyzeColumnOutliers } from "./outliers";
-import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAnova, olsSimple, pearsonTest } from "./inference";
+import { benjaminiHochberg, chiSquareIndependence, multipleRegression, oneWayAnova, olsSimple, pearsonTest, trendTest } from "./inference";
 import { defaultHorizon, forecastSeries } from "./forecast";
 import { buildDataStory } from "./story";
 import { computeDataQuality } from "./quality";
@@ -308,12 +308,11 @@ function buildInsightContext(
     for (const m of metrics.slice(0, 3)) {
       const mCol = numericColumn(table, m.name);
       const series = order.map((idx) => mCol[idx]).filter(Number.isFinite);
-      if (series.length < 2) continue;
-      const idx = series.map((_, i) => i);
-      const reg = olsSimple(idx, series);
-      // Use the FITTED trend line's endpoints, not the raw first/last rows - a single
-      // noisy data point shouldn't define the trend. Magnitude/direction come from the
-      // model, and a direction is only claimed when the slope is statistically real.
+      if (series.length < 4) continue;
+      // trendTest = OLS slope with a Newey-West (HAC) SE, so an autocorrelated series (the norm for time
+      // data) can't masquerade as a "significant" trend. Magnitude/direction come from the fitted line,
+      // and a direction is only claimed when the slope is statistically real under the HAC test.
+      const reg = trendTest(series);
       const from = reg ? reg.intercept : series[0];
       const to = reg ? reg.intercept + reg.slope * (series.length - 1) : series[series.length - 1];
       const changePct = from !== 0 ? (to - from) / Math.abs(from) : 0;

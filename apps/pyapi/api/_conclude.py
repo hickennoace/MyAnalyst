@@ -95,8 +95,8 @@ def check_grounding(answer: str, facts: list[dict]) -> dict:
     return {"grounded": not unverified, "unverified": unverified[:6]}
 
 
-def call_groq(facts: list[dict], domain: str, user_context: str | None,
-              kpis: list[dict] | None = None, chart_readings: list[dict] | None = None) -> str | None:
+def _build_messages(facts: list[dict], domain: str, user_context: str | None,
+                    kpis: list[dict] | None, chart_readings: list[dict] | None) -> list[dict]:
     kpi_text = "\n".join(f"- {k['name']}: {k['value']}" for k in (kpis or []))
     facts_text = "\n".join(f"- {f['text']}" for f in facts)
     charts_text = "\n".join(f"- {c['title']}: {c['reading']}" for c in (chart_readings or []))
@@ -107,45 +107,94 @@ def call_groq(facts: list[dict], domain: str, user_context: str | None,
         + (f"\nCHARTS the engine produced (read these and interpret them):\n{charts_text}\n" if charts_text else "")
         + "\nWrite the JSON now."
     )
+    return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
+
+
+def call_groq(facts: list[dict], domain: str, user_context: str | None,
+              kpis: list[dict] | None = None, chart_readings: list[dict] | None = None) -> str | None:
     # A touch more room + warmth than the defaults: a full conclusion (bottom line + summary + up to 4
     # chart insights + 4 conclusions + 3 actions) must not truncate, and reads better slightly less terse.
-    return _groq.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
+    return _groq.chat(_build_messages(facts, domain, user_context, kpis, chart_readings),
                       temperature=0.45, max_tokens=2200)
+
+
+def _ground_sources(facts: list[dict], kpis: list[dict] | None, chart_readings: list[dict] | None) -> list[dict]:
+    """Every number the model was shown — facts, KPI values, chart readings — so a figure lifted from a KPI
+    (e.g. a trend %) isn't wrongly flagged "couldn't verify"."""
+    return (
+        list(facts)
+        + [{"text": f"{k.get('name','')} {k.get('value','')}"} for k in (kpis or [])]
+        + [{"text": c.get("reading", "")} for c in (chart_readings or [])]
+    )
+
+
+def _result_from_raw(raw: str | None, ground_src: list[dict]) -> dict | None:
+    """Parse the model's JSON into the conclusion shape + a grounding verdict, or None if unusable."""
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        return None
+    chart_insights = parsed.get("chartInsights", [])[:4]
+    actions = parsed.get("actions", [])[:3]
+    # Ground EVERYTHING the reader will see — including action TITLES and chart-insight text, which previously
+    # escaped the check — so an invented figure can't hide in a heading.
+    joined = " ".join(
+        [parsed.get("bottomLine", ""), parsed.get("summary", "")]
+        + parsed.get("conclusions", [])
+        + [ci.get("insight", "") for ci in chart_insights]
+        + [a.get("title", "") for a in actions]
+        + [a.get("detail", "") for a in actions]
+    )
+    return {
+        "provider": "groq",
+        "bottomLine": parsed.get("bottomLine", ""),
+        "summary": parsed.get("summary", ""),
+        "chartInsights": chart_insights,
+        "conclusions": parsed.get("conclusions", [])[:4],
+        "actions": actions,
+        "grounding": check_grounding(joined, ground_src),
+        "disclaimer": DISCLAIMER,
+    }
+
+
+def _repair_prompt(unverified: list[str]) -> str:
+    return (
+        "Some figures in your previous answer could not be verified against the data you were given: "
+        + ", ".join(unverified) + ". "
+        "Rewrite the SAME JSON (identical shape), removing or correcting those figures so that EVERY number "
+        "you state appears in the KPIs / FACTS / chart readings provided above (you may divide two given "
+        "figures to state a share). Do not introduce any new numbers. Return STRICT JSON only."
+    )
 
 
 def generate_conclusions(facts: list[dict], domain: str = "generic", user_context: str | None = None,
                          templated_fallback: str = "", kpis: list[dict] | None = None,
                          chart_readings: list[dict] | None = None) -> dict:
-    raw = call_groq(facts, domain, user_context, kpis, chart_readings)
-    if raw:
-        try:
-            parsed = json.loads(raw)
-            chart_insights = parsed.get("chartInsights", [])[:4]
-            joined = " ".join(
-                [parsed.get("bottomLine", ""), parsed.get("summary", "")]
-                + parsed.get("conclusions", [])
-                + [ci.get("insight", "") for ci in chart_insights]
-                + [a.get("detail", "") for a in parsed.get("actions", [])]
-            )
-            # Ground against EVERY number the model was shown — facts, KPI values, and chart readings —
-            # so a figure lifted from a KPI (e.g. a trend %) isn't wrongly flagged "couldn't verify".
-            ground_src = (
-                list(facts)
-                + [{"text": f"{k.get('name','')} {k.get('value','')}"} for k in (kpis or [])]
-                + [{"text": c.get("reading", "")} for c in (chart_readings or [])]
-            )
-            return {
-                "provider": "groq",
-                "bottomLine": parsed.get("bottomLine", ""),
-                "summary": parsed.get("summary", ""),
-                "chartInsights": chart_insights,
-                "conclusions": parsed.get("conclusions", [])[:4],
-                "actions": parsed.get("actions", [])[:3],
-                "grounding": check_grounding(joined, ground_src),
-                "disclaimer": DISCLAIMER,
-            }
-        except Exception:
-            pass
+    messages = _build_messages(facts, domain, user_context, kpis, chart_readings)
+    ground_src = _ground_sources(facts, kpis, chart_readings)
+    raw = _groq.chat(messages, temperature=0.45, max_tokens=2200)
+    result = _result_from_raw(raw, ground_src)
+
+    # Self-correction: the grounding guard used to be a SILENT telemetry flag — a hallucinated number was
+    # still shown to the reader. If the model invented a figure, give it ONE cheap, low-temperature pass to
+    # fix or drop it, and keep the repaired answer only if it's actually cleaner. (No key → raw is None →
+    # result is None → this whole block is skipped and we fall through to the deterministic narrative.)
+    if result and not result["grounding"]["grounded"]:
+        unverified = result["grounding"]["unverified"]
+        repaired_raw = _groq.chat(
+            messages + [{"role": "assistant", "content": raw},
+                        {"role": "user", "content": _repair_prompt(unverified)}],
+            temperature=0.2, max_tokens=2200)
+        repaired = _result_from_raw(repaired_raw, ground_src)
+        if repaired and (repaired["grounding"]["grounded"]
+                         or len(repaired["grounding"]["unverified"]) < len(unverified)):
+            result = repaired
+
+    if result:
+        return result
+
     # Fallback — deterministic, zero-API. Lead with the SHORT headline fact as the bottom line and use the
     # fuller templated narrative (minus its trailing disclaimer, which the card renders separately) as the
     # summary, so the headline and summary don't read as the same sentence twice.

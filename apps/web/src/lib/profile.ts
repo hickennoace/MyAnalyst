@@ -7,26 +7,71 @@ import { maxOf, mean, median, minOf, std, sum } from "./stats";
 // BEFORE the number ("₪12,500", "$1,200") or AFTER it ("12,500 ₪", "100 €", "¥1200"), with an optional space.
 const CUR = "$€£¥₪₹₩₽₺฿₱₫₦₴₵₲₸₾₡";
 const CURRENCY_RE = new RegExp(
-  `^\\s*\\(?\\s*(?:[${CUR}]\\s?[\\d,]+(?:\\.\\d+)?|[\\d,]+(?:\\.\\d+)?\\s?[${CUR}])\\s*\\)?\\s*$`
+  `^\\s*\\(?\\s*(?:[${CUR}]\\s?[\\d.,]+|[\\d.,]+\\s?[${CUR}])\\s*\\)?\\s*$`
 );
-const PERCENT_RE = /^\s*-?[\d,]+(\.\d+)?\s*%\s*$/;
+const PERCENT_RE = /^\s*-?[\d.,]+\s*%\s*$/;
 const NUMERIC_RE = /^\s*-?[\d,]+(\.\d+)?\s*$/;
+// European-formatted number: dot thousands and/or comma decimal — "1.234,56", "1.234", "12,5", "1.234.567".
+const NUMERIC_EU_RE = /^\s*-?\d{1,3}(\.\d{3})+(,\d+)?\s*$|^\s*-?\d+,\d{1,2}\s*$/;
+
+/** Normalize a number string's grouping/decimal separators to a plain JS-parseable form, handling BOTH
+ *  US ("1,234.56") and European ("1.234,56") conventions per value: when both separators appear, whichever
+ *  appears LAST is the decimal point; a lone comma with 1–2 trailing digits is a decimal comma ("12,5"). */
+function normalizeNumericString(s: string): string {
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+  if (hasComma && hasDot) {
+    return s.lastIndexOf(",") > s.lastIndexOf(".")
+      ? s.replace(/\./g, "").replace(",", ".").replace(/,/g, "") // comma decimal, dot thousands → 1.234,56
+      : s.replace(/,/g, ""); //                                     dot decimal, comma thousands → 1,234.56
+  }
+  if (hasComma) {
+    const parts = s.split(",");
+    // A single comma with 1–2 trailing digits is a decimal comma (12,5 / 12,56); otherwise commas group.
+    if (parts.length === 2 && parts[1].length !== 3) return s.replace(",", ".");
+    return s.replace(/,/g, "");
+  }
+  // Two or more dots can only be thousands grouping (1.234.567). A single dot stays the decimal point
+  // (US default; the genuinely ambiguous lone "1.234" is left as 1.234, unchanged from before).
+  if (hasDot && (s.match(/\./g) || []).length >= 2) return s.replace(/\./g, "");
+  return s;
+}
 
 /** Parse a single cell into a number, tolerating any currency symbol (before OR after the digits),
- *  thousands separators, %, currency codes, and (parentheses) negatives. */
+ *  US or European thousands/decimal separators, %, currency codes, and (parentheses) negatives. */
 export function parseNumeric(raw: unknown): number {
   if (raw === null || raw === undefined || raw === "") return NaN;
   if (typeof raw === "number") return raw;
   const str = String(raw).trim();
+  if (!str) return NaN;
   const negative = /^\(.*\)$/.test(str); // accounting negatives: (1,200)
-  // Pull out the numeric core (digits + optional decimal) after dropping thousands commas - robust to a
-  // currency symbol/code on either side, stray spaces, "%", etc.
-  const m = str.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  // Keep just the sign + digits + separators (drops a currency symbol/code on either side, spaces, "%").
+  const core = str.replace(/[^\d.,-]/g, "");
+  if (!/\d/.test(core)) return NaN;
+  const m = normalizeNumericString(core).match(/-?\d+(?:\.\d+)?/);
   if (!m) return NaN;
   let n = Number(m[0]);
   if (!Number.isFinite(n)) return NaN;
   if (negative && n > 0) n = -n;
   return n;
+}
+
+// Textual "missing" markers real-world exports use instead of an empty cell. STRONG ones are unambiguous
+// junk and are nulled in every column; SOFT ones ("-", "none", "?") can be legitimate CATEGORY values, so
+// they're only treated as missing in a numeric/date/boolean context (where they can't be a real value).
+const STRONG_NULL = new Set(["n/a", "na", "#n/a", "#na", "nan", "null", "nil", "(blank)", "(empty)", "(null)", "<null>"]);
+const SOFT_NULL = new Set(["none", "unknown", "-", "--", "—", "?", "."]);
+
+/** Whether a raw cell is "missing". In numericContext, ambiguous markers ("-", "none", "?") also count —
+ *  they can't be a real number/date, but they CAN be a real category, so outside that context they stay. */
+export function isNullToken(raw: unknown, numericContext = false): boolean {
+  if (raw === null || raw === undefined) return true;
+  if (typeof raw !== "string") return false;
+  const t = raw.trim();
+  if (t === "") return true;
+  const low = t.toLowerCase();
+  if (STRONG_NULL.has(low)) return true;
+  return numericContext && SOFT_NULL.has(low);
 }
 
 function looksLikeDate(raw: unknown): boolean {
@@ -50,7 +95,9 @@ function toIso(raw: unknown): string | null {
 
 /** Decide the semantic type of a column from a sample of its values + its header name. */
 export function inferType(name: string, values: unknown[]): SemanticType {
-  const nonNull = values.filter((v) => v !== null && v !== undefined && v !== "");
+  // Exclude textual null markers so a mostly-numeric column with scattered "N/A" still reads as numeric
+  // (numericContext=true here: we're sniffing the type, so ambiguous markers shouldn't count as values).
+  const nonNull = values.filter((v) => !isNullToken(v, true));
   if (nonNull.length === 0) return "text";
   const lname = name.toLowerCase();
 
@@ -72,8 +119,8 @@ export function inferType(name: string, values: unknown[]): SemanticType {
   if (/(date|time|day|month|year|period|timestamp)/.test(lname) && frac((s) => looksLikeDate(s)) > 0.4)
     return "date";
 
-  if (frac((s) => NUMERIC_RE.test(s)) > 0.8) {
-    const allInt = sample.every((s) => /^\s*-?[\d,]+\s*$/.test(s));
+  if (frac((s) => NUMERIC_RE.test(s) || NUMERIC_EU_RE.test(s)) > 0.8) {
+    const allInt = sample.every((s) => { const n = parseNumeric(s); return Number.isFinite(n) && Number.isInteger(n); });
     const distinct = new Set(sample).size;
     // High-cardinality integer that looks like a key → id (covers "id", "_id", "...Id", codes, numbers).
     if (allInt && /(\bid\b|_id|id$|code|number|no\.|key|uuid|guid)/.test(lname) && distinct / sample.length > 0.8)
@@ -109,7 +156,10 @@ export function profileTable(table: Table, typeHints?: Record<string, SemanticTy
   return table.columns.map((col) => {
     const raw = table.rows.map((r) => r[col]);
     const type = typeHints?.[col] ?? inferType(col, raw);
-    const nonNull = raw.filter((v) => v !== null && v !== undefined && v !== "");
+    // Count textual null markers ("N/A", "-") as missing so fillRate/completeness aren't overstated and
+    // a sentinel never becomes a top category (numericContext matches the column's type).
+    const numericish = NUMERIC_TYPES.includes(type) || type === "date" || type === "boolean";
+    const nonNull = raw.filter((v) => !isNullToken(v, numericish));
     const fillRate = table.rowCount ? nonNull.length / table.rowCount : 0;
     const distinctSet = new Set(nonNull.map((v) => String(v)));
     const distinctCount = distinctSet.size;

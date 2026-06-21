@@ -252,6 +252,63 @@ export function olsSimple(xs: number[], ys: number[]): OlsResult | null {
   };
 }
 
+export interface TrendTest {
+  slope: number;
+  intercept: number;
+  slopeP: number; // HAC (Newey-West) two-sided p-value for the slope
+  n: number;
+  autocorr: number; // lag-1 residual autocorrelation (a "may be within noise" diagnostic)
+  significant: boolean;
+}
+
+/**
+ * Trend test for a time-ordered series y(index): the OLS slope, but with a Newey-West (HAC) standard error
+ * so significance isn't OVERSTATED when residuals are autocorrelated — the usual case for time series. Plain
+ * OLS assumes independent residuals; a random walk then routinely produces a "significant" trend that is
+ * really just drift. The Bartlett-kernel HAC variance widens the slope SE to account for that. Bandwidth
+ * grows slowly with n. Returns null for series too short to test (n < 4).
+ */
+export function trendTest(values: number[]): TrendTest | null {
+  const ys = values.filter(Number.isFinite);
+  const n = ys.length;
+  if (n < 4) return null;
+  const mx = (n - 1) / 2;
+  const my = mean(ys);
+  let sxx = 0, sxy = 0;
+  for (let i = 0; i < n; i++) {
+    sxx += (i - mx) ** 2;
+    sxy += (i - mx) * (ys[i] - my);
+  }
+  if (sxx === 0) return null;
+  const slope = sxy / sxx;
+  const intercept = my - slope * mx;
+  // Residuals e_t and the regressor-weighted scores u_t = (x_t − x̄)·e_t.
+  const e = new Array<number>(n);
+  const u = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    e[i] = ys[i] - (intercept + slope * i);
+    u[i] = (i - mx) * e[i];
+  }
+  // Newey-West long-run variance of Σ u_t (Bartlett weights w_l = 1 − l/(L+1)); automatic bandwidth L.
+  const L = Math.max(1, Math.min(n - 2, Math.floor(4 * (n / 100) ** (2 / 9))));
+  let S = u.reduce((s, v) => s + v * v, 0);
+  for (let l = 1; l <= L; l++) {
+    const w = 1 - l / (L + 1);
+    let g = 0;
+    for (let t = l; t < n; t++) g += u[t] * u[t - l];
+    S += 2 * w * g;
+  }
+  const slopeSE = Math.sqrt(Math.max(0, S / (sxx * sxx)));
+  const df = n - 2;
+  const tStat = slopeSE === 0 ? (slope === 0 ? 0 : Infinity) : slope / slopeSE;
+  const slopeP = slopeSE === 0 ? (slope === 0 ? NaN : 0) : studentTTwoSidedP(tStat, df);
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) den += e[i] * e[i];
+  for (let i = 1; i < n; i++) num += e[i] * e[i - 1];
+  const autocorr = den > 0 ? num / den : 0;
+  return { slope, intercept, slopeP, n, autocorr, significant: Number.isFinite(slopeP) && slopeP < 0.05 };
+}
+
 export interface TwoSampleResult {
   meanDiff: number;
   t: number;

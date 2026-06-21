@@ -52,3 +52,61 @@ describe("cleanTable", () => {
     expect(r.typeHints.Revenue).toBe("currency"); // un-overridden columns still auto-detect
   });
 });
+
+describe("cleanTable — textual null markers", () => {
+  it("treats N/A / NULL / '-' as missing (type-aware), keeping real numbers", () => {
+    const t: Table = {
+      name: "n.csv",
+      columns: ["Region", "Profit"],
+      rows: [
+        { Region: "North", Profit: "100" },
+        { Region: "N/A", Profit: "200" }, // null region, value present → row kept
+        { Region: "South", Profit: "-" }, // null profit (numeric col), region present → row kept
+        { Region: "West", Profit: "300" },
+      ],
+      rowCount: 4,
+    };
+    const { table } = cleanTable(t);
+    expect(table.rowCount).toBe(4);
+    expect(table.rows[1].Region).toBeNull();
+    expect(table.rows[1].Profit).toBe(200);
+    expect(table.rows[2].Profit).toBeNull();
+    // The sentinels never become a category value.
+    expect(table.rows.map((r) => r.Region)).not.toContain("N/A");
+  });
+});
+
+describe("cleanTable — day-first dates", () => {
+  it("reads DD/MM/YYYY when a day value over 12 reveals the order", () => {
+    const t: Table = {
+      name: "d.csv",
+      columns: ["Date", "V"],
+      rows: [
+        { Date: "13/06/2026", V: "1" }, // 13 can only be a day → day-first column
+        { Date: "06/07/2026", V: "2" }, // → 6 July, not 7 June
+        { Date: "21/12/2026", V: "3" },
+        { Date: "01/01/2026", V: "4" },
+      ],
+      rowCount: 4,
+    };
+    const { table, report } = cleanTable(t);
+    expect(table.rows[0].Date).toBe("2026-06-13");
+    expect(table.rows[1].Date).toBe("2026-07-06");
+    expect(report.steps.some((s) => s.label.toLowerCase().includes("day-first"))).toBe(true);
+  });
+
+  it("keeps the US month-first default when nothing disambiguates", () => {
+    const t: Table = {
+      name: "u.csv",
+      columns: ["Date", "V"],
+      rows: [
+        { Date: "01/02/2026", V: "1" },
+        { Date: "03/04/2026", V: "2" },
+        { Date: "05/06/2026", V: "3" },
+      ],
+      rowCount: 3,
+    };
+    const { table } = cleanTable(t);
+    expect(table.rows[0].Date).toBe("2026-01-02"); // month-first (2 Jan), unchanged behavior
+  });
+});

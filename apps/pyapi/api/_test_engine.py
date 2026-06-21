@@ -219,6 +219,52 @@ lin_df = pd.DataFrame({"A": xs, "B": 3 * xs + rng3.normal(0, 1, 200)})
 lin = correlations(lin_df, ["A", "B"])
 check("clean linear pair is not flagged nonlinear", lin and lin[0]["nonlinear"] is False)
 
+# Data-quality + categorical-association facts must now reach the AI (they were computed but stranded).
+rng_q = np.random.default_rng(21)
+N = 220
+channel = rng_q.choice(["Email", "Ads", "Organic"], N)
+outcome = np.where(channel == "Email", rng_q.choice(["Win", "Loss"], N, p=[0.85, 0.15]),
+          np.where(channel == "Ads", rng_q.choice(["Win", "Loss"], N, p=[0.5, 0.5]),
+                   rng_q.choice(["Win", "Loss"], N, p=[0.15, 0.85])))
+dirty = pd.DataFrame({
+    "Channel": channel, "Outcome": outcome,
+    "Score": rng_q.integers(1, 100, N).astype(float),
+    "Notes": ["" if i % 3 == 0 else "ok" for i in range(N)],   # ~33% empty -> a completeness issue
+})
+dirty.loc[dirty["Notes"] == "", "Notes"] = np.nan
+dirty = pd.concat([dirty, dirty.head(12)], ignore_index=True)  # add duplicate rows
+dspec = analyze(dirty)
+dkinds = {f["kind"] for f in dspec.get("facts", [])}
+check("data-quality fact reaches the AI on dirty data", "quality" in dkinds)
+check("categorical association becomes a fact", "association" in dkinds)
+# A clean numeric-only frame must NOT emit a spurious data-quality fact.
+clean_kinds = {f["kind"] for f in analyze(car_sales()).get("facts", [])}
+check("no data-quality fact on clean data", "quality" not in clean_kinds)
+
+# Ingestion parity: European decimals + textual null markers normalized like the TS engine.
+from _engine import _normalize_raw, _to_number_eu
+check("EU number parse (1.234,56 -> 1234.56)", abs(_to_number_eu("1.234,56") - 1234.56) < 0.01)
+check("EU thousands parse (1.234.567 -> 1234567)", _to_number_eu("1.234.567") == 1234567)
+eu_obj = pd.DataFrame({"Amount": ["1.234,56", "2.500,00", "990,50", "12.000,00"]})
+eu_norm = _normalize_raw(eu_obj)
+check("European-formatted object column coerced to real numbers",
+      abs(float(eu_norm["Amount"].iloc[0]) - 1234.56) < 0.01 and abs(float(eu_norm["Amount"].iloc[1]) - 2500.0) < 0.01)
+sent = pd.DataFrame({"Cat": ["A", "N/A", "B", "NULL", "A"], "Val": [1, 2, 3, 4, 5]})
+sent_norm = _normalize_raw(sent)
+check("strong null tokens (N/A, NULL) become NaN, not a category", int(sent_norm["Cat"].isna().sum()) == 2)
+
+# Trend significance is now HAC-corrected: a clean trend stays significant; an autocorrelated wave gets a
+# larger p-value than naive OLS would (so drift doesn't masquerade as a real trend).
+from _timeseries import trend_analysis, _trend_slope_p
+lin = np.array([10.0 + 2 * i for i in range(24)])
+lin_tr = trend_analysis([f"L{i}" for i in range(24)], lin, "x")
+check("clean linear trend stays significant and up", lin_tr["significant"] is True and lin_tr["direction"] == "up")
+from scipy import stats as _sps
+wave = np.array([np.sin(i / 7) * 6 + i * 0.04 for i in range(50)])
+naive_p = float(_sps.linregress(np.arange(50), wave).pvalue)
+_, hac_p, ac = _trend_slope_p(wave)
+check("HAC inflates the slope p for autocorrelated residuals", hac_p > naive_p and ac > 0.3)
+
 print()
 if check.failed:
     print(f"{check.failed} FAILED")

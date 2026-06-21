@@ -25,8 +25,40 @@ def trim_partial_tail(values: np.ndarray) -> np.ndarray:
     return prior if (med > 0 and values[-1] < 0.5 * med) else values
 
 
+def _trend_slope_p(values: np.ndarray) -> tuple[float, float, float]:
+    """OLS slope of `values` vs index, but with a Newey-West (HAC) p-value so an autocorrelated series isn't
+    called a 'real' trend on the strength of a deflated standard error. Returns (slope, slopeP, lag1 autocorr).
+    Bartlett kernel, automatic bandwidth; falls back to plain OLS for very short series."""
+    n = len(values)
+    x = np.arange(n, dtype=float)
+    xm = x.mean()
+    sxx = float(((x - xm) ** 2).sum())
+    if n < 4 or sxx == 0:
+        sl, _, _, p, _ = stats.linregress(x, values)
+        return float(sl), float(p), 0.0
+    ym = float(np.mean(values))
+    slope = float(((x - xm) * (values - ym)).sum() / sxx)
+    intercept = ym - slope * xm
+    e = values - (intercept + slope * x)
+    u = (x - xm) * e
+    L = max(1, min(n - 2, int(4 * (n / 100) ** (2 / 9))))
+    S = float((u ** 2).sum())
+    for lag in range(1, L + 1):
+        w = 1 - lag / (L + 1)
+        S += 2 * w * float((u[lag:] * u[:-lag]).sum())
+    se = (max(0.0, S / (sxx ** 2))) ** 0.5
+    df = n - 2
+    if se == 0:
+        p = 0.0 if slope != 0 else 1.0
+    else:
+        p = float(2 * stats.t.sf(abs(slope / se), df))
+    den = float((e ** 2).sum())
+    ac = float((e[1:] * e[:-1]).sum() / den) if den > 0 else 0.0
+    return slope, p, ac
+
+
 def trend_analysis(labels: list[str], values: np.ndarray, metric: str) -> dict | None:
-    """Latest, MoM, YoY, best/worst month, and whether the trend is statistically real (OLS slope p)."""
+    """Latest, MoM, YoY, best/worst month, and whether the trend is statistically real (HAC-corrected slope p)."""
     if len(values) < 2:
         return None
     latest, previous = float(values[-1]), float(values[-2])
@@ -35,7 +67,8 @@ def trend_analysis(labels: list[str], values: np.ndarray, metric: str) -> dict |
     if len(values) > 12 and values[-13] != 0:
         yoy = float((latest - values[-13]) / abs(values[-13]))
     x = np.arange(len(values), dtype=float)
-    slope, _, r, p, _ = stats.linregress(x, values)
+    _, _, r, _, _ = stats.linregress(x, values)
+    slope, p, _ = _trend_slope_p(np.asarray(values, dtype=float))
     bi, wi = int(np.argmax(values)), int(np.argmin(values))
     out = {
         "metric": metric, "latest": latest, "changePct": mom, "yoyChangePct": yoy,

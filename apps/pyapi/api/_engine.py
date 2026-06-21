@@ -31,6 +31,47 @@ import _currency as _cur
 CURRENCY_HINT = re.compile(r"(price|cost|revenue|sales|amount|amt|total|spend|profit|fee|salary|wage|usd|eur|gbp|paid|charge|value)", re.I)
 ID_HINT = re.compile(r"(\bid\b|_id\b|uuid|guid|code|sku|ticket|order[_\s-]?no|number|account)", re.I)
 
+# Unambiguous textual "missing" markers — nulled so they don't become a fake category/group. (Soft markers
+# like "-"/"none" can be real category values; in numeric columns pd.to_numeric already coerces them to NaN.)
+_NA_TOKENS = {"", "n/a", "na", "#n/a", "#na", "nan", "null", "nil", "(blank)", "(empty)", "(null)", "<null>"}
+# European-formatted number: dot thousands and/or comma decimal — "1.234,56", "1.234", "12,5", "1.234.567".
+_EU_NUM_RE = re.compile(r"^-?\d{1,3}(\.\d{3})+(,\d+)?$|^-?\d+,\d{1,2}$")
+
+
+def _to_number_eu(s: str) -> float:
+    """Parse a European-formatted number string to a float ("1.234,56" → 1234.56). Same last-separator-wins
+    rule the TS engine uses, so both engines agree on a non-US export."""
+    t = s.strip()
+    if "," in t and "." in t:
+        t = t.replace(".", "").replace(",", ".") if t.rfind(",") > t.rfind(".") else t.replace(",", "")
+    elif "," in t:
+        parts = t.split(",")
+        t = t.replace(",", ".") if (len(parts) == 2 and len(parts[1]) != 3) else t.replace(",", "")
+    elif t.count(".") >= 2:
+        t = t.replace(".", "")
+    try:
+        return float(t)
+    except ValueError:
+        return np.nan
+
+
+def _normalize_raw(df: pd.DataFrame) -> pd.DataFrame:
+    """Coerce textual null markers to NaN and European-formatted numeric strings to real numbers, mirroring
+    the TS cleaning step. The browser already sends cleaned numbers, so this mainly hardens the direct-CSV
+    path (and any non-US upload) against silent ~1000x mis-scaling and sentinel-as-category pollution."""
+    df = df.copy()
+    for col in df.columns:
+        # Only text-ish columns carry markers/locale formatting; numeric & datetime columns are already typed
+        # (also covers pandas' newer "str" dtype, which is not `object`).
+        if pd.api.types.is_numeric_dtype(df[col]) or pd.api.types.is_datetime64_any_dtype(df[col]):
+            continue
+        s = df[col].map(lambda v: (np.nan if v.strip().lower() in _NA_TOKENS else v.strip()) if isinstance(v, str) else v)
+        nonnull = [v for v in s if isinstance(v, str)]
+        if nonnull and sum(1 for v in nonnull if _EU_NUM_RE.match(v)) / len(nonnull) > 0.8:
+            s = s.map(lambda v: _to_number_eu(v) if isinstance(v, str) else v)
+        df[col] = s
+    return df
+
 
 def _is_datelike(s: pd.Series) -> bool:
     if pd.api.types.is_datetime64_any_dtype(s):
@@ -387,7 +428,7 @@ def compute_kpis(df, profiles, domain, bestsellers, currency=None) -> list[dict[
 # ─────────────────────────── Orchestrator ───────────────────────────
 
 def analyze(df: pd.DataFrame, currency: dict | None = None) -> dict[str, Any]:
-    df = df.dropna(axis=1, how="all").copy()
+    df = _normalize_raw(df.dropna(axis=1, how="all").copy())
     n = len(df)
     profiles = profile(df)
     domain = detect_domain(profiles, n)

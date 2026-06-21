@@ -89,20 +89,26 @@ def build_facts(spec: dict) -> list[dict]:
                 f"after accounting for the others — and together they explain {_pct(d['r2'])} of why it varies "
                 f"(a real effect, not chance; p={lead['p']:.3f}).", "driver")
 
-    # Group gaps — only when it's a real outcome×operational gap, not a price/product tautology.
+    # Group gaps — only when it's a real outcome×operational gap, not a price/product tautology. Surface up
+    # to TWO so a dataset with several real gaps doesn't lose all but the strongest before the AI sees it.
+    gaps = 0
     for g in st.get("groupComparisons", []):
         if g.get("significant") and not g.get("valueTautology"):
             add("fact-gap", f"{g['metric']} differs by {g['dimension']}: \"{g['top']['name']}\" "
                 f"({g['top']['mean']:,.0f}) vs \"{g['bottom']['name']}\" ({g['bottom']['mean']:,.0f}); "
                 f"{g['dimension']} explains {_pct(g['etaSq'])} of it.", "gap")
-            break
+            gaps += 1
+            if gaps >= 2:
+                break
 
     # A relationship qualifies if it's a meaningful straight-line link OR a monotonic-but-curved one that
     # Pearson alone would under-rate (strong rank agreement, weak r). Either way it's worth a sentence.
-    c = next((x for x in st.get("correlations", [])
-              if x.get("significant") and not x["redundant"]
-              and (x["strength"] != "weak" or x.get("nonlinear"))), None)
-    if c:
+    # Surface up to TWO real relationships so multi-metric datasets keep more than the single strongest.
+    corrs = 0
+    for c in st.get("correlations", []):
+        if not (c.get("significant") and not c["redundant"]
+                and (c["strength"] != "weak" or c.get("nonlinear"))):
+            continue
         if c.get("nonlinear"):
             add("fact-corr", f"{c['a']} and {c['b']} move together but not in a straight line "
                 f"(rank r={c['spearman']:.2f} vs linear r={c['r']:.2f}) — a curved relationship, likely "
@@ -110,6 +116,22 @@ def build_facts(spec: dict) -> list[dict]:
         else:
             add("fact-corr", f"{c['a']} and {c['b']} move together (r={c['r']:.2f}, {c['strength']}) — "
                 f"association, not proven cause.", "correlation")
+        corrs += 1
+        if corrs >= 2:
+            break
+
+    # Categorical association (chi-square): two category columns that occur together more than chance. The
+    # engine already computes these but they were never narrated — surface the strongest non-trivial one so
+    # the AI can explain structure in survey/ops/HR data, not just numeric relationships. Skip near-perfect
+    # links (cramersV≈1), which are trivial hierarchies (City~State). Plain wording, no stat to parrot.
+    assoc = next((a for a in st.get("associations", [])
+                  if a.get("significant") and 0.2 <= a.get("cramersV", 0) < 0.98), None)
+    if assoc:
+        v = assoc["cramersV"]
+        strength = "strong" if v > 0.5 else "moderate" if v > 0.3 else "mild"
+        add("fact-association", f"\"{assoc['a']}\" and \"{assoc['b']}\" tend to go together — certain "
+            f"{assoc['a']} values commonly pair with certain {assoc['b']} values (a {strength} link, not "
+            f"random). Looking at them together reveals patterns you'd miss one at a time.", "association")
 
     rfm = spec.get("rfm")
     if rfm and rfm.get("segments"):
@@ -150,6 +172,20 @@ def build_facts(spec: dict) -> list[dict]:
                 f"({mean_s}) is pulled by the tail, so the median ({med_s}) is the more honest 'typical' value.",
                 "distribution")
             break
+
+    # Data-quality caveat: the engine scores completeness/duplicates/constant columns but never told the AI,
+    # so a confident "Total profit is $X" could be written off a half-empty column. Emit it as a FACT — which
+    # is itself a grounding source — so the narrator both CAN and MUST hedge when the data isn't clean.
+    q = spec.get("quality") or {}
+    q_issues = q.get("issues") or []
+    if q_issues and (q.get("rating") != "good" or q.get("duplicates") or q.get("completeness", 1.0) < 0.98):
+        lead = "; ".join(q_issues[:2])
+        rating = q.get("rating", "fair")
+        # Don't label the note "(good)" while flagging a 34%-empty column — that reads as a contradiction;
+        # only surface the rating word when the data is actually fair/weak.
+        prefix = "Data-quality note" if rating == "good" else f"Data-quality note ({rating})"
+        add("fact-quality", f"{prefix}: {lead}. Treat the affected totals as approximate and weigh the "
+            f"conclusions accordingly.", "quality")
 
     return facts
 
@@ -240,8 +276,8 @@ def templated_narrative(facts: list[dict]) -> str:
     headline = next((f for f in facts if f["kind"] == "kpi"), facts[0])
     # Strongest "what's happening" story, in priority order.
     story = next((by_kind[k] for k in ("bestseller", "trend", "driver", "gap") if k in by_kind), None)
-    # A risk/quality flag to watch.
-    risk = next((by_kind[k] for k in ("concentration", "anomaly", "distribution", "rfm") if k in by_kind), None)
+    # A risk/quality flag to watch — a data-quality warning leads, it's the most decision-relevant caveat.
+    risk = next((by_kind[k] for k in ("quality", "concentration", "anomaly", "distribution", "rfm") if k in by_kind), None)
     parts = [headline["text"]]
     for f in (story, risk):
         if f and f["text"] not in parts:

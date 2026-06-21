@@ -1,11 +1,12 @@
 """Tests for the conclusions layer (fallback + grounding). Run: py apps/web/api/_test_conclude.py"""
+import json
 import os
 import sys
 
 # Ensure no key so we exercise the deterministic fallback deterministically.
 os.environ.pop("LLM_API_KEY", None)
 
-from _conclude import generate_conclusions, check_grounding
+from _conclude import generate_conclusions, check_grounding, _result_from_raw, _ground_sources
 
 failed = 0
 
@@ -53,6 +54,24 @@ g_kpi = check_grounding("Revenue fell 33.8% to $51.4M.", facts
                         + [{"text": f"{k['name']} {k['value']}"} for k in kpis])
 check("grounding accepts a KPI-sourced figure", g_kpi["grounded"] is True)
 check("generate_conclusions accepts kpis param", res2["provider"] == "none")
+
+# _result_from_raw: parses a model JSON, grounds it, and now also grounds ACTION TITLES + chart insights
+# (previously only conclusions/summary/detail were checked, so a fabricated figure could hide in a heading).
+gs = _ground_sources(facts, None, None)
+good = json.dumps({"bottomLine": "Toyota leads.", "summary": "Revenue is $51.4M.",
+                   "conclusions": ["Toyota is 38% of revenue."], "chartInsights": [],
+                   "actions": [{"title": "Grow Toyota", "detail": "Push the $19.6M line."}]})
+r_ok = _result_from_raw(good, gs)
+check("result_from_raw grounds a clean answer", bool(r_ok) and r_ok["grounding"]["grounded"] is True)
+
+bad_title = json.dumps({"bottomLine": "ok", "summary": "ok", "conclusions": [], "chartInsights": [],
+                        "actions": [{"title": "Cut the $777M tail", "detail": "do it"}]})
+r_bad = _result_from_raw(bad_title, gs)
+check("invented figure in an ACTION TITLE is now caught",
+      bool(r_bad) and r_bad["grounding"]["grounded"] is False and "777" in str(r_bad["grounding"]["unverified"]))
+
+check("result_from_raw returns None on junk/empty",
+      _result_from_raw("not json", gs) is None and _result_from_raw(None, gs) is None)
 
 print()
 if failed:
